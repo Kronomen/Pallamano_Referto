@@ -121,15 +121,17 @@
                 }
             </div></div>
         </div>
-        <div class="config-duration">
-            <div class="section-label">DURATA DI OGNI TEMPO</div>
-            <input class="duration-input" type="number" min="1" max="60" @bind="Game.State.HalfDurationMinutes" />
-            <span>MINUTI</span>
-        </div>
-        <div class="config-options">
-            @if (!string.IsNullOrWhiteSpace(Game.ValidationError)) { <div class="validation-error">@Game.ValidationError</div> }
-            <label class="check"><input type="checkbox" @bind="Game.State.CronometroContinuativo" /> CRONOMETRO PALAZZETTO CONTINUATIVO</label>
-            <label class="check"><input type="checkbox" @bind="Game.State.RichiediCartellinoEsclusione" /> STAMPA CARTELLINI</label>
+        <div class="config-settings-row">
+            <div class="config-duration">
+                <div class="section-label">DURATA DI OGNI TEMPO</div>
+                <input class="duration-input" type="number" min="1" max="60" @bind="Game.State.HalfDurationMinutes" />
+                <span>MINUTI</span>
+            </div>
+            <div class="config-options">
+                @if (!string.IsNullOrWhiteSpace(Game.ValidationError)) { <div class="validation-error">@Game.ValidationError</div> }
+                <label class="check"><input type="checkbox" @bind="Game.State.CronometroContinuativo" /> CRONOMETRO PALAZZETTO CONTINUATIVO</label>
+                <label class="check"><input type="checkbox" @bind="Game.State.RichiediCartellinoEsclusione" /> STAMPA CARTELLINI</label>
+            </div>
         </div>
         <div class="mode-section">
             <div class="section-label">MODALITÀ GARA</div>
