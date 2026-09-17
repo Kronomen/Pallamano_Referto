@@ -107,30 +107,38 @@
             <label>Delegato<input @bind="Game.State.Delegate1" @bind:event="oninput" /></label>
             <label>Segretario<input @bind="Game.State.Secretary" @bind:event="oninput" /></label>
         </div>
-        <div class="team-colors-config">
-            <div class="team-color-config-box"><strong>COLORE SQUADRA</strong><div class="team-color-palette">
-                @foreach (var c in TeamColors)
-                {
-                    <button type="button" title="@c.Name" aria-label="Colore CASA @c.Name" class="team-color-swatch @(Game.State.Casa.Color == c.Hex ? "selected" : "")" style="background:@c.Hex" @onclick='() => SetTeamColor("A", c.Hex)'></button>
-                }
-            </div></div>
-            <div class="team-color-config-box"><strong>COLORE SQUADRA</strong><div class="team-color-palette">
-                @foreach (var c in TeamColors)
-                {
-                    <button type="button" title="@c.Name" aria-label="Colore OSPITI @c.Name" class="team-color-swatch @(Game.State.Ospiti.Color == c.Hex ? "selected" : "")" style="background:@c.Hex" @onclick='() => SetTeamColor("B", c.Hex)'></button>
-                }
-            </div></div>
-        </div>
-        <div class="config-settings-row">
-            <div class="config-duration">
-                <div class="section-label">DURATA DI OGNI TEMPO</div>
-                <input class="duration-input" type="number" min="1" max="60" @bind="Game.State.HalfDurationMinutes" />
-                <span>MINUTI</span>
+        <div class="config-top-row">
+            <div class="team-color-config-box team-color-home">
+                <strong>COLORE CASA</strong>
+                <div class="team-color-palette">
+                    @foreach (var c in TeamColors)
+                    {
+                        <button type="button" title="@c.Name" aria-label="Colore CASA @c.Name" class="team-color-swatch @(Game.State.Casa.Color == c.Hex ? "selected" : "")" style="background:@c.Hex" @onclick='() => SetTeamColor("A", c.Hex)'></button>
+                    }
+                </div>
             </div>
-            <div class="config-options">
-                @if (!string.IsNullOrWhiteSpace(Game.ValidationError)) { <div class="validation-error">@Game.ValidationError</div> }
-                <label class="check"><input type="checkbox" @bind="Game.State.CronometroContinuativo" /> CRONOMETRO PALAZZETTO CONTINUATIVO</label>
-                <label class="check"><input type="checkbox" @bind="Game.State.RichiediCartellinoEsclusione" /> STAMPA CARTELLINI</label>
+
+            <div class="config-center-settings">
+                <div class="config-duration">
+                    <div class="section-label">DURATA DI OGNI TEMPO</div>
+                    <input class="duration-input" type="number" min="1" max="60" @bind="Game.State.HalfDurationMinutes" />
+                    <span>MINUTI</span>
+                </div>
+                <div class="config-options">
+                    @if (!string.IsNullOrWhiteSpace(Game.ValidationError)) { <div class="validation-error">@Game.ValidationError</div> }
+                    <label class="check"><input type="checkbox" @bind="Game.State.CronometroContinuativo" /> CRONOMETRO PALAZZETTO CONTINUATIVO</label>
+                    <label class="check"><input type="checkbox" @bind="Game.State.RichiediCartellinoEsclusione" /> STAMPA CARTELLINI</label>
+                </div>
+            </div>
+
+            <div class="team-color-config-box team-color-away">
+                <strong>COLORE OSPITI</strong>
+                <div class="team-color-palette">
+                    @foreach (var c in TeamColors)
+                    {
+                        <button type="button" title="@c.Name" aria-label="Colore OSPITI @c.Name" class="team-color-swatch @(Game.State.Ospiti.Color == c.Hex ? "selected" : "")" style="background:@c.Hex" @onclick='() => SetTeamColor("B", c.Hex)'></button>
+                    }
+                </div>
             </div>
         </div>
         <div class="mode-section">

@@ -2777,3 +2777,102 @@ html,body,#app{overflow:hidden!important;width:100%;height:100%;}
     min-height:15px!important;
   }
 }
+
+/* v91 — configurazione iPad 11": palette CASA a sinistra, impostazioni al centro,
+   palette OSPITI a destra, tutto su un unico rigo. */
+.config-top-row{
+  width:100%!important;
+  display:grid!important;
+  grid-template-columns:minmax(150px,1fr) minmax(390px,1.7fr) minmax(150px,1fr)!important;
+  align-items:center!important;
+  gap:6px!important;
+  margin:3px 0!important;
+}
+.config-top-row .team-color-config-box{
+  min-width:0!important;
+  height:36px!important;
+  padding:3px 6px!important;
+  margin:0!important;
+  border:1px solid #cbd5e1!important;
+  border-radius:7px!important;
+  background:#f8fafc!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:5px!important;
+}
+.config-top-row .team-color-config-box>strong{
+  font-size:7px!important;
+  line-height:1!important;
+  white-space:nowrap!important;
+  margin:0!important;
+}
+.config-top-row .team-color-palette{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  flex-wrap:nowrap!important;
+  gap:2px!important;
+  min-width:0!important;
+}
+.config-top-row .team-color-away .team-color-palette{justify-content:flex-start!important;}
+.config-top-row .team-color-swatch{
+  width:16px!important;
+  height:16px!important;
+  min-width:16px!important;
+  min-height:16px!important;
+  padding:0!important;
+  margin:0!important;
+  border-radius:3px!important;
+}
+.config-center-settings{
+  min-width:0!important;
+  display:grid!important;
+  grid-template-columns:minmax(250px,1fr) minmax(300px,1.25fr)!important;
+  align-items:center!important;
+  gap:6px!important;
+}
+.config-center-settings .config-duration{
+  height:36px!important;
+  min-height:36px!important;
+  margin:0!important;
+  padding:3px 7px!important;
+  gap:6px!important;
+}
+.config-center-settings .section-label{font-size:8px!important;white-space:nowrap!important;}
+.config-center-settings .duration-input{
+  width:58px!important;
+  height:30px!important;
+  min-height:30px!important;
+  font-size:18px!important;
+}
+.config-center-settings .config-options{
+  height:36px!important;
+  min-height:36px!important;
+  margin:0!important;
+  padding:3px 5px!important;
+  display:grid!important;
+  grid-template-columns:1fr 1fr!important;
+  align-items:center!important;
+  gap:3px!important;
+}
+.config-center-settings .check{
+  min-height:28px!important;
+  padding:2px!important;
+  font-size:7px!important;
+  white-space:nowrap!important;
+  gap:3px!important;
+}
+.config-center-settings .check input{width:15px!important;height:15px!important;min-width:15px!important;}
+
+@media (orientation:landscape) and (min-width:900px) and (max-width:1200px){
+  .config-top-row{
+    grid-template-columns:minmax(145px,1fr) minmax(390px,1.8fr) minmax(145px,1fr)!important;
+    gap:5px!important;
+    margin:2px 0!important;
+  }
+  .config-center-settings{grid-template-columns:minmax(235px,1fr) minmax(285px,1.25fr)!important;gap:5px!important;}
+  .config-top-row .team-color-config-box{height:34px!important;padding:2px 5px!important;}
+  .config-center-settings .config-duration,.config-center-settings .config-options{height:34px!important;min-height:34px!important;}
+  .config-center-settings .duration-input{height:28px!important;min-height:28px!important;}
+}
