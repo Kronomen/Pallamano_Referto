@@ -2574,3 +2574,151 @@ html,body,#app{overflow:hidden!important;width:100%;height:100%;}
 @media (max-width: 1100px) {
   .event-list .event-row-button .event-description { font-size: 7.5px !important; }
 }
+
+/* v88 — CONFIGURAZIONE iPad 11": usa realmente tutto il viewport.
+   Il contenuto può scorrere, mentre i comandi inferiori restano sempre visibili. */
+.config-overlay{
+  position:fixed!important;
+  inset:0!important;
+  width:100vw!important;
+  height:100vh!important;
+  height:100dvh!important;
+  box-sizing:border-box!important;
+  padding:max(6px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(6px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left))!important;
+  align-items:stretch!important;
+  justify-content:center!important;
+  overflow:hidden!important;
+}
+.config-card{
+  width:min(1180px,100%)!important;
+  max-width:1180px!important;
+  height:100%!important;
+  max-height:none!important;
+  min-height:0!important;
+  margin:0 auto!important;
+  padding:8px 10px!important;
+  box-sizing:border-box!important;
+  border-radius:14px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  overflow:hidden!important;
+}
+.config-card > .dialog-kicker,
+.config-card > h2{
+  flex:0 0 auto!important;
+}
+.config-card > .config-grid,
+.config-card > .team-colors-config,
+.config-card > .config-duration,
+.config-card > .config-options,
+.config-card > .mode-section,
+.config-card > .roster-config,
+.config-card > .config-import-row{
+  flex-shrink:0!important;
+}
+.config-card > .roster-config{
+  min-height:0!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  -webkit-overflow-scrolling:touch!important;
+  scrollbar-width:none!important;
+}
+.config-card > .roster-config::-webkit-scrollbar{display:none!important;}
+.config-actions{
+  flex:0 0 auto!important;
+  position:relative!important;
+  z-index:20!important;
+  background:#fff!important;
+  padding-top:5px!important;
+  padding-bottom:max(2px,env(safe-area-inset-bottom))!important;
+}
+.config-action-hint{
+  flex:0 0 auto!important;
+}
+
+/* iPad/tablet landscape: compattazione verticale senza ridurre i controlli touch. */
+@media (orientation:landscape) and (min-width:800px) and (max-width:1400px){
+  .config-card{padding:7px 10px!important;}
+  .config-card h2{font-size:16px!important;margin:1px 0 4px!important;}
+  .config-grid{gap:3px 5px!important;}
+  .config-grid label{font-size:8px!important;gap:2px!important;}
+  .config-grid input{height:28px!important;min-height:28px!important;padding:3px 6px!important;font-size:11px!important;}
+  .team-colors-config{margin:3px auto!important;gap:5px!important;}
+  .team-color-config-box{padding:3px 5px!important;}
+  .team-color-config-box>strong{font-size:8px!important;margin-bottom:2px!important;}
+  .team-color-swatch{width:18px!important;height:18px!important;}
+  .config-duration{margin:3px 0!important;}
+  .config-options{margin:3px 0!important;padding:4px!important;gap:5px!important;}
+  .check{min-height:24px!important;font-size:9px!important;}
+  .mode-section{margin:3px 0!important;}
+  .mode-grid{gap:4px!important;}
+  .mode-card{padding:5px!important;min-height:42px!important;}
+  .mode-card strong{font-size:9px!important;}
+  .mode-card small{font-size:8px!important;line-height:1.1!important;}
+  .roster-config{gap:5px!important;overflow-y:auto!important;}
+  .roster-config>div{padding:3px!important;}
+  .roster-config h3{font-size:9px!important;margin:0 0 2px!important;}
+  .roster-mini{gap:2px!important;}
+  .roster-row{grid-template-columns:46px minmax(0,1fr) 32px!important;gap:3px!important;}
+  .roster-row input{height:25px!important;min-height:25px!important;font-size:10px!important;padding:2px 4px!important;}
+  .roster-row label{font-size:8px!important;}
+  .staff-config-mini .roster-row{grid-template-columns:20px minmax(0,1fr) 30px!important;}
+  .staff-config-mini .roster-name-input{height:24px!important;min-height:24px!important;font-size:9px!important;}
+  .staff-config-mini .staff-letter{height:24px!important;min-width:20px!important;font-size:10px!important;}
+  .config-actions{margin-top:4px!important;gap:5px!important;}
+  .config-actions .compact-action{height:31px!important;min-height:31px!important;font-size:9px!important;padding:0 10px!important;}
+  .config-action-hint{font-size:8px!important;margin-top:1px!important;}
+}
+
+/* Portrait iPad: pannello pieno schermo, con parte centrale scorrevole. */
+@media (orientation:portrait) and (min-width:700px){
+  .config-overlay{padding:8px!important;}
+  .config-card{width:100%!important;padding:10px!important;}
+  .config-card > .roster-config{overflow-y:auto!important;}
+}
+
+
+/* v39 — impostazioni configurazione su un unico rigo iPad 11" */
+.config-settings-row{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  width:100%;
+  margin:4px 0;
+}
+.config-settings-row .config-duration{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  margin:0!important;
+  padding:7px 10px;
+  flex:0 0 auto;
+  min-height:38px;
+}
+.config-settings-row .config-options{
+  display:flex;
+  align-items:center;
+  flex-wrap:nowrap;
+  gap:12px;
+  margin:0!important;
+  padding:6px 10px;
+  flex:0 1 auto;
+  min-height:38px;
+}
+.config-settings-row .check{
+  min-height:26px!important;
+  white-space:nowrap;
+}
+@media (max-width:700px){
+  .config-settings-row{flex-wrap:wrap;}
+  .config-settings-row .config-options{flex-wrap:wrap;}
+}
+@media (orientation:landscape) and (min-width:900px) and (max-width:1200px){
+  .config-settings-row{gap:6px!important;margin:2px 0!important;}
+  .config-settings-row .config-duration{padding:3px 7px!important;min-height:30px!important;gap:5px!important;}
+  .config-settings-row .config-options{padding:3px 7px!important;gap:9px!important;min-height:30px!important;}
+  .config-settings-row .check{font-size:8px!important;min-height:22px!important;}
+  .config-settings-row .check input{width:17px!important;height:17px!important;}
+}
