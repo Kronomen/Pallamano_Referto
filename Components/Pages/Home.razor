@@ -17,11 +17,22 @@
     <section class="scorebar">
         <div class="team-score home-score"><div class="team-score-info"><span>@Game.State.Casa.Name</span></div><strong>@Game.State.ScoreA</strong></div>
         <div class="clock-area">
-            <div class="clock-adjust-row">
-                <button type="button" class="clock-adjust clock-minus" @onclick='() => Game.AdjustTimer(-1)'>−1</button>
-                <div class="clock @(Game.State.Running ? "clock-running" : "clock-stopped")">@GameService.FormatTime(Game.State.TimerSeconds)</div>
-                <button type="button" class="clock-adjust clock-plus" @onclick='() => Game.AdjustTimer(1)'>+1</button>
-            </div>
+            @if (Game.State.ShootoutStarted)
+            {
+                <div class="shootout-score-center">RIGORI <strong>@Game.State.ShootoutScoreA — @Game.State.ShootoutScoreB</strong></div>
+                @if (!Game.State.ShootoutFinished && !Game.ShowShootoutFirstTeam)
+                {
+                    <div class="shootout-turn">TIRA: @(Game.ShootoutCurrentTeam == "A" ? Game.State.Casa.Name : Game.State.Ospiti.Name)</div>
+                }
+            }
+            else
+            {
+                <div class="clock-adjust-row">
+                    <button type="button" class="clock-adjust clock-minus" @onclick='() => Game.AdjustTimer(-1)'>−1</button>
+                    <div class="clock @(Game.State.Running ? "clock-running" : "clock-stopped")">@GameService.FormatTime(Game.State.TimerSeconds)</div>
+                    <button type="button" class="clock-adjust clock-plus" @onclick='() => Game.AdjustTimer(1)'>+1</button>
+                </div>
+            }
             @if (Game.State.TimeoutRemainingSeconds > 0)
             {
                 <div class="match-timeout-countdown">TIME OUT @(Game.State.TimeoutTeam == "A" ? Game.State.Casa.Name : Game.State.Ospiti.Name) · @GameService.FormatTime(Game.State.TimeoutRemainingSeconds)</div>
@@ -210,9 +221,40 @@
         <div class="dialog-kicker">GARA ANCORA IN PARITÀ</div>
         <h2>INIZIO TIRI DI RIGORE</h2>
         <div class="dialog-score">@Game.State.ScoreA <span>—</span> @Game.State.ScoreB</div>
-        <p>Dopo il 4° tempo supplementare il risultato è in parità.</p>
+        <p>Conferma l'avvio della serie dei tiri di rigore.</p>
         <button class="primary dialog-main" @onclick="Game.ConfirmShootoutStart">INIZIA TIRI DI RIGORE</button>
         <button @onclick="Game.CancelShootoutStart">ANNULLA</button>
+    </div></div>
+}
+
+@if (Game.ShowShootoutFirstTeam)
+{
+    <div class="overlay"><div class="dialog-card shootout-dialog">
+        <div class="dialog-kicker">SERIE DEI RIGORI</div>
+        <h2>CHI ESEGUE IL PRIMO TIRO?</h2>
+        <p>Seleziona la squadra che esegue il primo tiro della serie.</p>
+        <div class="dialog-grid shootout-first-team-grid">
+            <button class="primary" @onclick='() => Game.ChooseShootoutFirstTeam("A")'>@Game.State.Casa.Name</button>
+            <button class="shootout-away-first" @onclick='() => Game.ChooseShootoutFirstTeam("B")'>@Game.State.Ospiti.Name</button>
+        </div>
+    </div></div>
+}
+
+@if (Game.PendingShootout is not null)
+{
+    var p = Game.PendingShootout.Value;
+    var roster = p.Team == "A" ? Game.State.Casa : Game.State.Ospiti;
+    var playerName = p.Index >= 0 && p.Index < roster.PlayerNames.Length ? roster.PlayerNames[p.Index] : "";
+    var number = p.Index >= 0 && p.Index < roster.NumberLabels.Length ? roster.NumberLabels[p.Index] : "";
+    <div class="overlay"><div class="dialog-card shootout-result-dialog">
+        <div class="dialog-kicker">TIRO DA 7 METRI · @(p.Team == "A" ? Game.State.Casa.Name : Game.State.Ospiti.Name)</div>
+        <h2>N° @number</h2>
+        <p>@(string.IsNullOrWhiteSpace(playerName) ? "GIOCATORE" : playerName)</p>
+        <div class="dialog-grid shootout-result-grid">
+            <button class="primary" @onclick='() => Game.RecordShootoutShot(true)'>RIGORE REALIZZATO</button>
+            <button class="danger" @onclick='() => Game.RecordShootoutShot(false)'>RIGORE ERRATO</button>
+            <button class="shootout-cancel" @onclick="Game.CancelShootoutShot">ANNULLA</button>
+        </div>
     </div></div>
 }
 
@@ -413,7 +455,7 @@
     {
         if (index < 0 || index >= Game.State.Events.Count) return;
         var ev = Game.State.Events[index];
-        if (ev.Type == "SYSTEM") return;
+        if (ev.Type == "SYSTEM" || ev.Type is "SHOOTOUT_GOAL" or "SHOOTOUT_MISS") return;
         _editingEvent = index;
         _eventEditorOpen = true;
         _editTime = ev.Time;
@@ -636,7 +678,10 @@
             playersB = Game.State.Ospiti.Numbers.Select((n,i) => new { number=n, label=GetNumberLabel("B", i), name=Game.State.Ospiti.PlayerNames[i] ?? "", active=Game.State.Ospiti.ActivePlayers[i], originalIndex=i }).Where(p => p.active).OrderBy(p => NumberSortKey(p.label, p.number)).ThenBy(p => p.originalIndex).ToArray(),
             staffA = Game.State.Casa.StaffLetters.Select((l,i) => new { letter=l, name=Game.State.Casa.StaffNames[i] ?? "", active=Game.State.Casa.ActiveStaff[i] }).Where(p => p.active),
             staffB = Game.State.Ospiti.StaffLetters.Select((l,i) => new { letter=l, name=Game.State.Ospiti.StaffNames[i] ?? "", active=Game.State.Ospiti.ActiveStaff[i] }).Where(p => p.active),
-            events = Game.State.Events.Select(e => new { e.Time, e.Team, e.Number, e.Text, e.Result })
+            events = Game.State.Events.Select(e => new { e.Time, e.Team, e.Number, e.Text, e.Result }),
+            shootout = Game.State.Shootout.Select(x => new { x.Id, x.Phase, x.Round, x.Team, x.Number, x.PlayerName, x.Goal, x.ScoreA, x.ScoreB }),
+            shootoutScoreA = Game.State.ShootoutScoreA,
+            shootoutScoreB = Game.State.ShootoutScoreB
         });
     }
     public async void Dispose()

@@ -16,6 +16,8 @@ public sealed class GameService : IAsyncDisposable
     public (string Team, int Index)? PendingStaff { get; private set; }
     public bool ShowPeriodEnd { get; private set; }
     public bool ShowShootoutStart { get; private set; }
+    public bool ShowShootoutFirstTeam { get; private set; }
+    public (string Team, int Index)? PendingShootout { get; private set; }
     public bool ShowConfiguration { get; private set; } = true;
     public bool PeriodStartConfirmed { get; private set; } = true;
     public string? ValidationError { get; private set; }
@@ -69,7 +71,7 @@ public sealed class GameService : IAsyncDisposable
     public void Reset()
     {
         StopClock(); State = CreateNewGame(); ClearPending(); _undoState = null;
-        PeriodStartConfirmed = true; ShowPeriodEnd = false; ShowShootoutStart = false; ShowConfiguration = true; ValidationError = null; Notify();
+        PeriodStartConfirmed = true; ShowPeriodEnd = false; ShowShootoutStart = false; ShowShootoutFirstTeam = false; PendingShootout = null; ShowConfiguration = true; ValidationError = null; Notify();
     }
 
     public bool SelectEvent(string type)
@@ -379,21 +381,238 @@ public sealed class GameService : IAsyncDisposable
     {
         if (PeriodStartConfirmed || State.MatchFinished) return false;
         ShowPeriodEnd = false;
-        if (State.Phase == 2 && State.ScoreA != State.ScoreB) { State.MatchFinished = true; Notify(); return true; }
+
+        // Modalità con tiri di rigore: dopo il 2° tempo, se la gara è pari,
+        // si passa direttamente alla serie dei rigori senza creare tempi supplementari.
+        if (State.Phase == 2 && State.MatchMode == "RIGORI")
+        {
+            if (State.ScoreA == State.ScoreB)
+            {
+                ShowShootoutStart = true;
+                Notify();
+                return true;
+            }
+            State.MatchFinished = true;
+            Notify();
+            return true;
+        }
+
+        if (State.Phase == 2 && State.ScoreA != State.ScoreB)
+        {
+            State.MatchFinished = true;
+            Notify();
+            return true;
+        }
+
         if (State.Phase == 6)
         {
             if (State.ScoreA == State.ScoreB) ShowShootoutStart = true;
             else State.MatchFinished = true;
-            Notify(); return true;
+            Notify();
+            return true;
         }
-        State.Phase++; State.TimerSeconds = GetPeriodStartSeconds(State.Phase); State.Running = false; PeriodStartConfirmed = true; Notify(); return true;
+
+        State.Phase++;
+        State.TimerSeconds = GetPeriodStartSeconds(State.Phase);
+        State.Running = false;
+        PeriodStartConfirmed = true;
+        Notify();
+        return true;
     }
 
     public void ConfirmShootoutStart()
     {
-        ShowShootoutStart = false; State.ShootoutStarted = true; State.ShootoutPhase = 1; State.ShootoutTurn = 0; State.ShootoutFirstTeam = "A"; StopClock(); AddSystemEvent("INIZIO TIRI DI RIGORE"); Notify();
+        if (State.MatchFinished) return;
+        ShowShootoutStart = false;
+        ShowShootoutFirstTeam = true;
+        PendingShootout = null;
+        State.ShootoutStarted = true;
+        State.ShootoutFinished = false;
+        State.Phase = 7;
+        State.TimerSeconds = 0;
+        State.Running = false;
+        State.ShootoutPhase = 1;
+        State.ShootoutTurn = 0;
+        State.ShootoutFirstTeam = "";
+        State.ShootoutScoreA = 0;
+        State.ShootoutScoreB = 0;
+        State.Shootout ??= [];
+        State.Shootout.Clear();
+        StopClock();
+        AddSystemEvent("INIZIO TIRI DI RIGORE");
+        Notify();
     }
-    public void CancelShootoutStart() { ShowShootoutStart = false; Notify(); }
+
+    public void CancelShootoutStart()
+    {
+        ShowShootoutStart = false;
+        Notify();
+    }
+
+    public void ChooseShootoutFirstTeam(string team)
+    {
+        if (!State.ShootoutStarted || State.ShootoutFinished || !ShowShootoutFirstTeam) return;
+        if (team is not ("A" or "B")) return;
+
+        State.ShootoutFirstTeam = team;
+        State.ShootoutTurn = 0;
+        State.ShootoutPhase = 1;
+        ShowShootoutFirstTeam = false;
+        AddSystemEvent($"PRIMO TIRO RIGORI · {(team == "A" ? State.Casa.Name : State.Ospiti.Name)}");
+        Notify();
+    }
+
+    public string ShootoutCurrentTeam =>
+        State.ShootoutFirstTeam == "B"
+            ? (State.ShootoutTurn % 2 == 0 ? "B" : "A")
+            : (State.ShootoutTurn % 2 == 0 ? "A" : "B");
+
+    public int ShootoutAttemptsFor(string team) => (State.Shootout ?? []).Count(x => x.Team == team);
+
+    public int ShootoutGoalsFor(string team) => (State.Shootout ?? []).Count(x => x.Team == team && x.Goal);
+
+    public bool CanShootoutPlayer(string team, int index)
+    {
+        if (!State.ShootoutStarted || State.ShootoutFinished || ShowShootoutFirstTeam) return false;
+        if (team != ShootoutCurrentTeam) return false;
+        var roster = Team(team);
+        EnsureRosterArrays(roster);
+        if (index < 0 || index >= 16 || !roster.ActivePlayers[index]) return false;
+        var number = (roster.NumberLabels[index] ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(number) || PlayerIsInhibited(team, number)) return false;
+
+        var eligibleCount = EligibleShooters(team).Count();
+        var used = (State.Shootout ?? []).Where(x => x.Team == team && x.Phase == State.ShootoutPhase)
+            .Select(x => x.Number).ToHashSet(StringComparer.Ordinal);
+        if (eligibleCount > 0 && used.Count >= eligibleCount)
+            used.Clear();
+        if (used.Contains(number)) return false;
+        return true;
+    }
+
+    public bool OpenShootoutShot(string team, int index)
+    {
+        if (!CanShootoutPlayer(team, index)) return false;
+        PendingShootout = (team, index);
+        Notify();
+        return true;
+    }
+
+    public void CancelShootoutShot()
+    {
+        PendingShootout = null;
+        Notify();
+    }
+
+    public bool RecordShootoutShot(bool goal)
+    {
+        if (PendingShootout is null || !State.ShootoutStarted || State.ShootoutFinished) return false;
+        var pending = PendingShootout.Value;
+        if (!CanShootoutPlayer(pending.Team, pending.Index)) return false;
+
+        var roster = Team(pending.Team);
+        EnsureRosterArrays(roster);
+        var number = (roster.NumberLabels[pending.Index] ?? string.Empty).Trim();
+        var name = roster.PlayerNames[pending.Index] ?? string.Empty;
+        var round = State.ShootoutTurn + 1;
+
+        Snapshot();
+        State.Shootout ??= [];
+        State.Shootout.Add(new ShootoutAttempt
+        {
+            Id = State.Shootout.Count + 1,
+            Phase = State.ShootoutPhase,
+            Round = round,
+            Team = pending.Team,
+            Number = number,
+            PlayerName = name,
+            Goal = goal,
+            ScoreA = State.ShootoutScoreA + (goal && pending.Team == "A" ? 1 : 0),
+            ScoreB = State.ShootoutScoreB + (goal && pending.Team == "B" ? 1 : 0)
+        });
+
+        if (goal)
+        {
+            if (pending.Team == "A") { State.ShootoutScoreA++; State.ScoreA++; }
+            else { State.ShootoutScoreB++; State.ScoreB++; }
+        }
+
+        // I rigori finali sono eventi separati dai 7m di gioco:
+        // non entrano nel conteggio dei gol personali del giocatore.
+        State.Events.Add(new EventRecord
+        {
+            Time = FormatTime(State.TimerSeconds),
+            Team = pending.Team,
+            Number = number,
+            Type = goal ? "SHOOTOUT_GOAL" : "SHOOTOUT_MISS",
+            Text = goal ? "RIGORE REALIZZATO" : "RIGORE ERRATO",
+            Result = ScoreText()
+        });
+
+        PendingShootout = null;
+        State.ShootoutTurn++;
+
+        if (ShouldFinishShootout())
+        {
+            FinishShootout();
+            return true;
+        }
+
+        if (State.ShootoutPhase == 1 && State.ShootoutTurn >= 10)
+            State.ShootoutPhase = 2;
+
+        Notify();
+        return true;
+    }
+
+    private IEnumerable<(int Index, string Number)> EligibleShooters(string team)
+    {
+        var roster = Team(team);
+        EnsureRosterArrays(roster);
+        for (var i = 0; i < 16; i++)
+        {
+            if (!roster.ActivePlayers[i]) continue;
+            var number = (roster.NumberLabels[i] ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(number) || PlayerIsInhibited(team, number)) continue;
+            yield return (i, number);
+        }
+    }
+
+    private bool ShouldFinishShootout()
+    {
+        var a = (State.Shootout ?? []).Count(x => x.Team == "A");
+        var b = (State.Shootout ?? []).Count(x => x.Team == "B");
+        if (a != b) return false;
+
+        var ga = State.ShootoutScoreA;
+        var gb = State.ShootoutScoreB;
+
+        if (State.ShootoutPhase == 1)
+        {
+            if (a < 5)
+            {
+                var remaining = 5 - a;
+                return ga > gb + remaining || gb > ga + remaining;
+            }
+            return ga != gb;
+        }
+
+        return ga != gb;
+    }
+
+    private void FinishShootout()
+    {
+        if (State.ShootoutFinished) return;
+        State.ShootoutFinished = true;
+        State.Shootout ??= [];
+        State.MatchFinished = true;
+        State.Running = false;
+        ShowShootoutFirstTeam = false;
+        PendingShootout = null;
+        var winner = State.ShootoutScoreA > State.ShootoutScoreB ? State.Casa.Name : State.Ospiti.Name;
+        AddSystemEvent($"FINE SERIE RIGORI {State.ShootoutScoreA}-{State.ShootoutScoreB} · {winner}");
+        Notify();
+    }
 
     public void StartStop()
     {
@@ -540,7 +759,7 @@ public sealed class GameService : IAsyncDisposable
     }
 
     public string ExportJson() => JsonSerializer.Serialize(State, new JsonSerializerOptions { WriteIndented = true });
-    public void ImportJson(string json) { StopClock(); State = JsonSerializer.Deserialize<GameState>(json) ?? throw new InvalidOperationException("JSON partita non valido."); EnsureRosterArrays(State.Casa); EnsureRosterArrays(State.Ospiti); ClearPending(); _undoState = null; PeriodStartConfirmed = !State.MatchFinished; ShowConfiguration = !State.MatchStarted; Notify(); }
+    public void ImportJson(string json) { StopClock(); State = JsonSerializer.Deserialize<GameState>(json) ?? throw new InvalidOperationException("JSON partita non valido."); EnsureRosterArrays(State.Casa); EnsureRosterArrays(State.Ospiti); State.Shootout ??= []; ClearPending(); PendingShootout = null; ShowShootoutStart = false; ShowShootoutFirstTeam = false; _undoState = null; PeriodStartConfirmed = !State.MatchFinished && !State.ShootoutStarted; Notify(); }
     public string ScoreText() => $"{State.ScoreA}-{State.ScoreB}";
     public static string FormatTime(int seconds) => $"{Math.Max(0, seconds) / 60:00}:{Math.Max(0, seconds) % 60:00}";
     public static string PhaseName(int phase) => phase switch { 1 => "1° TEMPO", 2 => "2° TEMPO", 3 => "1° TEMPO SUPPLEMENTARE", 4 => "2° TEMPO SUPPLEMENTARE", 5 => "3° TEMPO SUPPLEMENTARE", 6 => "4° TEMPO SUPPLEMENTARE", _ => "RIGORI" };

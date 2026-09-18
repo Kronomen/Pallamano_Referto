@@ -24,34 +24,63 @@
             var suspensions = Game.GetPlayerSuspensionBadges(Team, number).ToList();
             var yellow = Game.PlayerHasYellow(Team, number);
             var red = Game.PlayerIsInhibited(Team, number);
-            <button type="button" disabled="@(!roster.ActivePlayers[index] || red)" aria-label="Giocatore N.@number @(string.IsNullOrWhiteSpace(name) ? "senza nome" : name)" class="player-card @(!roster.ActivePlayers[index] ? "inactive-player" : "") @(red ? "has-red" : "") @(Game.PendingEvent is not null && roster.ActivePlayers[index] ? "touch-ready" : "")" @onclick="() => SelectPlayer(index)">
-                <span class="number">@number</span>
-                <span class="player-info">
-                    <span class="player-name" title="@(string.IsNullOrWhiteSpace(name) ? "GIOCATORE" : name)">@(string.IsNullOrWhiteSpace(name) ? "GIOCATORE" : name)</span>
-                    <span class="player-indicators">
-                        <span class="stat-item goal-indicator">G @Game.PlayerGoals(Team, number)</span>
-                        <span class="stat-item penalty-indicator">7m @Game.PlayerPenaltyGoals(Team, number)</span>
-                        <span class="stat-item amm-indicator @(yellow ? "active" : "")">A</span>
-                        @if (red)
-                        {
-                            <span class="stat-item expelled-indicator">ESPULSO</span>
-                        }
-                        else
-                        {
+            @if (Game.State.ShootoutStarted)
+            {
+                var canShoot = Game.CanShootoutPlayer(Team, index);
+                <div class="player-card shootout-player-card @(!roster.ActivePlayers[index] ? "inactive-player" : "") @(red ? "has-red" : "") @(canShoot ? "shootout-eligible" : "shootout-not-turn")">
+                    <span class="number">@number</span>
+                    <span class="player-info">
+                        <span class="player-name" title="@(string.IsNullOrWhiteSpace(name) ? "GIOCATORE" : name)">@(string.IsNullOrWhiteSpace(name) ? "GIOCATORE" : name)</span>
+                        <span class="player-indicators">
+                            <span class="stat-item goal-indicator">G @Game.PlayerGoals(Team, number)</span>
+                            <span class="stat-item penalty-indicator">7m @Game.PlayerPenaltyGoals(Team, number)</span>
+                            <span class="stat-item amm-indicator @(yellow ? "active" : "")">A</span>
                             <span class="stat-item two-count @(Game.PlayerTwoCount(Team, number) >= 3 ? "danger" : Game.PlayerTwoCount(Team, number) > 0 ? "active" : "")">2 @Game.PlayerTwoCount(Team, number)/3</span>
+                        </span>
+                        @if (suspensions.Count > 0)
+                        {
+                            <span class="active-countdown-row">
+                                @foreach (var suspension in suspensions)
+                                {
+                                    <span class="active-countdown @(suspension.IsRed ? "countdown-red" : "countdown-two")">@(suspension.IsRed ? "E" : "2'") @suspension.Remaining</span>
+                                }
+                            </span>
                         }
+                        <button type="button" class="shootout-shoot-button" disabled="@(!canShoot)" @onclick="() => OpenShootout(index)">@(canShoot ? "TIRA" : "—")</button>
                     </span>
-                    @if (suspensions.Count > 0)
-                    {
-                        <span class="active-countdown-row">
-                            @foreach (var s in suspensions)
+                </div>
+            }
+            else
+            {
+                <button type="button" disabled="@(!roster.ActivePlayers[index] || red)" aria-label="Giocatore N.@number @(string.IsNullOrWhiteSpace(name) ? "senza nome" : name)" class="player-card @(!roster.ActivePlayers[index] ? "inactive-player" : "") @(red ? "has-red" : "") @(Game.PendingEvent is not null && roster.ActivePlayers[index] ? "touch-ready" : "")" @onclick="() => SelectPlayer(index)">
+                    <span class="number">@number</span>
+                    <span class="player-info">
+                        <span class="player-name" title="@(string.IsNullOrWhiteSpace(name) ? "GIOCATORE" : name)">@(string.IsNullOrWhiteSpace(name) ? "GIOCATORE" : name)</span>
+                        <span class="player-indicators">
+                            <span class="stat-item goal-indicator">G @Game.PlayerGoals(Team, number)</span>
+                            <span class="stat-item penalty-indicator">7m @Game.PlayerPenaltyGoals(Team, number)</span>
+                            <span class="stat-item amm-indicator @(yellow ? "active" : "")">A</span>
+                            @if (red)
                             {
-                                <span class="active-countdown @(s.IsRed ? "countdown-red" : "countdown-two")">@(s.IsRed ? "E" : "2'") @s.Remaining</span>
+                                <span class="stat-item expelled-indicator">ESPULSO</span>
+                            }
+                            else
+                            {
+                                <span class="stat-item two-count @(Game.PlayerTwoCount(Team, number) >= 3 ? "danger" : Game.PlayerTwoCount(Team, number) > 0 ? "active" : "")">2 @Game.PlayerTwoCount(Team, number)/3</span>
                             }
                         </span>
-                    }
-                </span>
-            </button>
+                        @if (suspensions.Count > 0)
+                        {
+                            <span class="active-countdown-row">
+                                @foreach (var suspension in suspensions)
+                                {
+                                    <span class="active-countdown @(suspension.IsRed ? "countdown-red" : "countdown-two")">@(suspension.IsRed ? "E" : "2'") @suspension.Remaining</span>
+                                }
+                            </span>
+                        }
+                    </span>
+                </button>
+            }
         }
     </div>
     <div class="staff-row">
@@ -120,6 +149,8 @@
         var luminance = (0.299 * r + 0.587 * g + 0.114 * b);
         return luminance >= 160 ? "#111827" : "#ffffff";
     }
+
+    private void OpenShootout(int index) => Game.OpenShootoutShot(Team, index);
 
     private void SelectPlayer(int index)
     {

@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
+    <base href="/Pallamano_Referto/" />
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#0b1220" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <base href="/Pallamano_Referto/" />
     <title>Referto Pallamano</title>
     <link href="css/app.css" rel="stylesheet" />
     <link rel="icon" href="images/FIGH.png" />
@@ -54,13 +54,13 @@ window.stampaReferto = (d) => {
       </tbody></table></section>`; };
   const rows = d.events.map(e=>`<tr><td>${esc(e.Time)}</td><td>${esc(e.Team)}</td><td>${esc(e.Number)}</td><td>${esc(e.Text)}</td><td>${esc(e.Result)}</td></tr>`).join('');
   const w=window.open('', '_blank'); if(!w) return;
-  w.document.write(`<!doctype html><html lang="it"><head><meta charset="utf-8"><base href="/Pallamano_Referto/" />
-    <title>Referto Pallamano</title><style>
-  @page{size:A4 landscape;margin:10mm}body{font-family:Arial,sans-serif;color:#111827;font-size:10px;margin:0}h1{text-align:center;font-size:20px;margin:0 0 3px}h2{font-size:15px;margin:8px 0 4px}h3{font-size:11px;margin:7px 0 3px}.head{text-align:center;border-bottom:2px solid #111827;padding-bottom:6px}.score{text-align:center;font-size:22px;font-weight:900;margin:5px}.meta{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin:6px 0}.meta div{border:1px solid #aaa;padding:4px}.teams{display:grid;grid-template-columns:1fr 1fr;gap:8px}.team{border:1px solid #aaa;padding:5px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #aaa;padding:3px;text-align:left}th{background:#eee}.events{margin-top:8px}.events th:nth-child(1){width:45px}.events th:nth-child(2){width:28px}.events th:nth-child(3){width:35px}.events th:nth-child(5){width:55px}</style></head><body>
+  w.document.write(`<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Referto Pallamano</title><style>
+  @page{size:A4 landscape;margin:10mm}body{font-family:Arial,sans-serif;color:#111827;font-size:10px;margin:0}h1{text-align:center;font-size:20px;margin:0 0 3px}h2{font-size:15px;margin:8px 0 4px}h3{font-size:11px;margin:7px 0 3px}.head{text-align:center;border-bottom:2px solid #111827;padding-bottom:6px}.score{text-align:center;font-size:22px;font-weight:900;margin:5px}.meta{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin:6px 0}.meta div{border:1px solid #aaa;padding:4px}.teams{display:grid;grid-template-columns:1fr 1fr;gap:8px}.team{border:1px solid #aaa;padding:5px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #aaa;padding:3px;text-align:left}th{background:#eee}.events{margin-top:8px}.events th:nth-child(1){width:45px}.events th:nth-child(2){width:28px}.events th:nth-child(3){width:35px}.events th:nth-child(5){width:55px}.shootout-print{margin-top:8px}.shootout-final{text-align:center;margin:4px 0;font-size:12px}</style></head><body>
   <div class="head"><h1>FEDERAZIONE ITALIANA GIUOCO HANDBALL</h1><div>REFERTO PALLAMANO</div><div class="score">${esc(d.casa)} &nbsp; ${esc(d.scoreA)} — ${esc(d.scoreB)} &nbsp; ${esc(d.ospiti)}</div></div>
   <div class="meta"><div>Numero gara<br><b>${esc(d.matchNumber)}</b></div><div>Data<br><b>${esc(d.date)}</b></div><div>Ora<br><b>${esc(d.time)}</b></div><div>Campionato<br><b>${esc(d.championship)}</b></div><div>Località<br><b>${esc(d.city)}</b></div><div>Impianto<br><b>${esc(d.venue)}</b></div></div>
   <div class="teams">${roster(d.casa,d.playersA,d.staffA,d.colorA)}${roster(d.ospiti,d.playersB,d.staffB,d.colorB)}</div>
   <section class="events"><h2>REGISTRO GARA</h2><table><thead><tr><th>Tempo</th><th>Sq</th><th>N.</th><th>Evento</th><th>Ris.</th></tr></thead><tbody>${rows}</tbody></table></section>
+  ${((d.shootout||[]).length>0)?`<section class="shootout-print"><h2>SERIE DEI TIRI DI RIGORE</h2><div class="shootout-final">Serie rigori: <b>${esc(d.shootoutScoreA)} — ${esc(d.shootoutScoreB)}</b></div><table><thead><tr><th>#</th><th>Sq</th><th>N.</th><th>Giocatore</th><th>Esito</th><th>Ris.</th></tr></thead><tbody>${d.shootout.map(x=>`<tr><td>${esc(x.Id)}</td><td>${esc(x.Team)}</td><td>${esc(x.Number)}</td><td>${esc(x.PlayerName)}</td><td>${x.Goal?'REALIZZATO':'ERRATO'}</td><td>${esc(x.ScoreA)}-${esc(x.ScoreB)}</td></tr>`).join('')}</tbody></table></section>`:''}
   
 
 
