@@ -22,12 +22,17 @@ public sealed class GameService : IAsyncDisposable
     public bool PeriodStartConfirmed { get; private set; } = true;
     public string? ValidationError { get; private set; }
     public bool CanUndo => _undoState is not null;
-    public bool CanEditEvents => !State.Running && State.TimeoutRemainingSeconds <= 0 && PendingEvent is null && !State.MatchFinished && !State.ShootoutStarted;
+    public bool CanEditEvents => !State.Running && State.TimeoutRemainingSeconds <= 0 && PendingEvent is null && !State.ShootoutStarted;
     public event Action? Changed;
 
     public void OpenConfiguration()
     {
         if (!State.MatchStarted) { ValidationError = null; ShowConfiguration = true; Notify(); }
+    }
+
+    public void CloseConfigurationWithoutStarting()
+    {
+        if (!State.MatchStarted) { ValidationError = null; ShowConfiguration = false; Notify(); }
     }
 
     public bool CloseConfiguration()
@@ -267,10 +272,12 @@ public sealed class GameService : IAsyncDisposable
 
     public bool EditEvent(int index, string time, string team, string number, string type)
     {
+        // Modifica consentita esclusivamente con il cronometro ufficiale fermo.
         if (!CanEditEvents) return false;
         if (index < 0 || index >= State.Events.Count) return false;
+
         var ev = State.Events[index];
-        if (ev.Type == "SYSTEM") return false;
+        if (ev.Type == "SYSTEM" || ev.Type is "SHOOTOUT_GOAL" or "SHOOTOUT_MISS") return false;
 
         var parsedTime = ParseTime(time.Trim());
         if (parsedTime < 0 || parsedTime > GetCurrentPeriodEndSeconds()) return false;
@@ -281,23 +288,98 @@ public sealed class GameService : IAsyncDisposable
         {
             number = "";
         }
-        else
+        else if (!IsValidEditableIdentifier(team, number))
         {
-            if (!IsValidEditableIdentifier(team, number)) return false;
+            return false;
         }
 
+        number = number.Trim();
+
+        // Prima della modifica escludiamo l'evento corrente dai conteggi, così possiamo
+        // verificare che la nuova sanzione continui a rispettare le regole della gara.
+        if (!IsEditedDisciplineValid(index, parsedTime, team, number, type)) return false;
+
+        // Se l'evento era una terza esclusione (memorizzata come RED con testo 3x2),
+        // conserviamo quella distinzione anche dopo la modifica dell'orario/soggetto.
+        var wasThreeByTwo = ev.Type == "RED" &&
+                            ev.Text.Contains("3x2", StringComparison.OrdinalIgnoreCase);
+
+        // Una modifica di un 2' che diventa la terza esclusione deve continuare a essere
+        // rappresentata come RED/3x2, come avviene quando l'evento viene registrato dal vivo.
+        var editedTwoBecomesThreeByTwo = type == "TWO" &&
+            CountPreviousTwo(index, parsedTime, team, number, includeStaff: IsStaffIdentifier(number)) >= 2 &&
+            !IsStaffIdentifier(number);
+
+        // Snapshot = la modifica è annullabile con UNDO, esattamente come un nuovo evento.
         Snapshot();
+
         ev.Time = FormatTime(parsedTime);
         ev.Team = team;
-        ev.Number = number.Trim();
-        ev.Type = type;
-        ev.Text = type == "RED" && ev.Text.Contains("3x2", StringComparison.OrdinalIgnoreCase)
+        ev.Number = number;
+        ev.Type = editedTwoBecomesThreeByTwo ? "RED" : type;
+        ev.Text = editedTwoBecomesThreeByTwo || (type == "RED" && wasThreeByTwo)
             ? "ESCLUSIONE PER 3x2'"
             : EventDescription(type);
-        ev.SuspensionStartSeconds = type is "TWO" or "RED" ? parsedTime : null;
+        ev.SuspensionStartSeconds = ev.Type is "TWO" or "RED" ? parsedTime : null;
+
+        // La modifica può cambiare completamente la natura dell'evento (es. GOAL ->
+        // AMMONIZIONE oppure CASA -> OSPITI). Manteniamo il registro in ordine cronologico
+        // anche se l'operatore ha corretto l'orario. L'ordine originale viene usato come
+        // criterio secondario per gli eventi con lo stesso secondo.
+        State.Events = State.Events
+            .Select((item, originalIndex) => (item, originalIndex))
+            .OrderBy(x => ParseTime(x.item.Time) < 0 ? int.MaxValue : ParseTime(x.item.Time))
+            .ThenBy(x => x.originalIndex)
+            .Select(x => x.item)
+            .ToList();
+
+        // Ricalcolo completo: risultato, parziali già chiusi, reti, 7m, ammonizioni,
+        // esclusioni 2', 3x2'/espulsioni e countdown derivati dagli eventi.
         RecalculateRegistry();
         Notify();
         return true;
+    }
+
+    private bool IsEditedDisciplineValid(int index, int time, string team, string number, string type)
+    {
+        if (type is not ("YELLOW" or "TWO" or "RED")) return true;
+
+        var prior = State.Events
+            .Select((e, i) => (e, i, t: ParseTime(e.Time)))
+            .Where(x => x.i != index && x.e.Team == team && x.t >= 0 && x.t <= time)
+            .OrderBy(x => x.t)
+            .ThenBy(x => x.i)
+            .Select(x => x.e)
+            .ToList();
+
+        if (type == "YELLOW")
+        {
+            // Un giocatore non può ricevere due ammonizioni e la squadra non può
+            // superare le tre ammonizioni complessive. Per la panchina resta valida
+            // la regola separata di una sola ammonizione.
+            var allOther = State.Events.Where((e, i) => i != index && e.Team == team).ToList();
+            if (allOther.Count(e => e.Type == "YELLOW") >= 3) return false;
+            if (allOther.Any(e => e.Type == "YELLOW" && e.Number == number)) return false;
+            if (IsStaffIdentifier(number) && allOther.Any(e => e.Type == "YELLOW" && IsStaffIdentifier(e.Number))) return false;
+        }
+
+        if (type == "TWO" && !IsStaffIdentifier(number))
+        {
+            // La terza esclusione verrà trasformata automaticamente in RED/3x2.
+            if (CountPreviousTwo(index, time, team, number, includeStaff: false) > 2) return false;
+        }
+
+        return true;
+    }
+
+    private int CountPreviousTwo(int index, int time, string team, string number, bool includeStaff)
+    {
+        return State.Events
+            .Select((e, i) => (e, i, t: ParseTime(e.Time)))
+            .Count(x => x.i != index && x.e.Team == team && x.e.Number == number &&
+                        x.t >= 0 && x.t <= time &&
+                        (x.e.Type == "TWO" || (x.e.Type == "RED" && x.e.Text.Contains("3x2", StringComparison.OrdinalIgnoreCase))) &&
+                        (includeStaff || !IsStaffIdentifier(x.e.Number)));
     }
 
     public bool DeleteEvent(int index)
@@ -326,14 +408,27 @@ public sealed class GameService : IAsyncDisposable
     {
         var scoreA = 0;
         var scoreB = 0;
-        foreach (var ev in State.Events)
+
+        // Gli eventi vengono ricalcolati per tempo ufficiale, non per l'ordine in cui
+        // sono stati inseriti. Questo è fondamentale quando l'operatore modifica l'orario
+        // di una rete o di un 7m: il risultato visualizzato su ogni riga deve tornare coerente.
+        var ordered = State.Events
+            .Select((ev, originalIndex) => (ev, originalIndex))
+            .OrderBy(x => ParseTime(x.ev.Time) < 0 ? int.MaxValue : ParseTime(x.ev.Time))
+            .ThenBy(x => x.originalIndex)
+            .Select(x => x.ev)
+            .ToList();
+
+        foreach (var ev in ordered)
         {
             if (ev.Type is "GOAL" or "PENALTY_GOAL")
             {
                 if (ev.Team == "A") scoreA++;
                 else if (ev.Team == "B") scoreB++;
             }
+
             ev.Result = $"{scoreA}-{scoreB}";
+
             if (ev.Type is "TWO" or "RED")
             {
                 var t = ParseTime(ev.Time);
@@ -344,8 +439,29 @@ public sealed class GameService : IAsyncDisposable
                 ev.SuspensionStartSeconds = null;
             }
         }
+
         State.ScoreA = scoreA;
         State.ScoreB = scoreB;
+
+        // Ricostruisce anche i risultati progressivi dei periodi già chiusi. Se una rete
+        // viene spostata da un tempo all'altro, il JSON e il referto non conservano il vecchio parziale.
+        // Non creiamo però un parziale per un periodo ancora in corso.
+        var closedPhases = State.PhaseScores.Keys.ToList();
+        State.PhaseScores.Clear();
+        foreach (var phase in closedPhases)
+        {
+            var end = phase <= 2
+                ? phase * State.HalfDurationMinutes * 60
+                : State.HalfDurationMinutes * 120 + (phase - 2) * 300;
+            var phaseA = ordered.Count(e => (e.Type is "GOAL" or "PENALTY_GOAL") && e.Team == "A" && ParseTime(e.Time) >= 0 && ParseTime(e.Time) <= end);
+            var phaseB = ordered.Count(e => (e.Type is "GOAL" or "PENALTY_GOAL") && e.Team == "B" && ParseTime(e.Time) >= 0 && ParseTime(e.Time) <= end);
+            State.PhaseScores[phase] = $"{phaseA}-{phaseB}";
+        }
+
+        // I conteggi di reti, 7m, ammonizioni, 2' ed espulsioni sono derivati direttamente
+        // da State.Events (PlayerGoals, PlayerPenaltyGoals, YellowCountFor, PlayerTwoCount,
+        // PlayerIsInhibited, ecc.): non vengono duplicati in variabili separate. Dopo questo
+        // passaggio risultano quindi automaticamente aggiornati in tutta l'interfaccia.
     }
 
     public void CancelPendingEvent()
@@ -481,13 +597,24 @@ public sealed class GameService : IAsyncDisposable
         var number = (roster.NumberLabels[index] ?? string.Empty).Trim();
         if (string.IsNullOrWhiteSpace(number) || PlayerIsInhibited(team, number)) return false;
 
-        var eligibleCount = EligibleShooters(team).Count();
-        var used = (State.Shootout ?? []).Where(x => x.Team == team && x.Phase == State.ShootoutPhase)
-            .Select(x => x.Number).ToHashSet(StringComparer.Ordinal);
-        if (eligibleCount > 0 && used.Count >= eligibleCount)
+        // Regola della serie: dopo i primi 5 tiri, in caso di parità si prosegue
+        // ad oltranza. Un giocatore che ha già tirato non può essere scelto di nuovo
+        // finché non hanno tirato tutti gli eleggibili della propria squadra.
+        // Il conteggio dei già utilizzati NON viene quindi azzerato al passaggio
+        // dalla serie iniziale alla morte improvvisa: si azzera solo quando l'intero
+        // gruppo degli eleggibili (esclusi gli espulsi/inibiti) ha completato un giro.
+        var eligible = EligibleShooters(team).ToList();
+        var used = (State.Shootout ?? [])
+            .Where(x => x.Team == team)
+            .Select(x => x.Number)
+            .ToHashSet(StringComparer.Ordinal);
+
+        // Quando tutti gli eleggibili hanno già tirato, ricomincia un nuovo giro
+        // e tutti tornano potenziali tiratori. Gli espulsi restano esclusi.
+        if (eligible.Count > 0 && eligible.All(x => used.Contains(x.Number)))
             used.Clear();
-        if (used.Contains(number)) return false;
-        return true;
+
+        return !used.Contains(number);
     }
 
     public bool OpenShootoutShot(string team, int index)
@@ -587,6 +714,10 @@ public sealed class GameService : IAsyncDisposable
         var ga = State.ShootoutScoreA;
         var gb = State.ShootoutScoreB;
 
+        // Nei primi 5 tiri per squadra si può chiudere anche prima se il risultato
+        // è matematicamente irrecuperabile. Dopo 5-5, se il punteggio è pari,
+        // si entra nella morte improvvisa e si confronta il risultato solo dopo
+        // che entrambe le squadre hanno effettuato il medesimo numero di tiri.
         if (State.ShootoutPhase == 1)
         {
             if (a < 5)
@@ -594,9 +725,12 @@ public sealed class GameService : IAsyncDisposable
                 var remaining = 5 - a;
                 return ga > gb + remaining || gb > ga + remaining;
             }
+
             return ga != gb;
         }
 
+        // Morte improvvisa: a parità di tiri, un vantaggio di una rete chiude
+        // immediatamente la serie e quindi la gara.
         return ga != gb;
     }
 
@@ -752,7 +886,11 @@ public sealed class GameService : IAsyncDisposable
             }
             for (var i = 0; i < 5; i++)
             {
-                if (string.IsNullOrWhiteSpace(team.StaffLetters[i])) { error = $"Identificativo dirigente mancante per {teamCode}, posizione {i + 1}."; return false; }
+                var letter = (team.StaffLetters[i] ?? string.Empty).Trim().ToUpperInvariant();
+                if (string.IsNullOrWhiteSpace(letter)) continue;
+                if (letter.Length != 1 || letter is not ("A" or "B" or "C" or "D" or "E"))
+                { error = $"Identificativo dirigente non valido per {teamCode}, posizione {i + 1}."; return false; }
+                if (!seen.Add("STAFF:" + letter)) { error = $"Identificativi dirigenti duplicati per {teamCode}: {letter}."; return false; }
             }
         }
         error = ""; return true;
@@ -813,13 +951,17 @@ public sealed class GameService : IAsyncDisposable
     {
         t.Numbers ??= Enumerable.Range(1, 16).ToArray(); if (t.Numbers.Length != 16) t.Numbers = Enumerable.Range(1, 16).ToArray();
         t.NumberLabels ??= t.Numbers.Select(n => n.ToString()).ToArray(); if (t.NumberLabels.Length != 16) t.NumberLabels = Resize(t.NumberLabels, 16);
-        for (var i = 0; i < 16; i++) if (string.IsNullOrWhiteSpace(t.NumberLabels[i]) && t.Numbers[i] >= 0) t.NumberLabels[i] = t.Numbers[i].ToString();
         t.PlayerNames ??= new string[16]; if (t.PlayerNames.Length != 16) t.PlayerNames = Resize(t.PlayerNames, 16);
         t.ActivePlayers ??= Enumerable.Repeat(true, 16).ToArray(); if (t.ActivePlayers.Length != 16) t.ActivePlayers = Resize(t.ActivePlayers, 16, true);
-        t.StaffLetters ??= ["A", "B", "C", "D", "E"]; if (t.StaffLetters.Length != 5) t.StaffLetters = ["A", "B", "C", "D", "E"];
+        // La presenza in distinta dipende esclusivamente dal numero: vuoto = assente.
+        for (var i = 0; i < 16; i++)
+            t.ActivePlayers[i] = !string.IsNullOrWhiteSpace((t.NumberLabels[i] ?? string.Empty).Trim());
+        t.StaffLetters ??= ["A", "B", "C", "D", "E"]; if (t.StaffLetters.Length != 5) t.StaffLetters = Resize(t.StaffLetters, 5);
         t.StaffNames ??= new string[5]; if (t.StaffNames.Length != 5) t.StaffNames = Resize(t.StaffNames, 5);
         t.ActiveStaff ??= Enumerable.Repeat(true, 5).ToArray(); if (t.ActiveStaff.Length != 5) t.ActiveStaff = Resize(t.ActiveStaff, 5, true);
-        for (var i = 0; i < 5; i++) if (string.IsNullOrWhiteSpace(t.StaffLetters[i])) t.StaffLetters[i] = ((char)('A' + i)).ToString();
+        // Anche per i dirigenti l'identificativo vuoto significa posizione non presente.
+        for (var i = 0; i < 5; i++)
+            t.ActiveStaff[i] = !string.IsNullOrWhiteSpace((t.StaffLetters[i] ?? string.Empty).Trim());
     }
     private static T[] Resize<T>(T[] source, int size, T? fill = default) { var r = new T[size]; Array.Copy(source, r, Math.Min(source.Length, size)); if (fill is not null && source.Length < size) for (var i = source.Length; i < size; i++) r[i] = fill; return r; }
 

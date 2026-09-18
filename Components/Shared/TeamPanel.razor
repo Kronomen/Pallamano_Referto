@@ -19,7 +19,7 @@
         @foreach (var index in OrderedPlayerIndices())
         {
             var roster = Team == "A" ? Game.State.Casa : Game.State.Ospiti;
-            var number = (roster.NumberLabels is { Length: 16 } && !string.IsNullOrWhiteSpace(roster.NumberLabels[index])) ? roster.NumberLabels[index] : roster.Numbers[index].ToString();
+            var number = roster.NumberLabels is { Length: 16 } ? (roster.NumberLabels[index] ?? string.Empty).Trim() : string.Empty;
             var name = roster.PlayerNames[index];
             var suspensions = Game.GetPlayerSuspensionBadges(Team, number).ToList();
             var yellow = Game.PlayerHasYellow(Team, number);
@@ -27,10 +27,13 @@
             @if (Game.State.ShootoutStarted)
             {
                 var canShoot = Game.CanShootoutPlayer(Team, index);
-                <div class="player-card shootout-player-card @(!roster.ActivePlayers[index] ? "inactive-player" : "") @(red ? "has-red" : "") @(canShoot ? "shootout-eligible" : "shootout-not-turn")">
+                <button type="button" class="player-card shootout-player-card @(!roster.ActivePlayers[index] ? "inactive-player" : "") @(red ? "has-red" : "") @(canShoot ? "shootout-eligible" : "shootout-not-turn")" disabled="@(!canShoot)" aria-label="Tiro di rigore N.@number" @onclick="() => OpenShootout(index)">
                     <span class="number">@number</span>
                     <span class="player-info">
-                        <span class="player-name" title="@(string.IsNullOrWhiteSpace(name) ? "GIOCATORE" : name)">@(string.IsNullOrWhiteSpace(name) ? "GIOCATORE" : name)</span>
+                        <span class="shootout-player-topline">
+                            <span class="player-name" title="@(string.IsNullOrWhiteSpace(name) ? "GIOCATORE" : name)">@(string.IsNullOrWhiteSpace(name) ? "GIOCATORE" : name)</span>
+                            <span class="shootout-player-goals">⚽ @((Game.State.Shootout ?? []).Count(x => x.Team == Team && x.Number == number && x.Goal))</span>
+                        </span>
                         <span class="player-indicators">
                             <span class="stat-item goal-indicator">G @Game.PlayerGoals(Team, number)</span>
                             <span class="stat-item penalty-indicator">7m @Game.PlayerPenaltyGoals(Team, number)</span>
@@ -46,9 +49,8 @@
                                 }
                             </span>
                         }
-                        <button type="button" class="shootout-shoot-button" disabled="@(!canShoot)" @onclick="() => OpenShootout(index)">@(canShoot ? "TIRA" : "—")</button>
                     </span>
-                </div>
+                </button>
             }
             else
             {
@@ -91,6 +93,8 @@
             var staffYellow = Game.StaffHasYellow(Team, staff.Letter);
             var staffRed = Game.StaffHasRed(Team, staff.Letter);
             var staffSuspensions = Game.GetStaffSuspensions(Team, staff.Letter).ToList();
+            if (staff.Active && !string.IsNullOrWhiteSpace(staff.Letter))
+            {
             <button type="button" disabled="@(!staff.Active || staffRed)" aria-label="Dirigente @staff.Letter @(string.IsNullOrWhiteSpace(staff.Name) ? "senza nome" : staff.Name)" class="staff-card @(!staff.Active ? "inactive-staff" : "") @(staffRed ? "has-red" : "") @(Game.PendingEvent is not null && staff.Active && !staffRed ? "touch-ready" : "")" @onclick="() => SelectStaff(staffIndex)">
                 <span class="staff-status-area">
                     <span class="staff-identity-badge" style="background:@TeamColor;color:@TeamTextColor;border-color:@TeamColor">@staff.Letter</span>
@@ -113,6 +117,7 @@
                     <span class="staff-name" title="@staff.Name">@staff.Name</span>
                 </span>
             </button>
+            }
         }
     </div>
 </section>
@@ -156,7 +161,8 @@
     {
         var roster = Team == "A" ? Game.State.Casa : Game.State.Ospiti;
         if (Game.PendingEvent is null || Game.State.MatchFinished || Game.State.ShootoutStarted || !roster.ActivePlayers[index]) return;
-        var number = (roster.NumberLabels is { Length: 16 } && !string.IsNullOrWhiteSpace(roster.NumberLabels[index])) ? roster.NumberLabels[index].Trim() : roster.Numbers[index].ToString();
+        var number = roster.NumberLabels is { Length: 16 } ? (roster.NumberLabels[index] ?? string.Empty).Trim() : string.Empty;
+        if (string.IsNullOrWhiteSpace(number)) return;
         if (Game.PlayerHasRed(Team, number)) return;
         Game.CompletePendingPlayer(Team, index);
     }
@@ -170,15 +176,16 @@
     {
         var roster = Team == "A" ? Game.State.Casa : Game.State.Ospiti;
         return Enumerable.Range(0, 16)
+            .Where(i => roster.ActivePlayers[i] && !string.IsNullOrWhiteSpace(GetNumberLabel(roster, i)))
             .OrderBy(i => NumberSortKey(GetNumberLabel(roster, i)))
             .ThenBy(i => i);
     }
 
     private static string GetNumberLabel(TeamState roster, int index)
     {
-        if (roster.NumberLabels is { Length: 16 } && !string.IsNullOrWhiteSpace(roster.NumberLabels[index]))
-            return roster.NumberLabels[index].Trim();
-        return roster.Numbers[index].ToString();
+        if (roster.NumberLabels is { Length: 16 })
+            return (roster.NumberLabels[index] ?? string.Empty).Trim();
+        return string.Empty;
     }
 
     private static int NumberSortKey(string label)
@@ -192,6 +199,6 @@
     private (string Letter, string Name, bool Active) GetStaff(int i)
     {
         var t = Team == "A" ? Game.State.Casa : Game.State.Ospiti;
-        return (t.StaffLetters[i], string.IsNullOrWhiteSpace(t.StaffNames[i]) ? "DIRIGENTE" : t.StaffNames[i], t.ActiveStaff[i]);
+        return (t.StaffLetters[i] ?? string.Empty, string.IsNullOrWhiteSpace(t.StaffNames[i]) ? "DIRIGENTE" : t.StaffNames[i], t.ActiveStaff[i]);
     }
 }
