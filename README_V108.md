@@ -11,3 +11,5 @@ Per il controllo locale in Visual Studio: aprire `RefertoPallamano_Blazor.sln`, 
 Dopo i primi 5 tiri per squadra, se il punteggio della serie è pari, la gara prosegue ad oltranza. A ogni coppia di tiri, cioè dopo che entrambe le squadre hanno effettuato lo stesso numero di tiri, se una squadra è in vantaggio la serie termina e quella squadra è vincente.
 
 Durante l'oltranza, un giocatore che ha già effettuato un tiro non può essere selezionato nuovamente finché tutti i giocatori eleggibili della sua squadra non hanno effettuato un tiro. Gli espulsi/inibiti restano sempre esclusi. Quando tutti gli eleggibili hanno completato il giro, il gruppo dei potenziali tiratori viene azzerato e tutti gli eleggibili possono tornare a tirare.
+
+Versione layout: v117 — configurazione iPad 11" compatta, pannelli accorciati e barra azioni ridotta.
