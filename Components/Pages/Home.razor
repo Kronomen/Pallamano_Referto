@@ -136,8 +136,11 @@
                     <div class="event-row event-header"><span>Tempo</span><span>Sq</span><span>N.</span><span>Evento</span><strong>Ris.</strong></div>
                     @for (var displayIndex = Game.State.Events.Count - 1; displayIndex >= 0; displayIndex--)
                     {
-                        var ev = Game.State.Events[displayIndex];
-                        <button type="button" class="event-row event-row-button @(ev.Type == "SYSTEM" ? "system-row" : "")" style="--event-team-color:@GetEventTeamColor(ev.Team)" disabled="@(ev.Type == "SYSTEM")" @onclick="() => OpenEventEditor(displayIndex)" title="@(Game.CanEditEvents && ev.Type != "SYSTEM" ? "Modifica evento" : "")">
+                        // Copia locale indispensabile: il callback Blazor deve catturare
+                        // l'indice della singola riga e non la variabile del ciclo for.
+                        var eventIndex = displayIndex;
+                        var ev = Game.State.Events[eventIndex];
+                        <button type="button" class="event-row event-row-button @(ev.Type == "SYSTEM" ? "system-row" : "")" style="--event-team-color:@GetEventTeamColor(ev.Team)" disabled="@(ev.Type == "SYSTEM")" @onclick="() => OpenEventEditor(eventIndex)" title="@(Game.CanEditEvents && ev.Type != "SYSTEM" ? "Modifica evento" : "")">
                             <span class="event-time">@ev.Time</span><span class="event-team-cell">@ev.Team</span><span class="event-number">@(ev.Number == "—" ? "" : ev.Number)</span><span class="event-description">@ev.Text</span><strong class="event-result">@ev.Result</strong>
                         </button>
                     }

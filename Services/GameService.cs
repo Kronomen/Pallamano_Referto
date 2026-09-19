@@ -299,16 +299,13 @@ public sealed class GameService : IAsyncDisposable
         // verificare che la nuova sanzione continui a rispettare le regole della gara.
         if (!IsEditedDisciplineValid(index, parsedTime, team, number, type)) return false;
 
-        // Se l'evento era una terza esclusione (memorizzata come RED con testo 3x2),
-        // conserviamo quella distinzione anche dopo la modifica dell'orario/soggetto.
-        var wasThreeByTwo = ev.Type == "RED" &&
-                            ev.Text.Contains("3x2", StringComparison.OrdinalIgnoreCase);
-
-        // Una modifica di un 2' che diventa la terza esclusione deve continuare a essere
-        // rappresentata come RED/3x2, come avviene quando l'evento viene registrato dal vivo.
-        var editedTwoBecomesThreeByTwo = type == "TWO" &&
-            CountPreviousTwo(index, parsedTime, team, number, includeStaff: IsStaffIdentifier(number)) >= 2 &&
-            !IsStaffIdentifier(number);
+        // La terza esclusione (3x2') è una proprietà del nuovo evento, non del
+        // vecchio evento che stiamo modificando. Questo è importante quando si cambia
+        // anche giocatore: una RED/3x2 modificata su un giocatore diverso deve diventare
+        // ESPULSIONE DIRETTA se quel giocatore non ha già due esclusioni precedenti.
+        var isStaff = IsStaffIdentifier(number);
+        var previousTwo = isStaff ? 0 : CountPreviousTwo(index, parsedTime, team, number, includeStaff: false);
+        var becomesThreeByTwo = !isStaff && previousTwo >= 2 && (type is "TWO" or "RED");
 
         // Snapshot = la modifica è annullabile con UNDO, esattamente come un nuovo evento.
         Snapshot();
@@ -316,11 +313,12 @@ public sealed class GameService : IAsyncDisposable
         ev.Time = FormatTime(parsedTime);
         ev.Team = team;
         ev.Number = number;
-        ev.Type = editedTwoBecomesThreeByTwo ? "RED" : type;
-        ev.Text = editedTwoBecomesThreeByTwo || (type == "RED" && wasThreeByTwo)
+        ev.Type = becomesThreeByTwo ? "RED" : type;
+        ev.Text = becomesThreeByTwo
             ? "ESCLUSIONE PER 3x2'"
             : EventDescription(type);
         ev.SuspensionStartSeconds = ev.Type is "TWO" or "RED" ? parsedTime : null;
+
 
         // La modifica può cambiare completamente la natura dell'evento (es. GOAL ->
         // AMMONIZIONE oppure CASA -> OSPITI). Manteniamo il registro in ordine cronologico
