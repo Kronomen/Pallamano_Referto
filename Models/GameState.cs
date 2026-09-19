@@ -5,6 +5,11 @@ public sealed class GameState
     public int Phase { get; set; } = 1;
     public int TimerSeconds { get; set; }
     public bool Running { get; set; }
+
+    // Cronometro di supporto indipendente dal cronometro ufficiale.
+    // Viene azzerato all'inizio di ogni periodo e gestito esclusivamente da START/STOP.
+    public int MiniTimerSeconds { get; set; }
+    public bool MiniTimerRunning { get; set; }
     public bool MatchStarted { get; set; }
     // True quando la gara è terminata e il JSON deve essere salvato all'uscita dal referto.
     public bool MatchFinished { get; set; }

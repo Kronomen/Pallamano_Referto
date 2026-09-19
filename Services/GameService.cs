@@ -75,7 +75,7 @@ public sealed class GameService : IAsyncDisposable
 
     public void Reset()
     {
-        StopClock(); State = CreateNewGame(); ClearPending(); _undoState = null;
+        StopClock(); State = CreateNewGame(); State.MiniTimerSeconds = 0; State.MiniTimerRunning = false; ClearPending(); _undoState = null;
         PeriodStartConfirmed = true; ShowPeriodEnd = false; ShowShootoutStart = false; ShowShootoutFirstTeam = false; PendingShootout = null; ShowConfiguration = true; ValidationError = null; Notify();
     }
 
@@ -546,6 +546,11 @@ public sealed class GameService : IAsyncDisposable
         State.Phase++;
         State.TimerSeconds = GetPeriodStartSeconds(State.Phase);
         State.Running = false;
+
+        // Ogni nuovo periodo riparte con il cronometro di supporto da 00:00.
+        State.MiniTimerSeconds = 0;
+        State.MiniTimerRunning = false;
+
         PeriodStartConfirmed = true;
         Notify();
         return true;
@@ -570,6 +575,8 @@ public sealed class GameService : IAsyncDisposable
         State.Shootout ??= [];
         State.Shootout.Clear();
         StopClock();
+        State.MiniTimerSeconds = 0;
+        State.MiniTimerRunning = false;
         AddSystemEvent("INIZIO TIRI DI RIGORE");
         Notify();
     }
@@ -770,13 +777,15 @@ public sealed class GameService : IAsyncDisposable
         if (State.MatchFinished || State.ShootoutStarted || !PeriodStartConfirmed) return;
         if (!State.MatchStarted && !ValidateRoster(out var error)) { ValidationError = error; ShowConfiguration = true; Notify(); return; }
         ValidationError = null; ShowConfiguration = false; State.MatchStarted = true; State.Running = !State.Running;
+        // Il piccolo cronometro segue esattamente START/STOP del cronometro principale.
+        State.MiniTimerRunning = State.Running;
         if (State.Running) StartClock(); else StopClock(); Notify();
     }
 
     public int GetCurrentPeriodDurationSeconds() => State.Phase <= 2 ? State.HalfDurationMinutes * 60 : 300;
     public int GetCurrentPeriodEndSeconds() => State.Phase <= 2 ? State.Phase * State.HalfDurationMinutes * 60 : State.HalfDurationMinutes * 120 + (State.Phase - 2) * 300;
     public int GetPeriodStartSeconds(int phase) => phase <= 1 ? 0 : phase == 2 ? State.HalfDurationMinutes * 60 : State.HalfDurationMinutes * 120 + (phase - 3) * 300;
-    public int GetMiniTimerSeconds() => State.CronometroContinuativo ? State.TimerSeconds : Math.Max(0, State.TimerSeconds - GetPeriodStartSeconds(State.Phase));
+    public int GetMiniTimerSeconds() => State.MiniTimerSeconds;
 
     public IEnumerable<(string Number, string Remaining)> GetSuspensions(string team, string? number = null)
     {
@@ -912,7 +921,7 @@ public sealed class GameService : IAsyncDisposable
     }
 
     public string ExportJson() => JsonSerializer.Serialize(State, new JsonSerializerOptions { WriteIndented = true });
-    public void ImportJson(string json) { StopClock(); State = JsonSerializer.Deserialize<GameState>(json) ?? throw new InvalidOperationException("JSON partita non valido."); EnsureRosterArrays(State.Casa); EnsureRosterArrays(State.Ospiti); State.Shootout ??= []; ClearPending(); PendingShootout = null; ShowShootoutStart = false; ShowShootoutFirstTeam = false; _undoState = null; PeriodStartConfirmed = !State.MatchFinished && !State.ShootoutStarted; Notify(); }
+    public void ImportJson(string json) { StopClock(); State = JsonSerializer.Deserialize<GameState>(json) ?? throw new InvalidOperationException("JSON partita non valido."); EnsureRosterArrays(State.Casa); EnsureRosterArrays(State.Ospiti); State.Shootout ??= []; State.MiniTimerRunning = false; ClearPending(); PendingShootout = null; ShowShootoutStart = false; ShowShootoutFirstTeam = false; _undoState = null; PeriodStartConfirmed = !State.MatchFinished && !State.ShootoutStarted; Notify(); }
     public string ScoreText() => $"{State.ScoreA}-{State.ScoreB}";
     public static string FormatTime(int seconds) => $"{Math.Max(0, seconds) / 60:00}:{Math.Max(0, seconds) % 60:00}";
     public static string PhaseName(int phase) => phase switch { 1 => "1° TEMPO", 2 => "2° TEMPO", 3 => "1° TEMPO SUPPLEMENTARE", 4 => "2° TEMPO SUPPLEMENTARE", 5 => "3° TEMPO SUPPLEMENTARE", 6 => "4° TEMPO SUPPLEMENTARE", _ => "RIGORI" };
@@ -1007,8 +1016,25 @@ public sealed class GameService : IAsyncDisposable
                 if (State.Running)
                 {
                     State.TimerSeconds++;
+
+                    // Il piccolo cronometro è sincronizzato allo START/STOP del principale,
+                    // ma misura solo il tempo trascorso nel periodo corrente.
+                    State.MiniTimerRunning = true;
+                    State.MiniTimerSeconds++;
+
                     changed = true;
-                    if (State.TimerSeconds >= GetCurrentPeriodEndSeconds()) { State.TimerSeconds = GetCurrentPeriodEndSeconds(); State.Running = false; PeriodStartConfirmed = false; State.PhaseScores[State.Phase] = ScoreText(); AddSystemEvent($"FINE {PhaseName(State.Phase)}"); ShowPeriodEnd = true; Notify(); break; }
+                    if (State.TimerSeconds >= GetCurrentPeriodEndSeconds())
+                    {
+                        State.TimerSeconds = GetCurrentPeriodEndSeconds();
+                        State.Running = false;
+                        State.MiniTimerRunning = false;
+                        PeriodStartConfirmed = false;
+                        State.PhaseScores[State.Phase] = ScoreText();
+                        AddSystemEvent($"FINE {PhaseName(State.Phase)}");
+                        ShowPeriodEnd = true;
+                        Notify();
+                        break;
+                    }
                 }
 
                 if (changed) Notify();
@@ -1017,7 +1043,8 @@ public sealed class GameService : IAsyncDisposable
         }
         catch (OperationCanceledException) { }
     }
-    private void StopClock() { State.Running = false; _clockCts?.Cancel(); _clockCts = null; _clockTask = null; }
+
+    private void StopClock() { State.Running = false; State.MiniTimerRunning = false; _clockCts?.Cancel(); _clockCts = null; _clockTask = null; }
     public ValueTask DisposeAsync() { StopClock(); return ValueTask.CompletedTask; }
 
     private void Notify() => Changed?.Invoke();

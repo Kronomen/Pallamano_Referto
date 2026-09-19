@@ -4745,3 +4745,336 @@ html,body,#app{overflow:hidden!important;width:100%;height:100%;}
   .team-name-box { font-size: 14px; }
   .team-points-box { font-size: 32px; }
 }
+
+/* === HEADER REFERTO - versione centrata === */
+.topbar {
+  position: relative !important;
+  min-height: 64px;
+}
+.topbar .brand {
+  position: relative !important;
+  flex: 1 1 auto !important;
+  justify-content: center !important;
+  text-align: center !important;
+  min-width: 0 !important;
+  padding: 0 76px 0 60px !important;
+}
+.topbar .brand > div {
+  text-align: center !important;
+  line-height: 1.05 !important;
+}
+.topbar .brand img {
+  position: absolute !important;
+  left: 0 !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+}
+.topbar .federation {
+  font-size: 16px !important;
+  font-weight: 900 !important;
+  letter-spacing: .15px !important;
+  text-align: center !important;
+}
+.topbar .app-title {
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  margin-top: 3px !important;
+  text-align: center !important;
+}
+@media (max-width: 900px) {
+  .topbar .brand { padding-left: 48px !important; padding-right: 70px !important; }
+  .topbar .federation { font-size: 13px !important; }
+  .topbar .app-title { font-size: 11px !important; margin-top: 2px !important; }
+}
+
+
+/* =========================================================
+   CRONOMETRO DI SUPPORTO - sincronizzato con il cronometro gara
+   ========================================================= */
+.mini-timer-card {
+    width: min(145px, 55%);
+    margin: 2px auto 0;
+    padding: 3px 7px 4px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 7px;
+    border: 1px solid #cbd5e1;
+    border-radius: 7px;
+    background: #f8fafc;
+    box-shadow: 0 1px 2px rgba(15,23,42,.06);
+}
+.mini-timer-label {
+    font-size: 7px;
+    font-weight: 900;
+    color: #64748b;
+    text-align: left;
+    letter-spacing: .04em;
+}
+.mini-timer-display {
+    font-family: Consolas, monospace;
+    font-size: 16px;
+    line-height: 1;
+    font-weight: 900;
+    color: #0f172a;
+    min-width: 52px;
+    text-align: center;
+}
+@media (max-width: 700px) {
+    .mini-timer-card {
+        width: min(140px, 60%);
+        grid-template-columns: 1fr auto;
+        gap: 5px;
+    }
+    .mini-timer-display { font-size: 15px; }
+}
+
+/* Piccolo abbassamento del solo Registro Gara.
+   Nessuna modifica al cronometro, ai pulsanti o alla logica. */
+.registro-gara,
+.game-register,
+.register-card,
+.registro-card {
+    margin-top: 8px;
+}
+
+
+/* =========================================================
+   TIMER - rifinitura grafica richiesta
+   Solo dimensioni/spaziature del contenitore del cronometro.
+   La logica e i collegamenti dei timer restano invariati.
+   ========================================================= */
+
+/* Il contenitore giallo del cronometro deve avere un po' più di
+   spazio verticale per evitare che il display esca dai bordi. */
+.timer-panel,
+.stopwatch-panel,
+.cronometro-panel,
+.match-timer-panel {
+    min-height: 118px;
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+    box-sizing: border-box;
+}
+
+/* Se il progetto utilizza il contenitore principale tramite una
+   classe generica, queste regole aumentano leggermente l'area
+   senza modificare gli altri pannelli. */
+.timer-card,
+.stopwatch-card,
+.cronometro-card {
+    min-height: 118px;
+    box-sizing: border-box;
+}
+
+/* Il piccolo cronometro deve essere più discreto: stesso valore,
+   stesso collegamento allo START/STOP, font più piccolo. */
+.mini-timer-card {
+    width: min(145px, 55%);
+    min-height: 25px;
+    margin: 3px auto 0;
+    padding: 2px 6px 3px;
+    gap: 5px;
+}
+
+.mini-timer-label {
+    font-size: 6px !important;
+    line-height: 1;
+    letter-spacing: .03em;
+}
+
+.mini-timer-display {
+    font-size: 12px !important;
+    line-height: 1;
+    min-width: 46px;
+}
+
+/* Evita che il blocco dei comandi venga schiacciato dal display. */
+.timer-controls,
+.stopwatch-controls,
+.cronometro-controls {
+    min-height: 34px;
+    box-sizing: border-box;
+}
+
+@media (max-width: 700px) {
+    .timer-panel,
+    .stopwatch-panel,
+    .cronometro-panel,
+    .match-timer-panel,
+    .timer-card,
+    .stopwatch-card,
+    .cronometro-card {
+        min-height: 120px;
+    }
+
+    .mini-timer-card {
+        width: min(140px, 60%);
+        min-height: 24px;
+    }
+
+    .mini-timer-display {
+        font-size: 11px !important;
+    }
+}
+
+
+/* =========================================================
+   TIMER GIALLO — LAYOUT FINALE
+   Il pannello giallo è .timer-yellow-panel.
+   Nessuna modifica alla logica del cronometro.
+   ========================================================= */
+
+.timer-yellow-panel {
+    background: #ffdf00 !important;
+    border: 3px solid #0b2f6b !important;
+    border-radius: 14px !important;
+    box-shadow: 0 2px 5px rgba(15,23,42,.18) !important;
+    box-sizing: border-box !important;
+    overflow: visible !important;
+}
+
+/* iPad / tablet: pannello sufficientemente alto per tenere separati
+   -1/+1, il tempo grande e ANNULLA/START/UNDO. */
+@media (max-width: 1200px) {
+    .scorebar {
+        height: 158px !important;
+        min-height: 158px !important;
+    }
+
+    .timer-yellow-panel {
+        height: 158px !important;
+        min-height: 158px !important;
+        padding: 10px 7px 8px !important;
+        display: grid !important;
+        grid-template-columns: 34px minmax(0,1fr) 34px !important;
+        grid-template-rows: 54px 42px 38px !important;
+        column-gap: 5px !important;
+        row-gap: 5px !important;
+        align-items: center !important;
+        justify-items: stretch !important;
+    }
+
+    /* Riga superiore: -1 | tempo | +1 */
+    .timer-yellow-panel .clock-adjust-row {
+        grid-column: 1 / 4 !important;
+        grid-row: 1 !important;
+        width: 100% !important;
+        height: 54px !important;
+        min-height: 54px !important;
+        display: grid !important;
+        grid-template-columns: 34px minmax(0,1fr) 34px !important;
+        align-items: center !important;
+        gap: 5px !important;
+        margin: 0 !important;
+    }
+
+    .timer-yellow-panel .clock-adjust-row .clock-adjust {
+        width: 34px !important;
+        min-width: 34px !important;
+        max-width: 34px !important;
+        height: 30px !important;
+        min-height: 30px !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        line-height: 30px !important;
+        border-radius: 6px !important;
+        font-size: 13px !important;
+        align-self: center !important;
+    }
+
+    .timer-yellow-panel .clock-adjust-row .clock {
+        width: 100% !important;
+        height: 46px !important;
+        min-height: 46px !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        font-size: 38px !important;
+        line-height: 1 !important;
+        align-self: center !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    /* ANNULLA / START / UNDO nella parte bassa, ma sempre dentro il giallo. */
+    .timer-yellow-panel .timer-command-card {
+        grid-column: 1 / 4 !important;
+        grid-row: 3 !important;
+        width: 100% !important;
+        height: 38px !important;
+        min-height: 38px !important;
+        margin: 0 !important;
+        padding: 3px 4px !important;
+        box-sizing: border-box !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        background: transparent !important;
+        border: 0 !important;
+        box-shadow: none !important;
+        overflow: visible !important;
+    }
+
+    .timer-yellow-panel .timer-command-row {
+        width: 100% !important;
+        height: 32px !important;
+        min-height: 32px !important;
+        display: grid !important;
+        grid-template-columns: 1fr 1.25fr 1fr !important;
+        gap: 6px !important;
+        align-items: stretch !important;
+        margin: 0 !important;
+    }
+
+    .timer-yellow-panel .timer-command-button {
+        width: 100% !important;
+        height: 32px !important;
+        min-height: 32px !important;
+        margin: 0 !important;
+        padding: 2px 5px !important;
+        border-radius: 7px !important;
+        font-size: 9px !important;
+        line-height: 1 !important;
+    }
+
+    /* Eventuale countdown timeout resta tra timer e comandi senza coprire il
+       display; normalmente è nascosto. */
+    .timer-yellow-panel .match-timeout-countdown {
+        grid-column: 1 / 4 !important;
+        grid-row: 2 !important;
+        margin: 0 !important;
+        align-self: center !important;
+    }
+}
+
+/* iPad in verticale: leggermente più alto, con il tempo grande ben centrato. */
+@media (max-width: 900px) {
+    .scorebar {
+        height: 166px !important;
+        min-height: 166px !important;
+    }
+
+    .timer-yellow-panel {
+        height: 166px !important;
+        min-height: 166px !important;
+        padding: 10px 7px 8px !important;
+        grid-template-rows: 58px 42px 38px !important;
+    }
+
+    .timer-yellow-panel .clock-adjust-row {
+        height: 58px !important;
+        min-height: 58px !important;
+    }
+
+    .timer-yellow-panel .clock-adjust-row .clock {
+        height: 50px !important;
+        min-height: 50px !important;
+        font-size: 39px !important;
+    }
+
+    .timer-yellow-panel .timer-command-card {
+        height: 38px !important;
+        min-height: 38px !important;
+    }
+}

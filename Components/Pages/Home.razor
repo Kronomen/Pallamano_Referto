@@ -99,7 +99,7 @@
         <section class="scorebar">
             <div class="team-name-box home-team-name" style="--team-color:@Game.State.Casa.Color">@Game.State.Casa.Name</div>
             <div class="team-points-box home-team-points" style="--team-color:@Game.State.Casa.Color">@Game.State.ScoreA</div>
-            <div class="clock-area">
+            <div class="clock-area timer-yellow-panel">
                 <div class="clock-adjust-row">
                     <button type="button" class="clock-adjust clock-minus" @onclick='() => Game.AdjustTimer(-1)'>−1</button>
                     <button type="button" class="clock @(Game.State.Running ? "clock-running" : "clock-stopped")" @onclick="OpenTimerEditor" disabled="@Game.State.Running" title="A cronometro fermo, clicca per modificare il tempo">
@@ -107,6 +107,7 @@
                     </button>
                     <button type="button" class="clock-adjust clock-plus" @onclick='() => Game.AdjustTimer(1)'>+1</button>
                 </div>
+
                 @if (Game.State.TimeoutRemainingSeconds > 0)
                 {
                     <div class="match-timeout-countdown">TIME OUT @(Game.State.TimeoutTeam == "A" ? Game.State.Casa.Name : Game.State.Ospiti.Name) · @GameService.FormatTime(Game.State.TimeoutRemainingSeconds)</div>
@@ -118,6 +119,7 @@
                         <button type="button" class="event-button undo timer-command-button" @onclick="UndoEvent" disabled="@(!Game.CanUndo)">UNDO</button>
                     </div>
                 </div>
+
             </div>
             <div class="team-points-box away-team-points" style="--team-color:@Game.State.Ospiti.Color">@Game.State.ScoreB</div>
             <div class="team-name-box away-team-name" style="--team-color:@Game.State.Ospiti.Color">@Game.State.Ospiti.Name</div>
@@ -152,7 +154,9 @@
             </section>
             <section class="side-team-column away-side-column" aria-label="OSPITI">
                 <div class="team-event-zone">
-                    <div class="team-event-grid">
+
+
+<div class="team-event-grid">
                         @foreach (var e in EventTypes) { <button type="button" class="event-button @e.Css @(Game.PendingEvent?.Type == e.Code ? "selected" : "")" @onclick="() => SelectEvent(e.Code)">@e.Label</button> }
                         <button type="button" class="event-button timeout" @onclick='() => RegisterTimeout("B")' disabled="@(Game.TimeoutCount("B") >= 3)">TIME OUT</button>
                     </div>
@@ -162,7 +166,11 @@
         </main>
 
         <footer class="bottom-bar">
-            <button @onclick="SaveGame">💾 SALVA GARA</button><button @onclick="RestoreRecovery">↩ RIPRISTINA</button><button @onclick="LoadMatchData">📥 CARICA DATI GARA</button><button @onclick="PrintReferto">📄 REFERTO</button><button @onclick="Game.OpenConfiguration" disabled="@Game.State.MatchStarted">⚙ CONFIGURAZIONE</button><button @onclick="Game.FinishCurrentPeriod" disabled="@(Game.State.MatchFinished || Game.State.ShootoutStarted)">FINE PERIODO</button><button @onclick="ProceedToNextPeriod" disabled="@(Game.PeriodStartConfirmed || Game.State.MatchFinished)">PROSSIMO PERIODO</button><span class="status">@(Game.State.MatchFinished ? "GARA TERMINATA" : Game.State.Running ? "CRONOMETRO ATTIVO" : "PRONTA / FERMA")</span>
+            <button @onclick="SaveGame">💾 SALVA GARA</button><button @onclick="RestoreRecovery">↩ RIPRISTINA</button><button @onclick="LoadMatchData">📥 CARICA DATI GARA</button><button @onclick="PrintReferto">📄 REFERTO</button><button @onclick="Game.OpenConfiguration" disabled="@Game.State.MatchStarted">⚙ CONFIGURAZIONE</button><button @onclick="Game.FinishCurrentPeriod" disabled="@(Game.State.MatchFinished || Game.State.ShootoutStarted)">FINE PERIODO</button><button @onclick="ProceedToNextPeriod" disabled="@(Game.PeriodStartConfirmed || Game.State.MatchFinished)">PROSSIMO PERIODO</button>        <div class="mini-timer-card mini-timer-toolbar">
+            <div class="mini-timer-label">CRONOMETRO</div>
+            <div class="mini-timer-display">@GameService.FormatTime(Game.GetMiniTimerSeconds())</div>
+        </div>
+<span class="status">@(Game.State.MatchFinished ? "GARA TERMINATA" : Game.State.Running ? "CRONOMETRO ATTIVO" : "PRONTA / FERMA")</span>
         </footer>
     }
 </div>
@@ -252,7 +260,7 @@
                         </button>
                         <button type="button" class="config-mode-card @(Game.State.MatchMode == "SUPPLEMENTARI" ? "selected" : "")" @onclick='() => SetMatchMode("SUPPLEMENTARI")'>
                             <span class="config-mode-checkbox">@(Game.State.MatchMode == "SUPPLEMENTARI" ? "✓" : "")</span>
-                            <strong>CON<br />SUPPLEMENTARI</strong><small>2 TEMPI + 2 SUPP. (5')</small>
+                            <strong>CON<br />SUPPLEMENTARI</strong><small>2 SUPP. + 2 SUPP. + TIRI RIGORI</small>
                         </button>
                         <button type="button" class="config-mode-card @(Game.State.MatchMode == "RIGORI" ? "selected" : "")" @onclick='() => SetMatchMode("RIGORI")'>
                             <span class="config-mode-checkbox">@(Game.State.MatchMode == "RIGORI" ? "✓" : "")</span>
@@ -409,7 +417,7 @@
 @if (_eventEditorOpen && _editingEvent is not null)
 {
     <div class="overlay event-editor-overlay">
-        <div class="dialog-card event-editor-dialog">
+        <div class="dialog-card event-editor-dialog registro-gara">
             <div class="dialog-kicker">REGISTRO GARA</div>
             <h2>MODIFICA EVENTO</h2>
             <div class="event-editor-grid">
@@ -466,7 +474,7 @@
         <div class="dialog-card timeout-dialog @(Game.State.TimeoutTeam == "A" ? "timeout-team-a" : "timeout-team-b")">
             <div class="dialog-kicker">TIME OUT</div>
             <h2>TIME OUT · @(Game.State.TimeoutTeam == "A" ? Game.State.Casa.Name : Game.State.Ospiti.Name)</h2>
-            <div class="timeout-big-countdown">@GameService.FormatTime(Game.State.TimeoutRemainingSeconds)</div>
+            <div class="timeout-big-countdown timer-layout-adjusted registro-layout-adjusted registro-redesign-shell">@GameService.FormatTime(Game.State.TimeoutRemainingSeconds)</div>
             <p>Il cronometro di gara è fermo.</p>
             <button type="button" class="timeout-exit-button" @onclick="Game.ExitTimeout">ESCI TIME OUT</button>
         </div>
