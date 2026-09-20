@@ -172,7 +172,7 @@
                         // l'indice della singola riga e non la variabile del ciclo for.
                         var eventIndex = displayIndex;
                         var ev = Game.State.Events[eventIndex];
-                        <button type="button" class="event-row event-row-button @(ev.Type == "SYSTEM" ? "system-row" : "")" style="--event-team-color:@GetEventTeamColor(ev.Team)" disabled="@(ev.Type is "SYSTEM" or "SQ_3X2")" @onclick="() => OpenEventEditor(eventIndex)" title="@(Game.CanEditEvents && ev.Type is not ("SYSTEM" or "SQ_3X2") ? "Modifica evento" : "")">
+                        <button type="button" class="event-row event-row-button @(ev.Type == "SYSTEM" ? "system-row" : "")" style="--event-team-color:@GetEventTeamColor(ev.Team)" disabled="@(ev.Type == "SYSTEM")" @onclick="() => OpenEventEditor(eventIndex)" title="@(Game.CanEditEvents && ev.Type != "SYSTEM" ? "Modifica evento" : "")">
                             <span class="event-time">@ev.Time</span><span class="event-team-cell">@ev.Team</span><span class="event-number">@(ev.Number == "—" ? "" : ev.Number)</span><span class="event-description">@ev.Text</span><strong class="event-result">@ev.Result</strong>
                         </button>
                     }
@@ -823,7 +823,7 @@
         if (index < 0 || index >= Game.State.Events.Count) return;
 
         var ev = Game.State.Events[index];
-        if (ev.Type == "SYSTEM" || ev.Type == "SQ_3X2" || ev.Type is "SHOOTOUT_GOAL" or "SHOOTOUT_MISS") return;
+        if (ev.Type == "SYSTEM" || ev.Type is "SHOOTOUT_GOAL" or "SHOOTOUT_MISS") return;
 
         _editingEvent = index;
         _editTime = ev.Time;

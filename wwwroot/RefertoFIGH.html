@@ -1816,6 +1816,7 @@ function ricostruisciSanzioniGiocatore(squadra, numero){
         ammonizioni: [],
         dueMinuti: [],
         trePerDue: "",
+        squalifica: "",
         espulsione: ""
     };
 
@@ -1841,17 +1842,19 @@ function ricostruisciSanzioniGiocatore(squadra, numero){
             return;
         }
 
-        if(tipo === "SQ_3X2"){
-            // La terza esclusione produce un secondo evento autonomo di
-            // squalifica. Nel referto deve finire nella colonna SQ e avere
-            // esattamente lo stesso tempo del terzo 2MIN.
-            sanzioni.espulsione = tempo;
+        if(tipo === "DISQUALIFICATION_3X2" || testo.includes("SQUALIFICA 3° X 2") || testo.includes("SQUALIFICA 3 X 2")){
+            // La squalifica automatica conseguente al 3° 2' è un evento separato
+            // e deve finire nella colonna SQ, con lo stesso tempo del 2' che la precede.
+            sanzioni.squalifica = tempo;
             return;
         }
 
         if(tipo === "RED"){
-            // ESPULSIONE DIRETTA: colonna SQ.
-            sanzioni.espulsione = tempo;
+            if(testo.includes("3X2") || testo.includes("3 X 2") || testo.includes("3*2")){
+                sanzioni.trePerDue = tempo;
+            } else {
+                sanzioni.espulsione = tempo;
+            }
         }
     });
 
@@ -1955,12 +1958,13 @@ function compilaReferto(){
         scriviCella(r.cells[4], sanzioni.dueMinuti[0] || "");
         scriviCella(r.cells[5], sanzioni.dueMinuti[1] || "");
 
-        // Terza esclusione: il terzo 2MIN resta nella terza colonna delle
-        // esclusioni, mentre l'evento SQ_3X2 autonomo finisce in SQ.
-        scriviCella(r.cells[6], sanzioni.dueMinuti[2] || "");
+        // Terza esclusione: 3 x 2' = squalifica automatica.
+        // Se il vecchio JSON contiene direttamente tre eventi TWO, la terza
+        // viene riportata qui; con il motore attuale arriva come RED "3x2".
+        scriviCella(r.cells[6], sanzioni.dueMinuti[2] || sanzioni.trePerDue || "");
 
-        // Espulsione diretta oppure squalifica per 3°x2': colonna SQ.
-        scriviCella(r.cells[7], sanzioni.espulsione || "");
+        // Squalifica automatica 3° x 2' oppure espulsione diretta: colonna SQ.
+        scriviCella(r.cells[7], sanzioni.squalifica || sanzioni.espulsione || "");
 
         // San.Sq. resta riservata alle eventuali sanzioni di squadra già
         // gestite separatamente dal progetto.
