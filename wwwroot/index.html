@@ -76,30 +76,113 @@ window.refertoDownload = (filename, text) => {
 
 <script>
 window.stampaReferto = (d) => {
-  const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const roster = (title, players, staff, color) => { const key=n=>{ const v=String(n??'').trim(); if(v==='0') return 0; if(v==='00') return 0.5; const x=Number(v); return Number.isFinite(x)&&x>=1 ? x : 9999; }; players = [...(players||[])].filter(p=>p.active).sort((a,b)=>{ const ka=key(a.label ?? a.number), kb=key(b.label ?? b.number); if(ka!==kb) return ka-kb; return Number(a.originalIndex??0)-Number(b.originalIndex??0); }); return `
-    <section class="team"><h2 style="color:${esc(color)}">${esc(title)}</h2>
-      <h3>GIOCATORI</h3><table><thead><tr><th>N.</th><th>Nome</th><th>IN</th></tr></thead><tbody>
-      ${players.map(p=>`<tr><td>${esc(p.label ?? p.number)}</td><td>${esc(p.name)}</td><td>${p.active?'X':''}</td></tr>`).join('')}
-      </tbody></table>
-      <h3>DIRIGENTI</h3><table><thead><tr><th>N.</th><th>Nome</th><th>IN</th></tr></thead><tbody>
-      ${[...(staff||[])].filter(p=>p.active).map(p=>`<tr><td>${esc(p.letter)}</td><td>${esc(p.name)}</td><td>${p.active?'X':''}</td></tr>`).join('')}
-      </tbody></table></section>`; };
-  const rows = d.events.map(e=>`<tr><td>${esc(e.Time)}</td><td>${esc(e.Team)}</td><td>${esc(e.Number)}</td><td>${esc(e.Text)}</td><td>${esc(e.Result)}</td></tr>`).join('');
-  const w=window.open('', '_blank'); if(!w) return;
-  w.document.write(`<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Referto Pallamano</title><style>
-  @page{size:A4 landscape;margin:10mm}body{font-family:Arial,sans-serif;color:#111827;font-size:10px;margin:0}h1{text-align:center;font-size:20px;margin:0 0 3px}h2{font-size:15px;margin:8px 0 4px}h3{font-size:11px;margin:7px 0 3px}.head{text-align:center;border-bottom:2px solid #111827;padding-bottom:6px}.score{text-align:center;font-size:22px;font-weight:900;margin:5px}.meta{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin:6px 0}.meta div{border:1px solid #aaa;padding:4px}.teams{display:grid;grid-template-columns:1fr 1fr;gap:8px}.team{border:1px solid #aaa;padding:5px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #aaa;padding:3px;text-align:left}th{background:#eee}.events{margin-top:8px}.events th:nth-child(1){width:45px}.events th:nth-child(2){width:28px}.events th:nth-child(3){width:35px}.events th:nth-child(5){width:55px}.shootout-print{margin-top:8px}.shootout-final{text-align:center;margin:4px 0;font-size:12px}</style></head><body>
-  <div class="head"><h1>FEDERAZIONE ITALIANA GIUOCO HANDBALL</h1><div>REFERTO PALLAMANO</div><div class="score">${esc(d.casa)} &nbsp; ${esc(d.scoreA)} — ${esc(d.scoreB)} &nbsp; ${esc(d.ospiti)}</div></div>
-  <div class="meta"><div>Numero gara<br><b>${esc(d.matchNumber)}</b></div><div>Data<br><b>${esc(d.date)}</b></div><div>Ora<br><b>${esc(d.time)}</b></div><div>Campionato<br><b>${esc(d.championship)}</b></div><div>Località<br><b>${esc(d.city)}</b></div><div>Impianto<br><b>${esc(d.venue)}</b></div></div>
-  <div class="teams">${roster(d.casa,d.playersA,d.staffA,d.colorA)}${roster(d.ospiti,d.playersB,d.staffB,d.colorB)}</div>
-  <section class="events"><h2>REGISTRO GARA</h2><table><thead><tr><th>Tempo</th><th>Sq</th><th>N.</th><th>Evento</th><th>Ris.</th></tr></thead><tbody>${rows}</tbody></table></section>
-  ${((d.shootout||[]).length>0)?`<section class="shootout-print"><h2>SERIE DEI TIRI DI RIGORE</h2><div class="shootout-final">Serie rigori: <b>${esc(d.shootoutScoreA)} — ${esc(d.shootoutScoreB)}</b></div><table><thead><tr><th>#</th><th>Sq</th><th>N.</th><th>Giocatore</th><th>Esito</th><th>Ris.</th></tr></thead><tbody>${d.shootout.map(x=>`<tr><td>${esc(x.Id)}</td><td>${esc(x.Team)}</td><td>${esc(x.Number)}</td><td>${esc(x.PlayerName)}</td><td>${x.Goal?'REALIZZATO':'ERRATO'}</td><td>${esc(x.ScoreA)}-${esc(x.ScoreB)}</td></tr>`).join('')}</tbody></table></section>`:''}
-  
+  // Il progetto utilizza direttamente il referto HTML ufficiale fornito come modello.
+  // I dati Blazor vengono convertiti nel formato atteso da RefertoFIGH.html e
+  // salvati nel localStorage condiviso dalla stessa origine.
+  try {
+    const partita = {
+      league: d.championship || '',
+      championship: d.championship || '',
+      group: d.group || '',
+      matchNumber: d.matchNumber || '',
+      matchDate: d.date || '',
+      matchTime: d.time || '',
+      teamA: d.casa || '',
+      teamB: d.ospiti || '',
+      city: d.city || '',
+      venue: d.venue || '',
+      season: d.season || '',
+      referee1: d.referee1 || '',
+      referee2: d.referee2 || '',
+      delegate1: d.delegate1 || '',
+      delegate2: d.delegate2 || '',
+      timekeeper: d.timekeeper || '',
+      secretary: d.secretary || '',
+      finalScoreA: Number(d.scoreA || 0),
+      finalScoreB: Number(d.scoreB || 0),
+      scoreA: Number(d.scoreA || 0),
+      scoreB: Number(d.scoreB || 0),
+      firstHalfScoreA: Number(d.firstHalfScoreA || 0),
+      firstHalfScoreB: Number(d.firstHalfScoreB || 0),
+      secondHalfScoreA: Number(d.secondHalfScoreA || 0),
+      secondHalfScoreB: Number(d.secondHalfScoreB || 0),
+      overtime2ScoreA: Number(d.overtime2ScoreA || 0),
+      overtime2ScoreB: Number(d.overtime2ScoreB || 0),
+      overtime4ScoreA: Number(d.overtime4ScoreA || 0),
+      overtime4ScoreB: Number(d.overtime4ScoreB || 0),
+      penaltyTotalA: Number(d.penaltyTotalA || 0),
+      penaltyTotalB: Number(d.penaltyTotalB || 0),
+      penaltyScoredA: Number(d.penaltyScoredA || 0),
+      penaltyScoredB: Number(d.penaltyScoredB || 0),
+      penaltyShootout: {
+        scoreA: Number(d.shootoutScoreA || 0),
+        scoreB: Number(d.shootoutScoreB || 0)
+      },
+      timeoutsA: d.timeoutsA || {},
+      timeoutsB: d.timeoutsB || {},
+      currentRosterA: {
+        players: (d.playersA || []).map(p => ({
+          num: String(p.label ?? p.number ?? ''),
+          number: String(p.label ?? p.number ?? ''),
+          name: p.name || '',
+          active: p.active !== false,
+          goals: Number(p.goals || 0)
+        })),
+        officials: (d.staffA || []).map(p => ({
+          lettera: p.letter || '',
+          num: p.letter || '',
+          name: p.name || '',
+          role: p.role || ''
+        }))
+      },
+      currentRosterB: {
+        players: (d.playersB || []).map(p => ({
+          num: String(p.label ?? p.number ?? ''),
+          number: String(p.label ?? p.number ?? ''),
+          name: p.name || '',
+          active: p.active !== false,
+          goals: Number(p.goals || 0)
+        })),
+        officials: (d.staffB || []).map(p => ({
+          lettera: p.letter || '',
+          num: p.letter || '',
+          name: p.name || '',
+          role: p.role || ''
+        }))
+      },
+      eventi: (d.events || []).map(e => ({
+        time: e.Time || e.time || '',
+        squadra: e.Team || e.team || '',
+        numero: e.Number || e.number || '',
+        type: e.Type || e.type || '',
+        text: e.Text || e.text || '',
+        result: e.Result || e.result || ''
+      })),
+      events: (d.events || []).map(e => ({
+        time: e.Time || e.time || '',
+        squadra: e.Team || e.team || '',
+        numero: e.Number || e.number || '',
+        type: e.Type || e.type || '',
+        text: e.Text || e.text || '',
+        result: e.Result || e.result || ''
+      })),
+      shootout: d.shootout || []
+    };
 
+    localStorage.setItem('RefertoPallamano', JSON.stringify(partita));
+    localStorage.setItem('RefertoFIGH', JSON.stringify(partita));
 
-
-
-</body></html>`); w.document.close(); w.focus(); setTimeout(()=>w.print(),300);
+    const url = new URL('RefertoFIGH.html', document.baseURI).href;
+    const w = window.open(url, '_blank');
+    if (!w) {
+      alert('Il browser ha bloccato l’apertura del referto. Consenti i popup per questo sito.');
+      return;
+    }
+    try { w.focus(); } catch(e) {}
+  } catch (e) {
+    console.error('Errore apertura Referto FIGH', e);
+    alert('Impossibile aprire il Referto FIGH.');
+  }
 };
 </script>
 
