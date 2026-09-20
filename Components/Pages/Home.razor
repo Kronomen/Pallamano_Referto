@@ -370,14 +370,32 @@
 
 @if (Game.ShowPeriodEnd)
 {
-    <div class="overlay"><div class="dialog-card">
-        <div class="dialog-kicker">PERIODO TERMINATO</div>
-        <h2>@GameService.PhaseName(Game.State.Phase)</h2>
-        <div class="dialog-score">@Game.State.ScoreA <span>—</span> @Game.State.ScoreB</div>
-        <p>Il cronometro è stato fermato. Conferma per procedere.</p>
-        <button class="primary dialog-main" @onclick="ProceedToNextPeriod">PROSEGUI</button>
-        <button @onclick="Game.ClosePeriodDialog">CHIUDI</button>
-    </div></div>
+    <div class="overlay period-end-overlay">
+        <div class="period-end-dialog" role="dialog" aria-modal="true" aria-labelledby="period-end-title">
+            <div class="period-end-header">
+                <div class="period-end-header-title">
+                    <span class="period-end-flag" aria-hidden="true">⚑</span>
+                    <span>FINE @GameService.PhaseName(Game.State.Phase)</span>
+                </div>
+            </div>
+
+            <div class="period-end-body">
+                <h2 id="period-end-title">@GameService.PhaseName(Game.State.Phase) terminato.</h2>
+                <div class="period-end-score-label">RISULTATO</div>
+                <div class="period-end-score">
+                    <strong>@Game.State.ScoreA</strong>
+                    <span>—</span>
+                    <strong>@Game.State.ScoreB</strong>
+                </div>
+                <p>Confermare la fine del periodo</p>
+                <div class="period-end-actions-top">
+                    <button type="button" class="period-end-referto" @onclick="PrintReferto">▣&nbsp; APRI REFERTO FIGH</button>
+                    <button type="button" class="period-end-exit" @onclick="ExitApplication">⇱&nbsp; ESCI DAL PROGETTO</button>
+                </div>
+                <button type="button" class="period-end-close" @onclick="Game.ClosePeriodDialog">CHIUDI</button>
+            </div>
+        </div>
+    </div>
 }
 
 @if (Game.ShowShootoutStart)

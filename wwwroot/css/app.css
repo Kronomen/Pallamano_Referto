@@ -5440,3 +5440,320 @@ html,body,#app{overflow:hidden!important;width:100%;height:100%;}
 .shootout-winner-actions{flex-wrap:wrap}
 .shootout-winner-actions .danger{background:#c62828;color:#fff;border-color:#c62828}
 @media screen and (orientation:portrait) and (min-width:700px) and (max-width:899px){.match-end-dialog{padding:22px 20px}.match-end-actions{flex-direction:column}.match-end-actions button{width:100%}}
+
+/* v122 — POPUP FINE PERIODO: grafica compatta ispirata al vecchio referto.
+   Un solo popup per ogni fine tempo; la conferma mantiene invariata la logica
+   di passaggio al periodo successivo / fine gara / rigori. */
+.period-end-overlay{
+  z-index:100000!important;
+  background:rgba(4,16,35,.34)!important;
+  padding:0!important;
+  align-items:center!important;
+  justify-content:center!important;
+}
+.period-end-dialog{
+  width:min(560px,92vw)!important;
+  overflow:hidden!important;
+  border-radius:0 0 22px 22px!important;
+  background:#fff!important;
+  border:0!important;
+  box-shadow:0 18px 55px rgba(0,0,0,.28)!important;
+  padding:0!important;
+  text-align:center!important;
+}
+.period-end-header{
+  min-height:71px;
+  display:flex;
+  align-items:center;
+  padding:0 27px;
+  background:#0d315b;
+  color:#fff;
+  text-align:left;
+}
+.period-end-header-title{
+  display:flex;
+  align-items:center;
+  gap:17px;
+  font-size:24px;
+  line-height:1;
+  font-weight:1000;
+  letter-spacing:.2px;
+}
+.period-end-flag{
+  font-size:28px;
+  line-height:1;
+  color:#fff;
+  transform:translateY(-1px);
+}
+.period-end-body{
+  padding:23px 34px 18px;
+  background:#fff;
+}
+.period-end-body h2{
+  margin:0 0 9px;
+  color:#102d51;
+  font-size:23px;
+  line-height:1.2;
+  font-weight:1000;
+}
+.period-end-score-label{
+  margin-bottom:7px;
+  color:#506078;
+  font-size:11px;
+  line-height:1;
+  font-weight:900;
+  letter-spacing:.3px;
+}
+.period-end-score{
+  width:min(390px,100%);
+  min-height:57px;
+  margin:0 auto 11px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:28px;
+  border-radius:14px;
+  background:#edf3fa;
+  color:#102d51;
+  font-family:Arial,Helvetica,sans-serif;
+}
+.period-end-score strong{
+  min-width:28px;
+  font-size:30px;
+  line-height:1;
+  font-weight:1000;
+}
+.period-end-score span{
+  font-size:28px;
+  line-height:1;
+  font-weight:900;
+}
+.period-end-body p{
+  margin:0 0 27px;
+  color:#102d51;
+  font-size:15px;
+  line-height:1.35;
+  font-weight:700;
+}
+.period-end-confirm{
+  width:100%;
+  min-height:50px;
+  border:0!important;
+  border-radius:0!important;
+  background:#16a34a!important;
+  color:#fff!important;
+  font-size:15px!important;
+  font-weight:1000!important;
+  letter-spacing:.1px;
+  cursor:pointer;
+  box-shadow:none!important;
+  touch-action:manipulation;
+}
+.period-end-confirm:hover{background:#119342!important}
+.period-end-confirm:active{transform:none!important}
+
+@media(max-width:900px){
+  .period-end-dialog{width:min(520px,94vw)!important;border-radius:0 0 18px 18px!important}
+  .period-end-header{min-height:60px;padding:0 19px}
+  .period-end-header-title{font-size:19px;gap:12px}
+  .period-end-flag{font-size:23px}
+  .period-end-body{padding:20px 22px 14px}
+  .period-end-body h2{font-size:20px}
+  .period-end-score{min-height:54px;gap:24px}
+  .period-end-score strong{font-size:28px}
+  .period-end-body p{font-size:14px;margin-bottom:22px}
+  .period-end-confirm{min-height:48px;font-size:14px!important}
+}
+
+@media(orientation:portrait) and (min-width:700px) and (max-width:899px){
+  .period-end-dialog{width:min(490px,88vw)!important}
+}
+
+
+/* v123 — POPUP FINE PERIODO: azioni in due righe come nel popup gara terminata.
+   Riga superiore: APRI REFERTO FIGH + ESCI DAL PROGETTO.
+   Riga inferiore: CHIUDI.
+   La chiusura del popup non modifica la logica del periodo: il passaggio
+   successivo resta disponibile tramite il comando PROSSIMO PERIODO. */
+.period-end-dialog{
+  width:min(560px,92vw)!important;
+  border-radius:18px!important;
+  border:3px solid #1554d1!important;
+  box-shadow:0 20px 60px rgba(0,0,0,.28)!important;
+}
+.period-end-header{
+  min-height:68px!important;
+  padding:0 25px!important;
+}
+.period-end-header-title{
+  font-size:23px!important;
+}
+.period-end-body{
+  padding:25px 28px 24px!important;
+}
+.period-end-body h2{
+  font-size:23px!important;
+  margin-bottom:9px!important;
+}
+.period-end-score-label{
+  font-size:11px!important;
+}
+.period-end-score{
+  min-height:57px!important;
+  margin-bottom:12px!important;
+}
+.period-end-body p{
+  margin:0 0 17px!important;
+  font-size:13px!important;
+  color:#475569!important;
+  font-weight:500!important;
+}
+.period-end-actions-top{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+  gap:9px!important;
+  width:100%!important;
+  margin:0 auto 9px!important;
+}
+.period-end-actions-top button,
+.period-end-close{
+  min-height:48px!important;
+  border-radius:8px!important;
+  font-weight:900!important;
+  font-size:12px!important;
+  cursor:pointer!important;
+  touch-action:manipulation!important;
+}
+.period-end-referto{
+  background:#2563eb!important;
+  color:#fff!important;
+  border:1px solid #2563eb!important;
+}
+.period-end-referto:hover{background:#1d4ed8!important}
+.period-end-exit{
+  background:#c62828!important;
+  color:#fff!important;
+  border:1px solid #c62828!important;
+}
+.period-end-exit:hover{background:#b91c1c!important}
+.period-end-close{
+  width:min(250px,100%)!important;
+  display:block!important;
+  margin:0 auto!important;
+  background:#fff!important;
+  color:#111827!important;
+  border:1px solid #94a3b8!important;
+}
+.period-end-close:hover{background:#f1f5f9!important}
+
+@media(max-width:900px){
+  .period-end-dialog{
+    width:min(520px,94vw)!important;
+    border-radius:16px!important;
+  }
+  .period-end-header{min-height:60px!important;padding:0 19px!important}
+  .period-end-header-title{font-size:19px!important;gap:12px!important}
+  .period-end-body{padding:20px 20px 20px!important}
+  .period-end-body h2{font-size:20px!important}
+  .period-end-actions-top{gap:7px!important}
+  .period-end-actions-top button,
+  .period-end-close{min-height:46px!important;font-size:10px!important}
+}
+
+@media(orientation:portrait) and (min-width:700px) and (max-width:899px){
+  .period-end-dialog{width:min(490px,88vw)!important}
+}
+
+/* v112 — COMPATTAZIONE CRONOMETRO + REGISTRO GARA
+   Riduce l'altezza del contenitore giallo senza modificare la logica.
+   In questo modo i pannelli delle squadre e il Registro Gara salgono.
+*/
+@media (max-width: 1200px) {
+  .scorebar {
+    height: 136px !important;
+    min-height: 136px !important;
+  }
+
+  .timer-yellow-panel {
+    height: 136px !important;
+    min-height: 136px !important;
+    padding: 6px 7px 6px !important;
+    grid-template-rows: 48px 36px 32px !important;
+    row-gap: 3px !important;
+  }
+
+  .timer-yellow-panel .clock-adjust-row {
+    height: 48px !important;
+    min-height: 48px !important;
+  }
+
+  .timer-yellow-panel .clock-adjust-row .clock-adjust {
+    height: 28px !important;
+    min-height: 28px !important;
+    line-height: 28px !important;
+  }
+
+  .timer-yellow-panel .clock-adjust-row .clock {
+    height: 42px !important;
+    min-height: 42px !important;
+    font-size: 36px !important;
+  }
+
+  .timer-yellow-panel .timer-command-card {
+    height: 32px !important;
+    min-height: 32px !important;
+  }
+
+  .timer-yellow-panel .timer-command-row {
+    height: 28px !important;
+    min-height: 28px !important;
+    gap: 5px !important;
+  }
+
+  .timer-yellow-panel .timer-command-button {
+    height: 28px !important;
+    min-height: 28px !important;
+    font-size: 8.5px !important;
+  }
+
+  /* Registro Gara: interlinea singola e righe più compatte. */
+  .event-list {
+    line-height: 1 !important;
+  }
+
+  .event-row {
+    line-height: 1 !important;
+    padding-top: 4px !important;
+    padding-bottom: 4px !important;
+  }
+
+  .event-row * {
+    line-height: 1 !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .scorebar {
+    height: 140px !important;
+    min-height: 140px !important;
+  }
+
+  .timer-yellow-panel {
+    height: 140px !important;
+    min-height: 140px !important;
+    padding: 6px 7px 6px !important;
+    grid-template-rows: 50px 36px 32px !important;
+    row-gap: 3px !important;
+  }
+
+  .timer-yellow-panel .clock-adjust-row {
+    height: 50px !important;
+    min-height: 50px !important;
+  }
+
+  .timer-yellow-panel .clock-adjust-row .clock {
+    height: 44px !important;
+    min-height: 44px !important;
+    font-size: 37px !important;
+  }
+}
