@@ -60,4 +60,10 @@ public sealed class GameState
     public int ShootoutPhase { get; set; } = 0;
     public int ShootoutScoreA { get; set; }
     public int ShootoutScoreB { get; set; }
+
+    // Giocatori che hanno già effettuato il tiro nel giro corrente della serie.
+    // Vengono azzerati solo quando tutti gli eleggibili della rispettiva squadra
+    // hanno completato il giro; gli espulsi/inibiti restano sempre esclusi.
+    public List<string> ShootoutTakenA { get; set; } = [];
+    public List<string> ShootoutTakenB { get; set; } = [];
 }

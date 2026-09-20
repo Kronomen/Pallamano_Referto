@@ -17,11 +17,13 @@ public sealed class GameService : IAsyncDisposable
     public bool ShowPeriodEnd { get; private set; }
     public bool ShowShootoutStart { get; private set; }
     public bool ShowShootoutFirstTeam { get; private set; }
+    public bool ShowShootoutWinner { get; private set; }
     public (string Team, int Index)? PendingShootout { get; private set; }
     public bool ShowConfiguration { get; private set; } = true;
     public bool PeriodStartConfirmed { get; private set; } = true;
     public string? ValidationError { get; private set; }
     public bool CanUndo => _undoState is not null;
+    public string ShootoutWinnerName => State.ShootoutScoreA > State.ShootoutScoreB ? State.Casa.Name : State.Ospiti.Name;
     public bool CanEditEvents => !State.Running && State.TimeoutRemainingSeconds <= 0 && PendingEvent is null && !State.ShootoutStarted;
     public event Action? Changed;
 
@@ -572,6 +574,10 @@ public sealed class GameService : IAsyncDisposable
         State.ShootoutFirstTeam = "";
         State.ShootoutScoreA = 0;
         State.ShootoutScoreB = 0;
+        State.ShootoutTakenA ??= [];
+        State.ShootoutTakenB ??= [];
+        State.ShootoutTakenA.Clear();
+        State.ShootoutTakenB.Clear();
         State.Shootout ??= [];
         State.Shootout.Clear();
         StopClock();
@@ -608,6 +614,8 @@ public sealed class GameService : IAsyncDisposable
     public int ShootoutAttemptsFor(string team) => (State.Shootout ?? []).Count(x => x.Team == team);
 
     public int ShootoutGoalsFor(string team) => (State.Shootout ?? []).Count(x => x.Team == team && x.Goal);
+    public int ShootoutPlayerAttempts(string team, string number) => (State.Shootout ?? []).Count(x => x.Team == team && x.Number == number);
+    public int ShootoutPlayerGoals(string team, string number) => (State.Shootout ?? []).Count(x => x.Team == team && x.Number == number && x.Goal);
 
     public bool CanShootoutPlayer(string team, int index)
     {
@@ -625,18 +633,14 @@ public sealed class GameService : IAsyncDisposable
         // Il conteggio dei già utilizzati NON viene quindi azzerato al passaggio
         // dalla serie iniziale alla morte improvvisa: si azzera solo quando l'intero
         // gruppo degli eleggibili (esclusi gli espulsi/inibiti) ha completato un giro.
-        var eligible = EligibleShooters(team).ToList();
-        var used = (State.Shootout ?? [])
-            .Where(x => x.Team == team)
-            .Select(x => x.Number)
-            .ToHashSet(StringComparer.Ordinal);
+        var taken = team == "A" ? State.ShootoutTakenA : State.ShootoutTakenB;
+        taken ??= [];
 
-        // Quando tutti gli eleggibili hanno già tirato, ricomincia un nuovo giro
-        // e tutti tornano potenziali tiratori. Gli espulsi restano esclusi.
-        if (eligible.Count > 0 && eligible.All(x => used.Contains(x.Number)))
-            used.Clear();
-
-        return !used.Contains(number);
+        // La lista dei tiratori usati è separata dalla lista degli eventi: in questo
+        // modo il passaggio a un nuovo giro non riabilita accidentalmente il primo
+        // tiratore appena selezionato. Il reset avviene solo dopo che tutti gli
+        // eleggibili della squadra hanno completato il giro.
+        return !taken.Contains(number, StringComparer.Ordinal);
     }
 
     public bool OpenShootoutShot(string team, int index)
@@ -665,6 +669,11 @@ public sealed class GameService : IAsyncDisposable
         var name = roster.PlayerNames[pending.Index] ?? string.Empty;
         var round = State.ShootoutTurn + 1;
 
+        State.ShootoutTakenA ??= [];
+        State.ShootoutTakenB ??= [];
+        var taken = pending.Team == "A" ? State.ShootoutTakenA : State.ShootoutTakenB;
+        if (taken.Contains(number, StringComparer.Ordinal)) return false;
+
         Snapshot();
         State.Shootout ??= [];
         State.Shootout.Add(new ShootoutAttempt
@@ -679,6 +688,8 @@ public sealed class GameService : IAsyncDisposable
             ScoreA = State.ShootoutScoreA + (goal && pending.Team == "A" ? 1 : 0),
             ScoreB = State.ShootoutScoreB + (goal && pending.Team == "B" ? 1 : 0)
         });
+
+        taken.Add(number);
 
         if (goal)
         {
@@ -701,6 +712,13 @@ public sealed class GameService : IAsyncDisposable
         PendingShootout = null;
         State.ShootoutTurn++;
 
+        // Se tutti gli eleggibili hanno tirato, si prepara il giro successivo.
+        // Questa regola vale anche in morte improvvisa e mantiene esclusi gli
+        // espulsi/inibiti.
+        var eligibleAfter = EligibleShooters(pending.Team).Select(x => x.Number).ToHashSet(StringComparer.Ordinal);
+        if (eligibleAfter.Count > 0 && eligibleAfter.All(taken.Contains))
+            taken.Clear();
+
         if (ShouldFinishShootout())
         {
             FinishShootout();
@@ -708,7 +726,10 @@ public sealed class GameService : IAsyncDisposable
         }
 
         if (State.ShootoutPhase == 1 && State.ShootoutTurn >= 10)
+        {
             State.ShootoutPhase = 2;
+            AddSystemEvent("INIZIO MORTE IMPROVVISA RIGORI");
+        }
 
         Notify();
         return true;
@@ -765,8 +786,31 @@ public sealed class GameService : IAsyncDisposable
         State.Running = false;
         ShowShootoutFirstTeam = false;
         PendingShootout = null;
-        var winner = State.ShootoutScoreA > State.ShootoutScoreB ? State.Casa.Name : State.Ospiti.Name;
-        AddSystemEvent($"FINE SERIE RIGORI {State.ShootoutScoreA}-{State.ShootoutScoreB} · {winner}");
+        var winner = ShootoutWinnerName;
+        AddSystemEvent($"FINE SERIE RIGORI {State.ShootoutScoreA:00}-{State.ShootoutScoreB:00} ({winner})");
+        ShowShootoutWinner = true;
+        Notify();
+    }
+
+    public void OpenShootoutWinner()
+    {
+        if (!State.ShootoutFinished) return;
+        ShowShootoutWinner = true;
+        Notify();
+    }
+
+    public void CloseShootoutWinner()
+    {
+        ShowShootoutWinner = false;
+        Notify();
+    }
+
+    public void BackToMatchAfterShootout()
+    {
+        // La gara è definitivamente chiusa: si torna alla schermata principale
+        // solo per consultare il referto, senza riattivare il cronometro.
+        ShowShootoutWinner = false;
+        State.ShootoutStarted = false;
         Notify();
     }
 
@@ -921,7 +965,7 @@ public sealed class GameService : IAsyncDisposable
     }
 
     public string ExportJson() => JsonSerializer.Serialize(State, new JsonSerializerOptions { WriteIndented = true });
-    public void ImportJson(string json) { StopClock(); State = JsonSerializer.Deserialize<GameState>(json) ?? throw new InvalidOperationException("JSON partita non valido."); EnsureRosterArrays(State.Casa); EnsureRosterArrays(State.Ospiti); State.Shootout ??= []; State.MiniTimerRunning = false; ClearPending(); PendingShootout = null; ShowShootoutStart = false; ShowShootoutFirstTeam = false; _undoState = null; PeriodStartConfirmed = !State.MatchFinished && !State.ShootoutStarted; Notify(); }
+    public void ImportJson(string json) { StopClock(); State = JsonSerializer.Deserialize<GameState>(json) ?? throw new InvalidOperationException("JSON partita non valido."); EnsureRosterArrays(State.Casa); EnsureRosterArrays(State.Ospiti); State.Shootout ??= []; State.ShootoutTakenA ??= []; State.ShootoutTakenB ??= []; State.MiniTimerRunning = false; ClearPending(); PendingShootout = null; ShowShootoutStart = false; ShowShootoutFirstTeam = false; _undoState = null; PeriodStartConfirmed = !State.MatchFinished && !State.ShootoutStarted; Notify(); }
     public string ScoreText() => $"{State.ScoreA}-{State.ScoreB}";
     public static string FormatTime(int seconds) => $"{Math.Max(0, seconds) / 60:00}:{Math.Max(0, seconds) % 60:00}";
     public static string PhaseName(int phase) => phase switch { 1 => "1° TEMPO", 2 => "2° TEMPO", 3 => "1° TEMPO SUPPLEMENTARE", 4 => "2° TEMPO SUPPLEMENTARE", 5 => "3° TEMPO SUPPLEMENTARE", 6 => "4° TEMPO SUPPLEMENTARE", _ => "RIGORI" };

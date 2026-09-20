@@ -6,13 +6,23 @@
     <div class="panel-title team-panel-title">
         <span class="team-title-name">@(Team == "A" ? Game.State.Casa.Name : Game.State.Ospiti.Name)</span>
         <span class="team-counters">
-            <span>AMM <b>@Game.YellowCountFor(Team)/3</b></span>
+            @if (!Game.State.ShootoutStarted)
+            {
+                <span>AMM <b>@Game.YellowCountFor(Team)/3</b></span>
+            }
             <span>TIME OUT <b>@Game.TimeoutCount(Team)/3</b></span>
             @if (Game.State.TimeoutRemainingSeconds > 0 && Game.State.TimeoutTeam == Team)
             {
                 <span class="timeout-countdown">TO @RefertoPallamano_Blazor.Services.GameService.FormatTime(Game.State.TimeoutRemainingSeconds)</span>
             }
-            <span>7m <b>@Game.PenaltyAttempts(Team)/@Game.PenaltyRealized(Team)</b></span>
+            @if (Game.State.ShootoutStarted)
+            {
+                <span>Rigori: <b>@Game.ShootoutGoalsFor(Team)/@Game.ShootoutAttemptsFor(Team)</b></span>
+            }
+            else
+            {
+                <span>7m <b>@Game.PenaltyAttempts(Team)/@Game.PenaltyRealized(Team)</b></span>
+            }
         </span>
     </div>
     <div class="player-grid">
@@ -27,18 +37,18 @@
             @if (Game.State.ShootoutStarted)
             {
                 var canShoot = Game.CanShootoutPlayer(Team, index);
-                <button type="button" class="player-card shootout-player-card @(!roster.ActivePlayers[index] ? "inactive-player" : "") @(red ? "has-red" : "") @(canShoot ? "shootout-eligible" : "shootout-not-turn")" disabled="@(!canShoot)" aria-label="Tiro di rigore N.@number" @onclick="() => OpenShootout(index)">
+                <button type="button" class="player-card shootout-player-card @(!roster.ActivePlayers[index] ? "inactive-player" : "") @(red ? "has-red" : "") @(canShoot ? "shootout-eligible" : "shootout-not-turn")" disabled="@(!canShoot)" aria-label="Giocatore N.@number" @onclick="() => OpenShootout(index)">
                     <span class="number">@number</span>
                     <span class="player-info">
                         <span class="shootout-player-topline">
                             <span class="player-name" title="@(string.IsNullOrWhiteSpace(name) ? "GIOCATORE" : name)">@(string.IsNullOrWhiteSpace(name) ? "GIOCATORE" : name)</span>
-                            <span class="shootout-player-goals">⚽ @((Game.State.Shootout ?? []).Count(x => x.Team == Team && x.Number == number && x.Goal))</span>
                         </span>
-                        <span class="player-indicators">
-                            <span class="stat-item goal-indicator">G @Game.PlayerGoals(Team, number)</span>
-                            <span class="stat-item penalty-indicator">7m @Game.PlayerPenaltyGoals(Team, number)</span>
-                            <span class="stat-item amm-indicator @(yellow ? "active" : "")">A</span>
-                            <span class="stat-item two-count @(Game.PlayerTwoCount(Team, number) >= 3 ? "danger" : Game.PlayerTwoCount(Team, number) > 0 ? "active" : "")">2 @Game.PlayerTwoCount(Team, number)/3</span>
+                        <span class="player-indicators shootout-stats-row">
+                            <span class="stat-item goal-indicator">GOAL @Game.PlayerGoals(Team, number)</span>
+                            <span class="stat-item penalty-indicator">RIGORI @Game.ShootoutPlayerGoals(Team, number)/@Game.ShootoutPlayerAttempts(Team, number)</span>
+                        </span>
+                        <span class="shootout-bottom-stats">
+                            <span>A</span><span>2' @Game.PlayerTwoCount(Team, number)/3</span><span>@(red ? "E" : "E")</span>
                         </span>
                         @if (suspensions.Count > 0)
                         {
@@ -85,6 +95,8 @@
             }
         }
     </div>
+    @if (!Game.State.ShootoutStarted)
+    {
     <div class="staff-row">
         @for (var i = 0; i < 5; i++)
         {
@@ -120,6 +132,7 @@
             }
         }
     </div>
+    }
 </section>
 
 @code {

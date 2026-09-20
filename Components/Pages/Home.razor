@@ -18,16 +18,17 @@
             </div>
             <div class="shootout-teams-score">
                 <div class="shootout-team-name home">@Game.State.Casa.Name<span>CASA</span></div>
-                <div class="shootout-main-score">@Game.State.ScoreA <span>−</span> @Game.State.ScoreB</div>
+                <div class="shootout-main-score">@Game.State.ShootoutScoreA <span>−</span> @Game.State.ShootoutScoreB</div>
                 <div class="shootout-team-name away">@Game.State.Ospiti.Name<span>OSPITI</span></div>
             </div>
             <div class="shootout-official-brand">
-                <div class="official-symbol">⏱</div>
+                <div class="official-symbol">F.I.Cr.</div>
                 <div>FEDERAZIONE ITALIANA<br /><strong>CRONOMETRISTI</strong></div>
             </div>
         </header>
 
-        <div class="shootout-phase-pill">@(Game.State.ShootoutPhase == 2 ? "MORTE IMPROVVISA · RIGORI" : "RIGORI")</div>
+        <div class="shootout-phase-pill">RIGORI</div>
+        <div class="shootout-pre-match-score">GARA FINO AI RIGORI: @Game.State.ScoreA.ToString("00") - @Game.State.ScoreB.ToString("00")</div>
 
         <main class="shootout-layout">
             <section class="shootout-team-side home-shootout-side">
@@ -36,12 +37,18 @@
 
             <section class="shootout-center-panel">
                 <div class="shootout-center-heading">
-                    <span class="shootout-goal-icon">🥅</span>
+                    <span class="shootout-goal-icon">▦</span>
                     <span>@(Game.State.ShootoutPhase == 2 ? "MORTE IMPROVVISA · SERIE UFFICIALE DEI RIGORI" : "SERIE UFFICIALE DEI RIGORI")</span>
+                    <small>SERIE DEI 5 RIGORI</small>
+                    <b class="shootout-current-team">Tira: @(Game.ShootoutCurrentTeam == "A" ? "CASA" : "OSPITI")</b>
                 </div>
                 <div class="shootout-actions">
-                    <button type="button" class="shootout-undo" @onclick="UndoEvent" disabled="@(!Game.CanUndo)">↶ Undo</button>
-                    <button type="button" class="shootout-save" @onclick="SaveGame">▣ Salva</button>
+                    <button type="button" class="shootout-undo" @onclick="UndoEvent" disabled="@(!Game.CanUndo)">↩ UNDO</button>
+                    <button type="button" class="shootout-save" @onclick="SaveGame">▣ SALVA</button>
+                    @if (Game.State.ShootoutFinished)
+                    {
+                        <button type="button" class="shootout-referto" @onclick="PrintReferto">▣ REFERTO FIGH</button>
+                    }
                 </div>
                 <div class="shootout-table-wrap">
                     <table class="shootout-table">
@@ -52,12 +59,12 @@
                                 <th>CASA</th>
                                 <th>ESITO</th>
                                 <th>ESITO</th>
-                                <th>OSPITI</th>
                                 <th>N°</th>
+                                <th>OSPITI</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var pair in GetShootoutPairs())
+                            @foreach (var pair in GetShootoutPairs().Where(x => x.Round <= 5))
                             {
                                 <tr>
                                     <td class="shootout-round">@pair.Round</td>
@@ -65,13 +72,29 @@
                                     <td class="shootout-player-name">@(string.IsNullOrWhiteSpace(pair.Home?.PlayerName) ? "" : pair.Home.PlayerName)</td>
                                     <td class="shootout-result">@(pair.Home is null ? "" : (pair.Home.Goal ? "✓" : "×"))</td>
                                     <td class="shootout-result">@(pair.Away is null ? "" : (pair.Away.Goal ? "✓" : "×"))</td>
-                                    <td class="shootout-player-name">@(string.IsNullOrWhiteSpace(pair.Away?.PlayerName) ? "" : pair.Away.PlayerName)</td>
                                     <td class="shootout-number">@(pair.Away?.Number ?? "")</td>
+                                    <td class="shootout-player-name">@(string.IsNullOrWhiteSpace(pair.Away?.PlayerName) ? "" : pair.Away.PlayerName)</td>
                                 </tr>
                             }
-                            @for (var i = GetShootoutPairs().Count(); i < 5; i++)
+                            @for (var i = GetShootoutPairs().Count(x => x.Round <= 5); i < 5; i++)
                             {
                                 <tr class="shootout-empty-row"><td>@(i + 1)</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                            }
+                            @if (GetShootoutPairs().Any(x => x.Round >= 6))
+                            {
+                                <tr class="shootout-sudden-separator"><td colspan="7"></td></tr>
+                                @foreach (var pair in GetShootoutPairs().Where(x => x.Round >= 6))
+                                {
+                                    <tr>
+                                        <td class="shootout-round">@pair.Round</td>
+                                        <td class="shootout-number">@(pair.Home?.Number ?? "")</td>
+                                        <td class="shootout-player-name">@(pair.Home?.PlayerName ?? "")</td>
+                                        <td class="shootout-result">@(pair.Home is null ? "" : (pair.Home.Goal ? "✓" : "×"))</td>
+                                        <td class="shootout-result">@(pair.Away is null ? "" : (pair.Away.Goal ? "✓" : "×"))</td>
+                                        <td class="shootout-number">@(pair.Away?.Number ?? "")</td>
+                                        <td class="shootout-player-name">@(pair.Away?.PlayerName ?? "")</td>
+                                    </tr>
+                                }
                             }
                         </tbody>
                     </table>
@@ -85,8 +108,12 @@
         </main>
 
         <footer class="shootout-footer">
-            <div class="shootout-footer-title"><span>ⓘ</span><strong>TIRI DI RIGORE</strong><small>Seleziona un giocatore: chi ha già tirato resta escluso fino al completamento del giro di tutti gli eleggibili.</small></div>
-            <div class="shootout-legend"><span><b class="ok">✓</b> = Rigore realizzato</span><span><b class="miss">×</b> = Rigore errato</span><span><b class="pending">⚽</b> = In attesa</span></div>
+            <button type="button" class="shootout-back" @onclick="Game.BackToMatchAfterShootout" disabled="@(!Game.State.ShootoutFinished)">← TORNA ALLA GARA</button>
+            <div class="shootout-footer-center">
+                <strong>@(Game.State.ShootoutFinished ? "GARA TERMINATA" : $"SELEZIONA IL GIOCATORE DELLA SQUADRA {(Game.ShootoutCurrentTeam == "A" ? "CASA" : "OSPITI")} PER IL PROSSIMO TIRO")</strong>
+                <small>@(Game.State.ShootoutFinished ? $"Serie finale: {Game.State.ShootoutScoreA:00} - {Game.State.ShootoutScoreB:00}" : "Chi ha già tirato resta escluso fino al completamento del giro di tutti gli eleggibili.")</small>
+            </div>
+            <button type="button" class="shootout-finish" @onclick="Game.OpenShootoutWinner" disabled="@(!Game.State.ShootoutFinished)">⚑ TERMINA SERIE RIGORI</button>
         </footer>
     }
     else
@@ -170,7 +197,14 @@
             <div class="mini-timer-label">CRONOMETRO</div>
             <div class="mini-timer-display">@GameService.FormatTime(Game.GetMiniTimerSeconds())</div>
         </div>
-<span class="status">@(Game.State.MatchFinished ? "GARA TERMINATA" : Game.State.Running ? "CRONOMETRO ATTIVO" : "PRONTA / FERMA")</span>
+@if (Game.State.MatchFinished)
+        {
+            <button type="button" class="status game-finished-close" @onclick="ExitApplication" title="Chiudi il progetto">GARA TERMINATA</button>
+        }
+        else
+        {
+            <span class="status">@(Game.State.Running ? "CRONOMETRO ATTIVO" : "PRONTA / FERMA")</span>
+        }
         </footer>
     }
 </div>
@@ -387,6 +421,24 @@
             <button class="shootout-cancel" @onclick="Game.CancelShootoutShot">ANNULLA</button>
         </div>
     </div></div>
+}
+
+@if (Game.ShowShootoutWinner)
+{
+    <div class="overlay shootout-winner-overlay">
+        <div class="shootout-winner-dialog">
+            <div class="shootout-winner-kicker">SERIE DEI RIGORI TERMINATA</div>
+            <div class="shootout-winner-title">GARA TERMINATA</div>
+            <div class="shootout-winner-score">@Game.State.ShootoutScoreA.ToString("00") <span>−</span> @Game.State.ShootoutScoreB.ToString("00")</div>
+            <div class="shootout-winner-label">SQUADRA VINCENTE</div>
+            <div class="shootout-winner-team">@Game.ShootoutWinnerName</div>
+            <p>La serie dei rigori è terminata. Il risultato è stato registrato nel Registro Gara.</p>
+            <div class="shootout-winner-actions">
+                <button type="button" class="primary" @onclick="PrintReferto">▣ APRI REFERTO FIGH</button>
+                <button type="button" @onclick="Game.CloseShootoutWinner">CHIUDI</button>
+            </div>
+        </div>
+    </div>
 }
 
 @if (Game.PendingYellow is not null)
