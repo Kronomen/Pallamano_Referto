@@ -5931,3 +5931,73 @@ html,body,#app{overflow:hidden!important;width:100%;height:100%;}
     min-height: 0 !important;
   }
 }
+
+/* v114 — iPad 11" landscape: proporzioni timer allineate al layout di riferimento.
+   Il contenitore giallo viene leggermente allargato mantenendo l'altezza compatta.
+   Il timer viene abbassato di pochi pixel senza spostare la fascia delle squadre. */
+@media (orientation: landscape) and (min-width: 900px) and (max-width: 1200px) {
+  .scorebar {
+    height: 112px !important;
+    min-height: 112px !important;
+    grid-template-columns: minmax(0,1fr) 68px 320px 68px minmax(0,1fr) !important;
+    gap: 5px !important;
+    margin: 3px 0 !important;
+    align-items: center !important;
+  }
+
+  .timer-yellow-panel {
+    width: 320px !important;
+    height: 112px !important;
+    min-height: 112px !important;
+    justify-self: center !important;
+    transform: translateY(4px) !important;
+    padding: 4px 8px !important;
+    grid-template-columns: 38px minmax(0,1fr) 38px !important;
+    grid-template-rows: 40px 28px 28px !important;
+    row-gap: 3px !important;
+    column-gap: 5px !important;
+  }
+
+  .timer-yellow-panel .clock-adjust-row {
+    height: 40px !important;
+    min-height: 40px !important;
+    grid-template-columns: 38px minmax(0,1fr) 38px !important;
+    gap: 5px !important;
+  }
+
+  .timer-yellow-panel .clock-adjust-row .clock-adjust {
+    width: 38px !important;
+    min-width: 38px !important;
+    max-width: 38px !important;
+    height: 28px !important;
+    min-height: 28px !important;
+    line-height: 28px !important;
+    font-size: 12px !important;
+  }
+
+  .timer-yellow-panel .clock-adjust-row .clock {
+    width: 100% !important;
+    height: 38px !important;
+    min-height: 38px !important;
+    font-size: 34px !important;
+  }
+
+  .timer-yellow-panel .timer-command-card {
+    height: 28px !important;
+    min-height: 28px !important;
+    padding: 1px 3px !important;
+  }
+
+  .timer-yellow-panel .timer-command-row {
+    height: 26px !important;
+    min-height: 26px !important;
+    gap: 5px !important;
+  }
+
+  .timer-yellow-panel .timer-command-button {
+    height: 26px !important;
+    min-height: 26px !important;
+    padding: 1px 5px !important;
+    font-size: 8.5px !important;
+  }
+}
