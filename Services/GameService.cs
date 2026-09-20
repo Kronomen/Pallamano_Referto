@@ -161,14 +161,36 @@ public sealed class GameService : IAsyncDisposable
                     !e.Text.Contains("3x2", StringComparison.OrdinalIgnoreCase));
                 if (previousTwos >= 2)
                 {
-                    // 3° 2' dello stesso giocatore: UNA SOLA RIGA nel Registro Gara.
-                    // L'evento corrente viene trasformato nella sanzione definitiva,
-                    // senza aggiungere un secondo evento separato.
-                    PendingEvent.Type = "RED";
-                    PendingEvent.Text = "ESCLUSIONE PER 3x2'";
+                    // 3° 2' dello stesso giocatore: nel Registro Gara devono
+                    // comparire DUE eventi distinti, con lo stesso tempo:
+                    // 1) il normale 2MIN della terza esclusione;
+                    // 2) la SQUALIFICA 3°x2', destinata alla colonna SQ del referto.
+                    // La terza esclusione resta quindi una vera esclusione di 2',
+                    // mentre la squalifica è un evento separato e non aggiunge
+                    // un secondo countdown.
+                    PendingEvent.Type = "TWO";
+                    PendingEvent.Text = "ESCLUSIONE 2 MINUTI";
                     PendingEvent.SuspensionStartSeconds = State.TimerSeconds;
                     PendingEvent.SuspensionEndSeconds = State.TimerSeconds + 120;
                     PendingEvent.Result = ScoreText();
+
+                    var squalifica = new EventRecord
+                    {
+                        Time = PendingEvent.Time,
+                        Team = team,
+                        Number = numberLabel,
+                        Type = "SQ_3X2",
+                        Text = "SQUALIFICA 3°x2'",
+                        Result = PendingEvent.Result
+                    };
+
+                    // Inserimento prima del 2MIN: con il Registro visualizzato
+                    // dall'evento più recente al meno recente, i due eventi
+                    // appariranno nell'ordine 2MIN -> SQUALIFICA 3°x2'.
+                    var pendingIndex = State.Events.IndexOf(PendingEvent);
+                    if (pendingIndex >= 0) State.Events.Insert(pendingIndex, squalifica);
+                    else State.Events.Add(squalifica);
+
                     StopClockForDisciplinary();
                     FinishPendingEvent();
                     return true;
@@ -282,7 +304,13 @@ public sealed class GameService : IAsyncDisposable
         if (index < 0 || index >= State.Events.Count) return false;
 
         var ev = State.Events[index];
-        if (ev.Type == "SYSTEM" || ev.Type is "SHOOTOUT_GOAL" or "SHOOTOUT_MISS") return false;
+        if (ev.Type == "SYSTEM" || ev.Type is "SHOOTOUT_GOAL" or "SHOOTOUT_MISS" or "SQ_3X2") return false;
+
+        var oldTime = ev.Time;
+        var oldTeam = ev.Team;
+        var oldNumber = ev.Number;
+        var wasThreeByTwo = ev.Type == "TWO" && State.Events.Any(e =>
+            e.Type == "SQ_3X2" && e.Team == oldTeam && e.Number == oldNumber && e.Time == oldTime);
 
         var parsedTime = ParseTime(time.Trim());
         if (parsedTime < 0 || parsedTime > GetCurrentPeriodEndSeconds()) return false;
@@ -304,13 +332,11 @@ public sealed class GameService : IAsyncDisposable
         // verificare che la nuova sanzione continui a rispettare le regole della gara.
         if (!IsEditedDisciplineValid(index, parsedTime, team, number, type)) return false;
 
-        // La terza esclusione (3x2') è una proprietà del nuovo evento, non del
-        // vecchio evento che stiamo modificando. Questo è importante quando si cambia
-        // anche giocatore: una RED/3x2 modificata su un giocatore diverso deve diventare
-        // ESPULSIONE DIRETTA se quel giocatore non ha già due esclusioni precedenti.
+        // La terza esclusione resta TWO e viene affiancata da un evento SQ_3X2.
+        // Una RED scelta dall'operatore resta invece una espulsione diretta.
         var isStaff = IsStaffIdentifier(number);
         var previousTwo = isStaff ? 0 : CountPreviousTwo(index, parsedTime, team, number, includeStaff: false);
-        var becomesThreeByTwo = !isStaff && previousTwo >= 2 && (type is "TWO" or "RED");
+        var becomesThreeByTwo = !isStaff && previousTwo >= 2 && type == "TWO";
 
         // Snapshot = la modifica è annullabile con UNDO, esattamente come un nuovo evento.
         Snapshot();
@@ -318,12 +344,32 @@ public sealed class GameService : IAsyncDisposable
         ev.Time = FormatTime(parsedTime);
         ev.Team = team;
         ev.Number = number;
-        ev.Type = becomesThreeByTwo ? "RED" : type;
-        ev.Text = becomesThreeByTwo
-            ? "ESCLUSIONE PER 3x2'"
-            : EventDescription(type);
+        ev.Type = type;
+        ev.Text = EventDescription(type);
         ev.SuspensionStartSeconds = ev.Type is "TWO" or "RED" ? parsedTime : null;
         ev.SuspensionEndSeconds = ev.Type is "TWO" or "RED" ? parsedTime + 120 : null;
+
+        // Se l'evento era la terza esclusione, aggiorniamo o rimuoviamo la
+        // relativa riga SQ in modo che resti sempre sincronizzata con il 2MIN.
+        var oldSq = State.Events.FirstOrDefault(e => e.Type == "SQ_3X2" &&
+            e.Team == oldTeam && e.Number == oldNumber && e.Time == oldTime);
+        if (oldSq is not null) State.Events.Remove(oldSq);
+
+        if (becomesThreeByTwo)
+        {
+            var sq = new EventRecord
+            {
+                Time = ev.Time,
+                Team = team,
+                Number = number,
+                Type = "SQ_3X2",
+                Text = "SQUALIFICA 3°x2'",
+                Result = ev.Result
+            };
+            var currentIndex = State.Events.IndexOf(ev);
+            if (currentIndex >= 0) State.Events.Insert(currentIndex, sq);
+            else State.Events.Add(sq);
+        }
 
 
         // La modifica può cambiare completamente la natura dell'evento (es. GOAL ->
@@ -392,7 +438,21 @@ public sealed class GameService : IAsyncDisposable
         if (index < 0 || index >= State.Events.Count) return false;
         if (State.Events[index].Type == "SYSTEM") return false;
         Snapshot();
+        var removed = State.Events[index];
         State.Events.RemoveAt(index);
+
+        // La riga SQ_3X2 è inseparabile dalla terza esclusione 2MIN.
+        // Eliminando il 3° 2' viene quindi eliminata anche la relativa squalifica.
+        if (removed.Type == "TWO")
+        {
+            var pairedSq = State.Events.FirstOrDefault(e =>
+                e.Type == "SQ_3X2" &&
+                e.Team == removed.Team &&
+                e.Number == removed.Number &&
+                e.Time == removed.Time);
+            if (pairedSq is not null) State.Events.Remove(pairedSq);
+        }
+
         RecalculateRegistry();
         Notify();
         return true;
