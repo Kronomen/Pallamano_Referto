@@ -390,9 +390,12 @@
                 <p>Confermare la fine del periodo</p>
                 <div class="period-end-actions-top">
                     <button type="button" class="period-end-referto" @onclick="PrintReferto">▣&nbsp; APRI REFERTO FIGH</button>
-                    <button type="button" class="period-end-exit" @onclick="ExitApplication">⇱&nbsp; ESCI DAL PROGETTO</button>
+                    @if (Game.State.Phase > 1)
+                    {
+                        <button type="button" class="period-end-exit" @onclick="ExitApplication">⇱&nbsp; ESCI DAL PROGETTO</button>
+                    }
                 </div>
-                <button type="button" class="period-end-close" @onclick="Game.ClosePeriodDialog">CHIUDI</button>
+                <button type="button" class="period-end-close" @onclick="Game.ClosePeriodDialog">@(Game.State.Phase == 1 ? "INIZIA 2° TEMPO" : "CONFERMA")</button>
             </div>
         </div>
     </div>

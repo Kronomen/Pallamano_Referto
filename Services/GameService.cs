@@ -503,119 +503,117 @@ public sealed class GameService : IAsyncDisposable
 
     public void FinishCurrentPeriod()
     {
-        if (State.Phase is < 1 or > 6 || State.MatchFinished) return;
-        StopClock(); State.TimerSeconds = GetCurrentPeriodEndSeconds();
+        if (State.Phase is < 1 or > 6 || State.MatchFinished || State.ShootoutStarted) return;
+        StopClock();
+        State.TimerSeconds = GetCurrentPeriodEndSeconds();
         State.PhaseScores[State.Phase] = ScoreText();
-        AddSystemEvent($"FINE {PhaseName(State.Phase)}"); PeriodStartConfirmed = false; ShowPeriodEnd = true; Notify();
+        AddSystemEvent($"FINE {PhaseName(State.Phase)}");
+        PeriodStartConfirmed = false;
+        ShowPeriodEnd = true;
+        Notify();
     }
 
-    public void ClosePeriodDialog() { ShowPeriodEnd = false; Notify(); }
+    public void ClosePeriodDialog()
+    {
+        // Nel flusso gara il pulsante CHIUDI del popup di fine periodo equivale
+        // alla conferma del passaggio successivo. In particolare, al termine del
+        // 1° tempo porta SEMPRE al 2° tempo; non può mai chiudere la gara.
+        if (ShowPeriodEnd && !State.MatchFinished && !State.ShootoutStarted)
+        {
+            NextPeriod();
+            return;
+        }
+        ShowPeriodEnd = false;
+        Notify();
+    }
 
+    // Sequenza gara allineata alle regole del precedente Referto HTML:
+    // 1) fine 1° tempo -> SEMPRE 2° tempo;
+    // 2) fine 2° tempo STANDARD -> gara terminata (vittoria o pareggio);
+    // 3) SUPPLEMENTARI -> solo in caso di parità si prosegue con 1°/2° TS,
+    //    poi 3°/4° TS e infine rigori se la parità persiste;
+    // 4) al termine del 2° o del 4° TS un vantaggio chiude immediatamente la gara;
+    // 5) al termine del 4° TS una parità porta ai rigori.
     public bool NextPeriod()
     {
-        if (PeriodStartConfirmed || State.MatchFinished) return false;
+        if (PeriodStartConfirmed || State.MatchFinished || State.ShootoutStarted) return false;
+
         ShowPeriodEnd = false;
 
-        // REGOLA FONDAMENTALE: il 1° tempo non determina mai la fine della gara.
-        // Dopo il 1° tempo si passa SEMPRE al 2° tempo, indipendentemente dalla
-        // modalità selezionata in configurazione.
-        if (State.Phase == 1)
+        switch (State.Phase)
         {
-            StartPeriod(2);
-            return true;
-        }
-
-        // Al termine del 2° tempo la modalità configurata decide il percorso.
-        // STANDARD: vantaggio -> vittoria; parità -> pareggio e fine gara.
-        // RIGORI: vantaggio -> vittoria; parità -> serie dei rigori.
-        // SUPPLEMENTARI: vantaggio -> vittoria; parità -> 1° supplementare.
-        if (State.Phase == 2)
-        {
-            if (State.ScoreA != State.ScoreB)
-            {
-                FinishMatch(false);
+            case 1:
+                // Il 1° tempo NON può mai chiudere la gara, qualunque sia il risultato
+                // e qualunque modalità sia stata scelta in configurazione.
+                StartPeriod(2);
                 return true;
-            }
 
-            if (State.MatchMode == "STANDARD")
-            {
-                FinishMatch(true);
+            case 2:
+                if (State.MatchMode == "STANDARD")
+                {
+                    FinishMatch(State.ScoreA == State.ScoreB);
+                    return true;
+                }
+
+                if (State.MatchMode == "RIGORI")
+                {
+                    if (State.ScoreA != State.ScoreB)
+                    {
+                        FinishMatch(false);
+                    }
+                    else
+                    {
+                        PrepareShootoutStart();
+                    }
+                    return true;
+                }
+
+                // Modalità CON SUPPLEMENTARI: se il 2° tempo è già deciso,
+                // la gara termina; solo la parità porta ai supplementari.
+                if (State.ScoreA != State.ScoreB)
+                {
+                    FinishMatch(false);
+                    return true;
+                }
+
+                StartPeriod(3);
                 return true;
-            }
 
-            if (State.MatchMode == "RIGORI")
-            {
+            case 3:
+                // 1° tempo supplementare: si conclude solo se si arriva alla fine
+                // del periodo e poi si passa al 2° TS. Il vantaggio non chiude ancora.
+                StartPeriod(4);
+                return true;
+
+            case 4:
+                // 2° TS: vantaggio = vittoria; parità = 3° TS.
+                if (State.ScoreA != State.ScoreB)
+                {
+                    FinishMatch(false);
+                    return true;
+                }
+                StartPeriod(5);
+                return true;
+
+            case 5:
+                // 3° TS: si passa sempre al 4° TS; la decisione finale avviene
+                // alla fine del 4° TS.
+                StartPeriod(6);
+                return true;
+
+            case 6:
+                // 4° TS: vantaggio = vittoria; parità = tiri di rigore.
+                if (State.ScoreA != State.ScoreB)
+                {
+                    FinishMatch(false);
+                    return true;
+                }
                 PrepareShootoutStart();
                 return true;
-            }
 
-            // CON SUPPLEMENTARI: la parità dopo il 2° tempo porta al 1°
-            // supplementare. I supplementari sono quattro periodi distinti da 5'.
-            StartPeriod(3);
-            return true;
+            default:
+                return false;
         }
-
-        // 1° supplementare (fase 3):
-        // vantaggio -> fine gara; parità -> 2° supplementare.
-        if (State.Phase == 3)
-        {
-            if (State.ScoreA != State.ScoreB)
-            {
-                FinishMatch(false);
-                return true;
-            }
-
-            StartPeriod(4);
-            return true;
-        }
-
-        // 2° supplementare (fase 4): QUESTA È LA REGOLA CHE DEVE ESSERE
-        // RISPETTATA ESPRESSAMENTE.
-        // Se una squadra è in vantaggio, la gara FINISCE immediatamente con
-        // popup di vittoria, predisposizione del referto finale e uscita.
-        // Se il risultato è esattamente pari, NON finisce: si continua con
-        // il 3° supplementare.
-        if (State.Phase == 4)
-        {
-            if (State.ScoreA != State.ScoreB)
-            {
-                FinishMatch(false);
-                return true;
-            }
-
-            StartPeriod(5);
-            return true;
-        }
-
-        // 3° supplementare (fase 5):
-        // vantaggio -> fine gara; parità -> 4° supplementare.
-        if (State.Phase == 5)
-        {
-            if (State.ScoreA != State.ScoreB)
-            {
-                FinishMatch(false);
-                return true;
-            }
-
-            StartPeriod(6);
-            return true;
-        }
-
-        // 4° supplementare (fase 6):
-        // vantaggio -> fine gara; parità -> tiri di rigore.
-        if (State.Phase == 6)
-        {
-            if (State.ScoreA == State.ScoreB)
-            {
-                PrepareShootoutStart();
-                return true;
-            }
-
-            FinishMatch(false);
-            return true;
-        }
-
-        return false;
     }
 
     private void StartPeriod(int phase)
