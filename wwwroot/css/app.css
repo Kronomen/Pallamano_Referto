@@ -5757,3 +5757,82 @@ html,body,#app{overflow:hidden!important;width:100%;height:100%;}
     font-size: 37px !important;
   }
 }
+
+/* v113 — iPad 11 landscape: timer più compatto e pannelli gara più alti.
+   Riduce solo l'altezza della fascia superiore; la logica del cronometro resta invariata. */
+@media (orientation: landscape) and (min-width: 900px) and (max-width: 1200px) {
+  .scorebar {
+    height: 112px !important;
+    min-height: 112px !important;
+    grid-template-columns: minmax(0,1fr) 68px 190px 68px minmax(0,1fr) !important;
+    gap: 5px !important;
+    margin: 3px 0 !important;
+  }
+
+  .timer-yellow-panel {
+    height: 112px !important;
+    min-height: 112px !important;
+    padding: 4px 6px !important;
+    grid-template-rows: 40px 28px 28px !important;
+    row-gap: 3px !important;
+    column-gap: 4px !important;
+  }
+
+  .timer-yellow-panel .clock-adjust-row {
+    height: 40px !important;
+    min-height: 40px !important;
+    grid-template-columns: 34px minmax(0,1fr) 34px !important;
+    gap: 4px !important;
+  }
+
+  .timer-yellow-panel .clock-adjust-row .clock-adjust {
+    width: 34px !important;
+    min-width: 34px !important;
+    height: 27px !important;
+    min-height: 27px !important;
+    line-height: 27px !important;
+    font-size: 12px !important;
+  }
+
+  .timer-yellow-panel .clock-adjust-row .clock {
+    height: 38px !important;
+    min-height: 38px !important;
+    font-size: 34px !important;
+  }
+
+  .timer-yellow-panel .timer-command-card {
+    height: 28px !important;
+    min-height: 28px !important;
+    padding: 1px 3px !important;
+  }
+
+  .timer-yellow-panel .timer-command-row {
+    height: 26px !important;
+    min-height: 26px !important;
+    gap: 4px !important;
+  }
+
+  .timer-yellow-panel .timer-command-button {
+    height: 26px !important;
+    min-height: 26px !important;
+    padding: 1px 4px !important;
+    font-size: 8px !important;
+  }
+
+  .timer-yellow-panel .match-timeout-countdown {
+    font-size: 9px !important;
+    line-height: 1 !important;
+  }
+
+  .team-name-box,
+  .team-points-box {
+    height: 70px !important;
+    align-self: center !important;
+  }
+
+  /* I pannelli squadra e il Registro Gara sfruttano tutto lo spazio liberato. */
+  .three-columns {
+    margin-top: 0 !important;
+    min-height: 0 !important;
+  }
+}
