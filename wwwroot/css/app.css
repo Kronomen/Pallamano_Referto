@@ -6001,3 +6001,51 @@ html,body,#app{overflow:hidden!important;width:100%;height:100%;}
     font-size: 8.5px !important;
   }
 }
+
+
+/* v123 — iPad 11" landscape: correzione proporzioni Registro Gara e numero giocatore.
+   Sq deve contenere solo A/B; Evento deve avere la maggior parte della larghezza.
+   Il numero giocatore viene ulteriormente ridotto per lasciare spazio a G/7m/2. */
+@media (orientation: landscape) and (min-width: 900px) and (max-width: 1300px) {
+  /* Registro Gara: Tempo | Sq | N. | Evento | Ris. */
+  .log-panel .event-list .event-row {
+    grid-template-columns: 36px 24px 28px minmax(0, 1fr) 38px !important;
+    column-gap: 3px !important;
+    padding-left: 2px !important;
+    padding-right: 2px !important;
+  }
+
+  .log-panel .event-list .event-team-cell {
+    width: 24px !important;
+    min-width: 24px !important;
+    max-width: 24px !important;
+  }
+
+  .log-panel .event-list .event-description {
+    min-width: 0 !important;
+    width: 100% !important;
+    font-size: 7.5px !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: clip !important;
+  }
+
+  /* Numero giocatore più piccolo: più spazio per G 0 / 7m 0 / 2 0/3. */
+  .team-panel .player-grid .player-card {
+    grid-template-columns: 26px minmax(0, 1fr) !important;
+    gap: 3px !important;
+  }
+
+  .team-panel .player-grid .player-card > .number {
+    width: 24px !important;
+    height: 24px !important;
+    min-width: 24px !important;
+    min-height: 24px !important;
+    max-width: 24px !important;
+    max-height: 24px !important;
+    line-height: 24px !important;
+    font-size: 13px !important;
+    border-radius: 4px !important;
+  }
+}
