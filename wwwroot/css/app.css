@@ -6049,3 +6049,67 @@ html,body,#app{overflow:hidden!important;width:100%;height:100%;}
     border-radius: 4px !important;
   }
 }
+
+/* v124 — iPad 11" landscape: più spazio alle squadre e Registro Gara più stretto.
+   Il Registro mantiene spazio sufficiente per le descrizioni (es. ESCLUSIONE 2 MINUTI),
+   mentre le schede giocatore vengono allargate per mostrare G / 7m / A / 2' / E. */
+@media (orientation: landscape) and (min-width: 900px) and (max-width: 1300px) {
+  /* Colonne principali: squadre più larghe, registro centrale più compatto. */
+  .three-columns {
+    grid-template-columns: minmax(0, 1fr) minmax(270px, 0.52fr) minmax(0, 1fr) !important;
+    gap: 5px !important;
+  }
+
+  /* Registro Gara: Sq resta stretta (solo A/B), Evento usa lo spazio disponibile. */
+  .log-panel .event-list .event-row {
+    grid-template-columns: 34px 22px 24px minmax(0, 1fr) 34px !important;
+    column-gap: 2px !important;
+    padding-left: 2px !important;
+    padding-right: 2px !important;
+  }
+
+  .log-panel .event-list .event-team-cell {
+    width: 22px !important;
+    min-width: 22px !important;
+    max-width: 22px !important;
+  }
+
+  .log-panel .event-list .event-description {
+    min-width: 0 !important;
+    width: 100% !important;
+    font-size: 8.5px !important;
+    line-height: 1.05 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: clip !important;
+  }
+
+  /* Schede giocatore: il numero occupa ancora meno spazio e la parte statistiche si allarga. */
+  .team-panel .player-grid .player-card {
+    grid-template-columns: 24px minmax(0, 1fr) !important;
+    gap: 3px !important;
+    padding: 3px !important;
+  }
+
+  .team-panel .player-grid .player-card > .number {
+    width: 22px !important;
+    height: 22px !important;
+    min-width: 22px !important;
+    min-height: 22px !important;
+    max-width: 22px !important;
+    max-height: 22px !important;
+    line-height: 22px !important;
+    font-size: 12px !important;
+    border-radius: 4px !important;
+  }
+
+  .team-panel .player-grid .player-card .player-indicators {
+    gap: 2px !important;
+  }
+
+  .team-panel .player-grid .player-card .player-indicators .stat-item {
+    font-size: 6px !important;
+    padding-left: 2px !important;
+    padding-right: 2px !important;
+  }
+}
