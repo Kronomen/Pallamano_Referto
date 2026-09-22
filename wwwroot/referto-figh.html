@@ -1190,6 +1190,8 @@ function integraRetiDaEventi(lista, squadra){
         const num = String(
             e.num ??
             e.numero ??
+            e.number ??
+            e.Number ??
             ""
         ).trim();
 
@@ -1562,14 +1564,44 @@ function caricaReferto(){
     // 7 METRI
     //------------------------------------------------
 
+// 7 METRI DURANTE LA GARA: ricostruzione direttamente dagli eventi
+// del Registro Gara. Sono esclusi i rigori finali (SHOOTOUT_*).
+const eventi7m = Array.isArray(partita.eventi) ? partita.eventi : [];
+let tiriA7 = 0, retiA7 = 0, tiriB7 = 0, retiB7 = 0;
+
+eventi7m.forEach(ev => {
+    const team = String(ev.Team ?? ev.team ?? "").trim().toUpperCase();
+    const type = String(ev.Type ?? ev.type ?? "").trim().toUpperCase();
+    const text = String(ev.Text ?? ev.text ?? "").trim().toUpperCase();
+
+    // Compatibilità anche con le vecchie diciture del registro.
+    const realizzato =
+        type === "PENALTY_GOAL" ||
+        type === "RIGORE_GOAL" ||
+        /7\s*M\s*(GOAL|RETE)|RIGORE\s*(REALIZZATO|GOAL)/i.test(text);
+
+    const errato =
+        type === "PENALTY_MISS" ||
+        type === "RIGORE_ERRATO" ||
+        /7\s*M\s*(MISS|ERRATO)|RIGORE\s*(ERRATO|SBAGLIATO)/i.test(text);
+
+    if(team === "A" && (realizzato || errato)){
+        tiriA7++;
+        if(realizzato) retiA7++;
+    }
+    if(team === "B" && (realizzato || errato)){
+        tiriB7++;
+        if(realizzato) retiB7++;
+    }
+});
+
+// Se non ci sono eventi disponibili, manteniamo il dato già preparato
+// dalla pagina principale.
 risultati.setteMetri = {
-
-    tiriA : partita.penaltyTotalA ?? 0,
-    retiA : partita.penaltyScoredA ?? 0,
-
-    tiriB : partita.penaltyTotalB ?? 0,
-    retiB : partita.penaltyScoredB ?? 0
-
+    tiriA : eventi7m.length ? tiriA7 : (partita.penaltyTotalA ?? 0),
+    retiA : eventi7m.length ? retiA7 : (partita.penaltyScoredA ?? 0),
+    tiriB : eventi7m.length ? tiriB7 : (partita.penaltyTotalB ?? 0),
+    retiB : eventi7m.length ? retiB7 : (partita.penaltyScoredB ?? 0)
 };
     //------------------------------------------------
     // TIME OUT
@@ -1909,11 +1941,12 @@ ${finaleA}&nbsp;-&nbsp;${finaleB}
     // 7 METRI
     //------------------------------------------------
 
+    // 7 metri durante la gara: nel referto FIGH la statistica è TIRI/RETI.
     document.getElementById("rigStatA").textContent =
-        risultati.setteMetri.retiA + "/" + risultati.setteMetri.tiriA;
+        risultati.setteMetri.tiriA + "/" + risultati.setteMetri.retiA;
 
     document.getElementById("rigStatB").textContent =
-        risultati.setteMetri.retiB + "/" + risultati.setteMetri.tiriB;
+        risultati.setteMetri.tiriB + "/" + risultati.setteMetri.retiB;
 
     //------------------------------------------------
     // TIME OUT

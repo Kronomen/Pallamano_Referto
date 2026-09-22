@@ -103,7 +103,7 @@ window.stampaReferto = (d) => {
       const directRed = mine.find(e => e.Type === "RED" && !isThreeByTwoText(e.Text));
       const goals = mine.filter(e =>
         e.Type === "GOAL" || e.Type === "PENALTY_GOAL" || e.Type === "RETE" ||
-        /^(GOAL|7M\s*GOAL|RETE)/i.test(e.Text)
+        /^(GOAL|7M\s*GOAL|7M\s*RETE|RETE)/i.test(e.Text)
       ).length;
       return {
         num, name: value(p, "name", "Name", ""), goals,
