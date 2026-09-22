@@ -10,7 +10,6 @@
     <title>Referto Pallamano</title>
     <link href="css/app.css" rel="stylesheet" />
     <link rel="icon" href="images/FIGH.png" />
-    <script src="js/cartellino.js"></script>
 </head>
 <body>
     <!-- SCHERMATA INIZIALE: replica della pagina index fornita -->
@@ -65,170 +64,6 @@
     <script src="_framework/blazor.webassembly.js"></script>
 
 
-
-<script id="referto-figh-project-override">
-/*
- * REFERTO FIGH INTEGRATO NEL PROGETTO.
- * Il layout e la struttura sono quelli del modello RefertoFIGH_v2x(2).html.
- * I dati della gara vengono preparati qui e letti dal referto-figh.html.
- */
-window.stampaReferto = (d) => {
-  try {
-    // Blazor serializza le proprietà C# in camelCase. Accettiamo anche
-    // PascalCase per mantenere compatibilità con eventuali versioni precedenti.
-    const value = (obj, lower, upper, fallback = "") =>
-      obj?.[lower] ?? obj?.[upper] ?? fallback;
-
-    const events = (d.events || []).map(e => ({
-      Time: String(value(e, "time", "Time", "")),
-      Team: String(value(e, "team", "Team", "")).trim().toUpperCase(),
-      Number: String(value(e, "number", "Number", "")).trim(),
-      Type: String(value(e, "type", "Type", "")).trim().toUpperCase(),
-      Text: String(value(e, "text", "Text", "")),
-      Result: String(value(e, "result", "Result", "")),
-      SuspensionStartSeconds: value(e, "suspensionStartSeconds", "SuspensionStartSeconds", null)
-    }));
-
-    const isThreeByTwoText = (text) => {
-      const t = String(text ?? "").toUpperCase().replace(/\s+/g, "").replace(/[°'’]/g, "");
-      return /3[X×]2/.test(t);
-    };
-
-    const makePlayers = (players, team) => (players || []).map(p => {
-      const num = String(value(p, "label", "Label", value(p, "number", "Number", ""))).trim();
-      const mine = events.filter(e => e.Team === team && e.Number === num);
-      const yellow = mine.find(e => e.Type === "YELLOW");
-      const regularTwos = mine.filter(e => e.Type === "TWO" && !isThreeByTwoText(e.Text));
-      const thirdTwo = mine.find(e => (e.Type === "RED" || e.Type === "TWO") && isThreeByTwoText(e.Text));
-      const directRed = mine.find(e => e.Type === "RED" && !isThreeByTwoText(e.Text));
-      const goals = mine.filter(e =>
-        e.Type === "GOAL" || e.Type === "PENALTY_GOAL" || e.Type === "RETE" ||
-        /^(GOAL|7M\s*GOAL|7M\s*RETE|RETE)/i.test(e.Text)
-      ).length;
-      return {
-        num, name: value(p, "name", "Name", ""), goals,
-        yellowTime: yellow?.Time || "",
-        susp1Time: regularTwos[0]?.Time || "",
-        susp2Time: regularTwos[1]?.Time || "",
-        susp3Time: thirdTwo?.Time || "",
-        suspensions: regularTwos.length + (thirdTwo ? 1 : 0),
-        directRedTime: directRed?.Time || "",
-        directRedSanction: directRed ? "SQ" : "",
-        thirdTwoSanction: thirdTwo ? "3x2'" : ""
-      };
-    });
-
-    const makeOfficials = (staff, team) => (staff || []).map(s => {
-      const letter = String(value(s, "letter", "Letter", "")).trim().toUpperCase();
-      const mine = events.filter(e => e.Team === team && e.Number === letter);
-      const yellow = mine.find(e => e.Type === "YELLOW");
-      const two = mine.find(e => e.Type === "TWO");
-      const red = mine.find(e => e.Type === "RED");
-      return {
-        num: letter,
-        role: letter,
-        name: value(s, "name", "Name", ""),
-        yellowTime: yellow?.Time || "",
-        susp1Time: two?.Time || "",
-        red: !!red,
-        redTime: red?.Time || "",
-        sanction: red ? (/3\s*[Xx×]\s*2|3x2/i.test(red.Text) ? "3x2'" : "") : ""
-      };
-    });
-
-    // TIME-OUT: ricostruzione direttamente dal Registro Gara.
-    // Usiamo sia il tipo evento sia il testo, così il dato non va perso
-    // anche se una versione precedente del registro ha serializzato
-    // "TIME OUT" nel campo Text invece di Type.
-    const timeoutList = team => events
-      .filter(e => {
-        if (e.Team !== team) return false;
-        const type = String(e.Type || "").trim().toUpperCase();
-        const text = String(e.Text || "").trim().toUpperCase().replace(/[.]/g, "");
-        return ["TIMEOUT", "T.O", "TO", "TIME OUT"].includes(type) ||
-               text === "TIME OUT" || text === "TIMEOUT" || text === "T.O" || text === "TO";
-      })
-      .map(e => e.Time || "")
-      .filter(Boolean);
-
-    // I 7 metri sono ricostruiti direttamente dal Registro Gara.
-    // I tiri di rigore finali hanno tipi SHOOTOUT_* e quindi non entrano qui.
-    const penaltyAttempts = events.filter(e => e.Type === "PENALTY_GOAL" || e.Type === "PENALTY_MISS");
-    const penaltyTotalA = penaltyAttempts.filter(e => e.Team === "A").length;
-    const penaltyScoredA = penaltyAttempts.filter(e => e.Team === "A" && e.Type === "PENALTY_GOAL").length;
-    const penaltyTotalB = penaltyAttempts.filter(e => e.Team === "B").length;
-    const penaltyScoredB = penaltyAttempts.filter(e => e.Team === "B" && e.Type === "PENALTY_GOAL").length;
-
-    const phase = d.phaseScores || {};
-    const scoreOf = key => phase[key] ?? "0-0";
-    const splitScore = value => {
-      const m = String(value ?? "0-0").match(/(-?\d+)\s*[-–]\s*(-?\d+)/);
-      return m ? { A:Number(m[1]), B:Number(m[2]) } : {A:0,B:0};
-    };
-    const p1 = splitScore(scoreOf("1"));
-    const p2 = splitScore(scoreOf("2"));
-    const p3 = splitScore(scoreOf("3"));
-    const p4 = splitScore(scoreOf("4"));
-
-    const partita = {
-      league: d.championship || "",
-      group: d.group || "",
-      matchNumber: d.matchNumber || "",
-      teamA: d.casa || "",
-      teamB: d.ospiti || "",
-      city: d.city || "",
-      venue: d.venue || "",
-      matchDate: d.date || "",
-      season: d.season || "",
-      referee1: d.referee1 || "",
-      referee2: d.referee2 || "",
-      delegate1: d.delegate1 || "",
-      delegate2: d.delegate2 || "",
-      currentRosterA: { players: makePlayers(d.playersA, "A"), officials: makeOfficials(d.staffA, "A") },
-      currentRosterB: { players: makePlayers(d.playersB, "B"), officials: makeOfficials(d.staffB, "B") },
-      eventi: events,
-      finalScoreA: Number(d.scoreA || 0),
-      finalScoreB: Number(d.scoreB || 0),
-      firstHalfScoreA: p1.A,
-      firstHalfScoreB: p1.B,
-      secondHalfScoreA: p2.A,
-      secondHalfScoreB: p2.B,
-      overtime2ScoreA: p3.A,
-      overtime2ScoreB: p3.B,
-      overtime4ScoreA: p4.A,
-      overtime4ScoreB: p4.B,
-      penaltyTotalA,
-      penaltyScoredA,
-      penaltyTotalB,
-      penaltyScoredB,
-      timeoutsA: { firstTime: timeoutList("A")[0] || "", secondTime: timeoutList("A")[1] || "", thirdTime: timeoutList("A")[2] || "" },
-      timeoutsB: { firstTime: timeoutList("B")[0] || "", secondTime: timeoutList("B")[1] || "", thirdTime: timeoutList("B")[2] || "" },
-      penaltyShootout: { scoreA: Number(d.shootoutScoreA || 0), scoreB: Number(d.shootoutScoreB || 0) },
-      rigoriFinali: { A: Number(d.shootoutScoreA || 0), B: Number(d.shootoutScoreB || 0) },
-      risultati: {
-        primoTempo: { A:p1.A, B:p1.B },
-        secondoTempo: { A:p2.A, B:p2.B },
-        primoSupplementare: { A:p3.A, B:p3.B },
-        secondoSupplementare: { A:p4.A, B:p4.B },
-        finale: { A:Number(d.scoreA || 0), B:Number(d.scoreB || 0) },
-        rigoriFinali: { A:Number(d.shootoutScoreA || 0), B:Number(d.shootoutScoreB || 0) }
-      }
-    };
-
-    localStorage.setItem("RefertoFIGH", JSON.stringify(partita));
-    const w = window.open("referto-figh.html", "_blank");
-    if (!w) {
-      alert("Impossibile aprire il referto. Consenti le finestre popup per il referto.");
-      return;
-    }
-    w.focus();
-  } catch (err) {
-    console.error("Errore apertura Referto FIGH:", err);
-    alert("Errore durante la preparazione del Referto FIGH.");
-  }
-};
-</script>
-
 </body>
 </html>
 <script>
@@ -239,7 +74,117 @@ window.refertoDownload = (filename, text) => {
 };
 </script>
 
+<script>
+window.stampaReferto = (d) => {
+  // Il progetto utilizza direttamente il referto HTML ufficiale fornito come modello.
+  // I dati Blazor vengono convertiti nel formato atteso da RefertoFIGH.html e
+  // salvati nel localStorage condiviso dalla stessa origine.
+  try {
+    const partita = {
+      league: d.championship || '',
+      championship: d.championship || '',
+      group: d.group || '',
+      matchNumber: d.matchNumber || '',
+      matchDate: d.date || '',
+      matchTime: d.time || '',
+      teamA: d.casa || '',
+      teamB: d.ospiti || '',
+      city: d.city || '',
+      venue: d.venue || '',
+      season: d.season || '',
+      referee1: d.referee1 || '',
+      referee2: d.referee2 || '',
+      delegate1: d.delegate1 || '',
+      delegate2: d.delegate2 || '',
+      timekeeper: d.timekeeper || '',
+      secretary: d.secretary || '',
+      finalScoreA: Number(d.scoreA || 0),
+      finalScoreB: Number(d.scoreB || 0),
+      scoreA: Number(d.scoreA || 0),
+      scoreB: Number(d.scoreB || 0),
+      firstHalfScoreA: Number(d.firstHalfScoreA || 0),
+      firstHalfScoreB: Number(d.firstHalfScoreB || 0),
+      secondHalfScoreA: Number(d.secondHalfScoreA || 0),
+      secondHalfScoreB: Number(d.secondHalfScoreB || 0),
+      overtime2ScoreA: Number(d.overtime2ScoreA || 0),
+      overtime2ScoreB: Number(d.overtime2ScoreB || 0),
+      overtime4ScoreA: Number(d.overtime4ScoreA || 0),
+      overtime4ScoreB: Number(d.overtime4ScoreB || 0),
+      penaltyTotalA: Number(d.penaltyTotalA || 0),
+      penaltyTotalB: Number(d.penaltyTotalB || 0),
+      penaltyScoredA: Number(d.penaltyScoredA || 0),
+      penaltyScoredB: Number(d.penaltyScoredB || 0),
+      penaltyShootout: {
+        scoreA: Number(d.shootoutScoreA || 0),
+        scoreB: Number(d.shootoutScoreB || 0)
+      },
+      timeoutsA: d.timeoutsA || {},
+      timeoutsB: d.timeoutsB || {},
+      currentRosterA: {
+        players: (d.playersA || []).map(p => ({
+          num: String(p.label ?? p.number ?? ''),
+          number: String(p.label ?? p.number ?? ''),
+          name: p.name || '',
+          active: p.active !== false,
+          goals: Number(p.goals || 0)
+        })),
+        officials: (d.staffA || []).map(p => ({
+          lettera: p.letter || '',
+          num: p.letter || '',
+          name: p.name || '',
+          role: p.role || ''
+        }))
+      },
+      currentRosterB: {
+        players: (d.playersB || []).map(p => ({
+          num: String(p.label ?? p.number ?? ''),
+          number: String(p.label ?? p.number ?? ''),
+          name: p.name || '',
+          active: p.active !== false,
+          goals: Number(p.goals || 0)
+        })),
+        officials: (d.staffB || []).map(p => ({
+          lettera: p.letter || '',
+          num: p.letter || '',
+          name: p.name || '',
+          role: p.role || ''
+        }))
+      },
+      eventi: (d.events || []).map(e => ({
+        time: e.Time || e.time || '',
+        squadra: e.Team || e.team || '',
+        numero: e.Number || e.number || '',
+        type: e.Type || e.type || '',
+        text: e.Text || e.text || '',
+        result: e.Result || e.result || ''
+      })),
+      events: (d.events || []).map(e => ({
+        time: e.Time || e.time || '',
+        squadra: e.Team || e.team || '',
+        numero: e.Number || e.number || '',
+        type: e.Type || e.type || '',
+        text: e.Text || e.text || '',
+        result: e.Result || e.result || ''
+      })),
+      shootout: d.shootout || []
+    };
 
+    localStorage.setItem('RefertoPallamano', JSON.stringify(partita));
+    localStorage.setItem('RefertoFIGH', JSON.stringify(partita));
+
+    const url = new URL('RefertoFIGH.html', document.baseURI).href;
+    const w = window.open(url, '_blank');
+    if (!w) {
+      alert('Il browser ha bloccato l’apertura del referto. Consenti i popup per questo sito.');
+      return;
+    }
+    try { w.focus(); } catch(e) {}
+  } catch (e) {
+    console.error('Errore apertura Referto FIGH', e);
+    alert('Impossibile aprire il Referto FIGH.');
+  }
+};
+</script>
 
 <script>
 window.apriCaricamentoExcel = (dotnetRef) => {

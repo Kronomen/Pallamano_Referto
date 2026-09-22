@@ -4,9 +4,6 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <OutputType>Exe</OutputType>
-    <!-- Evita la conversione Webcil dei DLL durante il build locale.
-         Alcune installazioni VS/.NET 10 possono fallire nella cartella tmp-webcil. -->
-    <WasmEnableWebcil>false</WasmEnableWebcil>
   </PropertyGroup>
 
   <ItemGroup>

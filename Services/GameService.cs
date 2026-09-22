@@ -3,8 +3,6 @@ using RefertoPallamano_Blazor.Models;
 
 namespace RefertoPallamano_Blazor.Services;
 
-public sealed record CardPrintRequest(string Squadra, string Numero, string TempoRientro, string Colore);
-
 public sealed class GameService : IAsyncDisposable
 {
     private CancellationTokenSource? _clockCts;
@@ -29,13 +27,6 @@ public sealed class GameService : IAsyncDisposable
     public string ShootoutWinnerName => State.ShootoutScoreA > State.ShootoutScoreB ? State.Casa.Name : State.Ospiti.Name;
     public bool CanEditEvents => !State.Running && State.TimeoutRemainingSeconds <= 0 && PendingEvent is null && !State.ShootoutStarted;
     public event Action? Changed;
-
-/// <summary>
-/// Richiesta di stampa del cartellino di esclusione 2 minuti.
-/// Il modello del cartellino è integrato nel progetto web e viene aperto
-/// direttamente dal browser, senza dipendere da un file HTML esterno.
-/// </summary>
-public event Action<CardPrintRequest>? CardPrintRequested;
 
     public void OpenConfiguration()
     {
@@ -171,44 +162,38 @@ public event Action<CardPrintRequest>? CardPrintRequested;
                 if (previousTwos >= 2)
                 {
                     // 3° 2' dello stesso giocatore: nel Registro Gara devono
-                    // comparire DUE eventi con lo stesso tempo:
+                    // comparire DUE eventi distinti, nello stesso identico secondo:
                     // 1) ESCLUSIONE 2 MINUTI
-                    // 2) SQUALIFICA 3° X 2 MINUTI
-                    var tempoEvento = PendingEvent.Time;
-                    CommitDisciplinaryPending(team, numberLabel, "TWO", "ESCLUSIONE 2 MINUTI", roster.PlayerNames[index], "2MIN");
+                    // 2) SQUALIFICA 3° X 2'
+                    // Il primo evento resta una normale esclusione 2' e genera
+                    // il countdown; il secondo è solo la squalifica automatica
+                    // e NON genera un secondo countdown.
+                    PendingEvent.Type = "TWO";
+                    PendingEvent.Text = "ESCLUSIONE 2 MINUTI";
+                    PendingEvent.SuspensionStartSeconds = State.TimerSeconds;
+                    PendingEvent.SuspensionEndSeconds = State.TimerSeconds + 120;
+                    PendingEvent.Result = ScoreText();
 
-                    // Nel Registro Gara l'ordine visualizzato è dal più recente
-                    // al più vecchio. Per questo la squalifica viene inserita
-                    // immediatamente PRIMA dell'evento di esclusione nella lista
-                    // interna, così sullo schermo comparirà:
-                    //   ESCLUSIONE 2 MINUTI
-                    //   SQUALIFICA 3° X 2 MINUTI
-                    // entrambi con lo stesso identico tempo di gara.
-                    var exclusionIndex = State.Events.FindIndex(e =>
-                        e.Team == team && e.Number == numberLabel &&
-                        e.Type == "TWO" && e.Time == tempoEvento &&
-                        e.Text.Equals("ESCLUSIONE 2 MINUTI", StringComparison.OrdinalIgnoreCase));
-
-                    var thirdTwoEvent = new EventRecord
+                    var disqualification = new EventRecord
                     {
-                        // Deve avere esattamente lo stesso tempo dell'esclusione 2 minuti.
-                        Time = tempoEvento,
+                        Time = PendingEvent.Time,
                         Team = team,
                         Number = numberLabel,
-                        Type = "RED",
-                        Text = "SQUALIFICA 3° X 2 MINUTI",
-                        Result = ScoreText(),
-                        // Il countdown dei 2' resta associato all'evento ESCLUSIONE 2 MINUTI;
-                        // la squalifica è l'evento aggiuntivo che alimenta la colonna SQ.
-                        SuspensionStartSeconds = null
+                        Type = "DISQUALIFICATION_3X2",
+                        Text = "SQUALIFICA 3° X 2'",
+                        Result = PendingEvent.Result
                     };
 
-                    if (exclusionIndex >= 0)
-                        State.Events.Insert(exclusionIndex, thirdTwoEvent);
+                    // Add subito dopo il TWO: stesso tempo e ordine obbligatorio.
+                    var pendingIndex = State.Events.IndexOf(PendingEvent);
+                    if (pendingIndex >= 0)
+                        State.Events.Insert(pendingIndex + 1, disqualification);
                     else
-                        State.Events.Add(thirdTwoEvent);
+                        State.Events.Add(disqualification);
 
-                    Notify();
+                    StartSuspension(team, numberLabel);
+                    StopClockForDisciplinary();
+                    FinishPendingEvent();
                     return true;
                 }
                 CommitDisciplinaryPending(team, numberLabel, "TWO", "ESCLUSIONE 2 MINUTI", roster.PlayerNames[index], "2MIN");
@@ -271,6 +256,7 @@ public event Action<CardPrintRequest>? CardPrintRequested;
                 PendingEvent.Type = "RED";
                 PendingEvent.Text = "ESPULSIONE DIRETTA";
                 PendingEvent.SuspensionStartSeconds = State.TimerSeconds;
+                PendingEvent.SuspensionEndSeconds = State.TimerSeconds + 120;
                 StopClockForDisciplinary();
                 FinishPendingEvent();
                 return true;
@@ -357,9 +343,10 @@ public event Action<CardPrintRequest>? CardPrintRequested;
         ev.Number = number;
         ev.Type = becomesThreeByTwo ? "RED" : type;
         ev.Text = becomesThreeByTwo
-            ? "SQUALIFICA 3° X 2 MINUTI"
+            ? "ESCLUSIONE PER 3x2'"
             : EventDescription(type);
         ev.SuspensionStartSeconds = ev.Type is "TWO" or "RED" ? parsedTime : null;
+        ev.SuspensionEndSeconds = ev.Type is "TWO" or "RED" ? parsedTime + 120 : null;
 
 
         // La modifica può cambiare completamente la natura dell'evento (es. GOAL ->
@@ -473,10 +460,12 @@ public event Action<CardPrintRequest>? CardPrintRequested;
             {
                 var t = ParseTime(ev.Time);
                 ev.SuspensionStartSeconds = t >= 0 ? t : null;
+                ev.SuspensionEndSeconds = t >= 0 ? t + 120 : null;
             }
             else
             {
                 ev.SuspensionStartSeconds = null;
+                ev.SuspensionEndSeconds = null;
             }
         }
 
@@ -664,11 +653,11 @@ public event Action<CardPrintRequest>? CardPrintRequested;
         State.MiniTimerSeconds = 0;
         State.MiniTimerRunning = false;
         State.MatchStarted = true;
-        State.Running = false;
+        // Il passaggio al periodo successivo NON avvia automaticamente il cronometro.
+        // Dopo la conferma del popup il nuovo periodo resta fermo a 00:00 (o al
+        // relativo minuto iniziale); l'ufficiale deve premere START per farlo partire.
         PeriodStartConfirmed = true;
-        // Il passaggio al nuovo periodo NON avvia automaticamente il cronometro.
-        // Dopo la conferma del popup il nuovo tempo resta fermo e deve essere
-        // avviato esplicitamente dal pulsante START.
+        StopClock();
         Notify();
     }
 
@@ -982,30 +971,30 @@ public event Action<CardPrintRequest>? CardPrintRequested;
 
     public IEnumerable<(string Number, string Remaining)> GetSuspensions(string team, string? number = null)
     {
-        // Countdown personale: vale per ogni 2' ordinario, per l'espulsione diretta
-        // e per la 3a esclusione (3x2'). Segue il cronometro ufficiale della gara.
+        // Il termine della sospensione è memorizzato sul singolo evento come tempo
+        // assoluto della gara. In questo modo il countdown NON viene perso quando
+        // il popup di fine periodo porta al periodo successivo.
         foreach (var ev in State.Events.Where(e => e.Team == team && (e.Type == "TWO" || e.Type == "RED"))
                      .Where(e => number is null || e.Number == number)
-                     .Where(e => e.SuspensionStartSeconds.HasValue))
+                     .Where(e => e.SuspensionEndSeconds.HasValue || e.SuspensionStartSeconds.HasValue))
         {
-            var start = ev.SuspensionStartSeconds!.Value;
-            var elapsed = Math.Max(0, State.TimerSeconds - start);
-            var left = 120 - elapsed;
-            if (left > 0) yield return (ev.Number, FormatTime(left));
+            var end = ev.SuspensionEndSeconds ?? (ev.SuspensionStartSeconds!.Value + 120);
+            var left = end - State.TimerSeconds;
+            if (left > 0 && left <= 120) yield return (ev.Number, FormatTime(left));
         }
     }
 
     // Dettaglio grafico dei countdown giocatore: distingue i 2' ordinari
-    // (arancione) dalle espulsioni/3x2' (rosso).
+    // (arancione) dalle espulsioni/3x2' (rosso). Il calcolo usa il termine
+    // assoluto della sospensione, quindi attraversa correttamente i periodi.
     public IEnumerable<(string Remaining, bool IsRed)> GetPlayerSuspensionBadges(string team, string number)
     {
         foreach (var ev in State.Events.Where(e => e.Team == team && e.Number == number && (e.Type == "TWO" || e.Type == "RED"))
-                     .Where(e => e.SuspensionStartSeconds.HasValue))
+                     .Where(e => e.SuspensionEndSeconds.HasValue || e.SuspensionStartSeconds.HasValue))
         {
-            var start = ev.SuspensionStartSeconds!.Value;
-            var elapsed = Math.Max(0, State.TimerSeconds - start);
-            var left = 120 - elapsed;
-            if (left > 0) yield return (FormatTime(left), ev.Type == "RED");
+            var end = ev.SuspensionEndSeconds ?? (ev.SuspensionStartSeconds!.Value + 120);
+            var left = end - State.TimerSeconds;
+            if (left > 0 && left <= 120) yield return (FormatTime(left), ev.Type == "RED");
         }
     }
 
@@ -1058,38 +1047,17 @@ public event Action<CardPrintRequest>? CardPrintRequested;
     public int PenaltyRealized(string team) => State.Events.Count(e =>
         e.Team == team && e.Type == "PENALTY_GOAL");
 
-    private static bool IsThreeByTwo(EventRecord e)
-    {
-        if (e.Type != "RED") return false;
-        var text = (e.Text ?? "").ToUpperInvariant()
-            .Replace("°", "")
-            .Replace("'", "")
-            .Replace(" ", "");
-        return text.Contains("3X2") || text.Contains("3×2");
-    }
-
     public int PlayerTwoCount(string team, string number) => State.Events.Count(e =>
         e.Team == team && e.Number == number &&
-        (e.Type == "TWO" || IsThreeByTwo(e)));
+        (e.Type == "TWO" || (e.Type == "RED" && e.Text.Contains("3x2", StringComparison.OrdinalIgnoreCase))));
 
-    // Un giocatore NON viene inibito per una singola esclusione di 2 minuti,
-    // né per la seconda. L'inibizione scatta esclusivamente:
-    // 1) con la terza esclusione (3x2'); oppure
-    // 2) con una ESPULSIONE DIRETTA.
-    //
-    // Il controllo è volutamente esplicito per evitare che un normale evento TWO
-    // venga interpretato come espulsione.
-    public bool PlayerIsInhibited(string team, string number)
-    {
-        var threeByTwo = State.Events.Any(e =>
-            e.Team == team && e.Number == number && IsThreeByTwo(e));
-
-        var directRed = State.Events.Any(e =>
-            e.Team == team && e.Number == number &&
-            e.Type == "RED" && !IsThreeByTwo(e));
-
-        return threeByTwo || directRed;
-    }
+    // Il giocatore viene inibito SOLO quando raggiunge la terza esclusione (3x2)
+    // oppure riceve una espulsione diretta. Le prime due esclusioni 2'
+    // non devono mai disabilitare la card.
+    public bool PlayerIsInhibited(string team, string number) =>
+        PlayerTwoCount(team, number) >= 3 ||
+        State.Events.Any(e => e.Team == team && e.Number == number &&
+            e.Type == "RED" && !e.Text.Contains("3x2", StringComparison.OrdinalIgnoreCase));
 
     public int PlayerGoals(string team, string number) => State.Events.Count(e => e.Team == team && e.Number == number && e.Type == "GOAL");
     public int PlayerPenaltyGoals(string team, string number) => State.Events.Count(e => e.Team == team && e.Number == number && e.Type == "PENALTY_GOAL");
@@ -1147,6 +1115,7 @@ public event Action<CardPrintRequest>? CardPrintRequested;
         "PENALTY" => "TIRO DI 7 METRI",
         "YELLOW" => "AMMONIZIONE",
         "TWO" => "ESCLUSIONE 2 MINUTI",
+        "DISQUALIFICATION_3X2" => "SQUALIFICA 3° X 2'",
         "RED" => "ESPULSIONE DIRETTA",
         _ => type
     };
@@ -1155,31 +1124,18 @@ public event Action<CardPrintRequest>? CardPrintRequested;
     {
         if (PendingEvent is null) return;
         PendingEvent.Team = team; PendingEvent.Number = identifier; PendingEvent.Type = type; PendingEvent.Text = text; PendingEvent.Result = ScoreText();
-        if (type is "TWO" or "RED") PendingEvent.SuspensionStartSeconds = State.TimerSeconds;
-        StartSuspension(team, identifier);
-        StopClockForDisciplinary();
-
-        // La stampa è completamente integrata nel progetto Blazor.
-        // Viene richiesta solo per una vera esclusione di 2 minuti e solo
-        // quando l'opzione STAMPA CARTELLINO è attiva.
-        if (ticketType == "2MIN" && State.RichiediCartellinoEsclusione)
+        if (type is "TWO" or "RED")
         {
-            var rientroSecondi = State.TimerSeconds + 120;
-            CardPrintRequested?.Invoke(new CardPrintRequest(
-                TeamName(team),
-                identifier,
-                FormatTime(rientroSecondi),
-                Team(team).Color
-            ));
+            PendingEvent.SuspensionStartSeconds = State.TimerSeconds;
+            PendingEvent.SuspensionEndSeconds = State.TimerSeconds + 120;
         }
-
+        StartSuspension(team, identifier); StopClockForDisciplinary();
+        // La stampa del cartellino verrà collegata al motore di stampa web nella fase UI.
         FinishPendingEvent();
     }
 
     private void StartSuspension(string team, string identifier) { /* Il countdown viene calcolato da SuspensionStartSeconds e dal cronometro gara. */ }
     private void StopClockForDisciplinary() { if (State.Running) StopClock(); }
-    private string TeamName(string team) => team == "A" ? State.Casa.Name : State.Ospiti.Name;
-
     private bool StaffBenchAlreadyYellow(string team) => State.Events.Any(e => !ReferenceEquals(e, PendingEvent) && e.Team == team && IsStaffIdentifier(e.Number) && e.Type == "YELLOW");
     private bool PlayerAlreadyYellow(string team, string number) => State.Events.Any(e => !ReferenceEquals(e, PendingEvent) && e.Team == team && e.Number == number && e.Type == "YELLOW");
     private bool IsStaffIdentifier(string value) => value is "A" or "B" or "C" or "D" or "E";
