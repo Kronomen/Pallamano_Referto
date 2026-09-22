@@ -173,7 +173,7 @@ public event Action<CardPrintRequest>? CardPrintRequested;
                     // 3° 2' dello stesso giocatore: nel Registro Gara devono
                     // comparire DUE eventi con lo stesso tempo:
                     // 1) ESCLUSIONE 2 MINUTI
-                    // 2) SQUALIFICA 3° X 2'
+                    // 2) SQUALIFICA 3° X 2 MINUTI
                     var tempoEvento = PendingEvent.Time;
                     CommitDisciplinaryPending(team, numberLabel, "TWO", "ESCLUSIONE 2 MINUTI", roster.PlayerNames[index], "2MIN");
 
@@ -182,7 +182,7 @@ public event Action<CardPrintRequest>? CardPrintRequested;
                     // immediatamente PRIMA dell'evento di esclusione nella lista
                     // interna, così sullo schermo comparirà:
                     //   ESCLUSIONE 2 MINUTI
-                    //   SQUALIFICA 3° X 2'
+                    //   SQUALIFICA 3° X 2 MINUTI
                     // entrambi con lo stesso identico tempo di gara.
                     var exclusionIndex = State.Events.FindIndex(e =>
                         e.Team == team && e.Number == numberLabel &&
@@ -196,7 +196,7 @@ public event Action<CardPrintRequest>? CardPrintRequested;
                         Team = team,
                         Number = numberLabel,
                         Type = "RED",
-                        Text = "SQUALIFICA 3° X 2'",
+                        Text = "SQUALIFICA 3° X 2 MINUTI",
                         Result = ScoreText(),
                         // Il countdown dei 2' resta associato all'evento ESCLUSIONE 2 MINUTI;
                         // la squalifica è l'evento aggiuntivo che alimenta la colonna SQ.
@@ -357,7 +357,7 @@ public event Action<CardPrintRequest>? CardPrintRequested;
         ev.Number = number;
         ev.Type = becomesThreeByTwo ? "RED" : type;
         ev.Text = becomesThreeByTwo
-            ? "ESCLUSIONE PER 3x2'"
+            ? "SQUALIFICA 3° X 2 MINUTI"
             : EventDescription(type);
         ev.SuspensionStartSeconds = ev.Type is "TWO" or "RED" ? parsedTime : null;
 
