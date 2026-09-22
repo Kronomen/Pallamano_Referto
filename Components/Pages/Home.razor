@@ -395,7 +395,7 @@
                         <button type="button" class="period-end-exit" @onclick="ExitApplication">⇱&nbsp; ESCI DAL PROGETTO</button>
                     }
                 </div>
-                <button type="button" class="period-end-close" @onclick="Game.ClosePeriodDialog">@(Game.State.Phase == 1 ? "INIZIA 2° TEMPO" : "CONFERMA")</button>
+                <button type="button" class="period-end-close" @onclick="Game.ClosePeriodDialog">CONFERMA</button>
             </div>
         </div>
     </div>
@@ -415,13 +415,15 @@
 
 @if (Game.ShowShootoutFirstTeam)
 {
-    <div class="overlay"><div class="dialog-card shootout-dialog">
-        <div class="dialog-kicker">SERIE DEI RIGORI</div>
+    <div class="overlay"><div class="dialog-card shootout-dialog shootout-first-team-dialog">
+        <div class="shootout-first-team-header"><span class="shootout-first-team-flag">⚑</span><span>SERIE DEI RIGORI</span></div>
+        <div class="shootout-first-team-body">
         <h2>CHI ESEGUE IL PRIMO TIRO?</h2>
         <p>Seleziona la squadra che esegue il primo tiro della serie.</p>
         <div class="dialog-grid shootout-first-team-grid">
             <button class="primary" @onclick='() => Game.ChooseShootoutFirstTeam("A")'>@Game.State.Casa.Name</button>
             <button class="shootout-away-first" @onclick='() => Game.ChooseShootoutFirstTeam("B")'>@Game.State.Ospiti.Name</button>
+        </div>
         </div>
     </div></div>
 }
@@ -1063,8 +1065,16 @@
             date = Game.State.MatchDate,
             time = Game.State.MatchTime,
             championship = Game.State.Championship,
+            group = "",
             city = Game.State.City,
             venue = Game.State.Venue,
+            referee1 = Game.State.Referee1,
+            referee2 = Game.State.Referee2,
+            delegate1 = Game.State.Delegate1,
+            delegate2 = Game.State.Delegate2,
+            timekeeper = Game.State.Timekeeper,
+            secretary = Game.State.Secretary,
+            phaseScores = Game.State.PhaseScores,
             casa = Game.State.Casa.Name,
             ospiti = Game.State.Ospiti.Name,
             colorA = Game.State.Casa.Color,
@@ -1075,7 +1085,7 @@
             playersB = Game.State.Ospiti.Numbers.Select((n,i) => new { number=n, label=GetNumberLabel("B", i), name=Game.State.Ospiti.PlayerNames[i] ?? "", active=Game.State.Ospiti.ActivePlayers[i], originalIndex=i }).Where(p => p.active).OrderBy(p => NumberSortKey(p.label, p.number)).ThenBy(p => p.originalIndex).ToArray(),
             staffA = Game.State.Casa.StaffLetters.Select((l,i) => new { letter=l, name=Game.State.Casa.StaffNames[i] ?? "", active=Game.State.Casa.ActiveStaff[i] }).Where(p => p.active),
             staffB = Game.State.Ospiti.StaffLetters.Select((l,i) => new { letter=l, name=Game.State.Ospiti.StaffNames[i] ?? "", active=Game.State.Ospiti.ActiveStaff[i] }).Where(p => p.active),
-            events = Game.State.Events.Select(e => new { e.Time, e.Team, e.Number, e.Text, e.Result }),
+            events = Game.State.Events.Select(e => new { e.Time, e.Team, e.Number, e.Type, e.Text, e.Result, e.SuspensionStartSeconds }),
             shootout = Game.State.Shootout.Select(x => new { x.Id, x.Phase, x.Round, x.Team, x.Number, x.PlayerName, x.Goal, x.ScoreA, x.ScoreB }),
             shootoutScoreA = Game.State.ShootoutScoreA,
             shootoutScoreB = Game.State.ShootoutScoreB

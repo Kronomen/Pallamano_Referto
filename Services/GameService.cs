@@ -634,8 +634,11 @@ public event Action<CardPrintRequest>? CardPrintRequested;
         State.MiniTimerSeconds = 0;
         State.MiniTimerRunning = false;
         State.MatchStarted = true;
+        State.Running = false;
         PeriodStartConfirmed = true;
-        StartNextPeriodAutomatically();
+        // Il passaggio al nuovo periodo NON avvia automaticamente il cronometro.
+        // Dopo la conferma del popup il nuovo tempo resta fermo e deve essere
+        // avviato esplicitamente dal pulsante START.
         Notify();
     }
 
@@ -648,15 +651,6 @@ public event Action<CardPrintRequest>? CardPrintRequested;
         ShowPeriodEnd = false;
         ShowShootoutStart = true;
         Notify();
-    }
-
-    private void StartNextPeriodAutomatically()
-    {
-        if (State.MatchFinished || State.ShootoutStarted) return;
-        State.MatchStarted = true;
-        State.Running = true;
-        State.MiniTimerRunning = true;
-        StartClock();
     }
 
     private void FinishMatch(bool draw)
