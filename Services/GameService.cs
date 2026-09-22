@@ -3,6 +3,8 @@ using RefertoPallamano_Blazor.Models;
 
 namespace RefertoPallamano_Blazor.Services;
 
+public sealed record CardPrintRequest(string Squadra, string Numero, string TempoRientro, string Colore);
+
 public sealed class GameService : IAsyncDisposable
 {
     private CancellationTokenSource? _clockCts;
@@ -27,6 +29,13 @@ public sealed class GameService : IAsyncDisposable
     public string ShootoutWinnerName => State.ShootoutScoreA > State.ShootoutScoreB ? State.Casa.Name : State.Ospiti.Name;
     public bool CanEditEvents => !State.Running && State.TimeoutRemainingSeconds <= 0 && PendingEvent is null && !State.ShootoutStarted;
     public event Action? Changed;
+
+/// <summary>
+/// Richiesta di stampa del cartellino di esclusione 2 minuti.
+/// Il modello del cartellino è integrato nel progetto web e viene aperto
+/// direttamente dal browser, senza dipendere da un file HTML esterno.
+/// </summary>
+public event Action<CardPrintRequest>? CardPrintRequested;
 
     public void OpenConfiguration()
     {
@@ -1102,13 +1111,30 @@ public sealed class GameService : IAsyncDisposable
         if (PendingEvent is null) return;
         PendingEvent.Team = team; PendingEvent.Number = identifier; PendingEvent.Type = type; PendingEvent.Text = text; PendingEvent.Result = ScoreText();
         if (type is "TWO" or "RED") PendingEvent.SuspensionStartSeconds = State.TimerSeconds;
-        StartSuspension(team, identifier); StopClockForDisciplinary();
-        // La stampa del cartellino verrà collegata al motore di stampa web nella fase UI.
+        StartSuspension(team, identifier);
+        StopClockForDisciplinary();
+
+        // La stampa è completamente integrata nel progetto Blazor.
+        // Viene richiesta solo per una vera esclusione di 2 minuti e solo
+        // quando l'opzione STAMPA CARTELLINO è attiva.
+        if (ticketType == "2MIN" && State.RichiediCartellinoEsclusione)
+        {
+            var rientroSecondi = State.TimerSeconds + 120;
+            CardPrintRequested?.Invoke(new CardPrintRequest(
+                TeamName(team),
+                identifier,
+                FormatTime(rientroSecondi),
+                Team(team).Color
+            ));
+        }
+
         FinishPendingEvent();
     }
 
     private void StartSuspension(string team, string identifier) { /* Il countdown viene calcolato da SuspensionStartSeconds e dal cronometro gara. */ }
     private void StopClockForDisciplinary() { if (State.Running) StopClock(); }
+    private string TeamName(string team) => team == "A" ? State.Casa.Name : State.Ospiti.Name;
+
     private bool StaffBenchAlreadyYellow(string team) => State.Events.Any(e => !ReferenceEquals(e, PendingEvent) && e.Team == team && IsStaffIdentifier(e.Number) && e.Type == "YELLOW");
     private bool PlayerAlreadyYellow(string team, string number) => State.Events.Any(e => !ReferenceEquals(e, PendingEvent) && e.Team == team && e.Number == number && e.Type == "YELLOW");
     private bool IsStaffIdentifier(string value) => value is "A" or "B" or "C" or "D" or "E";

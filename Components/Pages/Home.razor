@@ -698,6 +698,7 @@
     protected override void OnInitialized()
     {
         Game.Changed += OnChanged;
+        Game.CardPrintRequested += OnCardPrintRequested;
     }
 
     private void OnChanged()
@@ -706,6 +707,24 @@
         // Il recovery viene scritto immediatamente a ogni modifica reale
         // della gara, non soltanto dopo un render della pagina.
         _ = SaveRecoveryIfReady();
+    }
+
+    private async void OnCardPrintRequested(CardPrintRequest request)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("stampaCartellinoEsclusione", new
+            {
+                squadra = request.Squadra,
+                numero = request.Numero,
+                tempoRientro = request.TempoRientro,
+                colore = request.Colore
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Errore apertura cartellino: {ex.Message}");
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -1065,6 +1084,7 @@
     public async void Dispose()
     {
         Game.Changed -= OnChanged;
+        Game.CardPrintRequested -= OnCardPrintRequested;
         try { await JS.InvokeVoidAsync("fermaAutoRecovery"); } catch { }
         _selfRef?.Dispose();
     }
