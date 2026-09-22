@@ -1564,82 +1564,59 @@ function caricaReferto(){
     // 7 METRI
     //------------------------------------------------
 
-// 7 METRI DURANTE LA GARA: ricostruzione direttamente dagli eventi
-// del Registro Gara. Sono esclusi i rigori finali (SHOOTOUT_*).
+// 7 METRI DURANTE LA GARA: ricostruzione dal Registro Gara.
+// I rigori della serie finale (SHOOTOUT_*) non vengono conteggiati.
 const eventi7m = Array.isArray(partita.eventi) ? partita.eventi : [];
 let tiriA7 = 0, retiA7 = 0, tiriB7 = 0, retiB7 = 0;
 
+function isPenaltyGoalEvent(ev){
+    const type = String(ev?.Type ?? ev?.type ?? ev?.tipo ?? "").trim().toUpperCase().replace(/[ ._-]/g, "");
+    const text = String(ev?.Text ?? ev?.text ?? ev?.evento ?? ev?.event ?? "").trim().toUpperCase();
+    return type === "PENALTYGOAL" || type === "RIGOREGOAL" || /(?:7\s*M|RIGORE).*(?:GOAL|RETE|REALIZZAT)/i.test(text);
+}
+function isPenaltyMissEvent(ev){
+    const type = String(ev?.Type ?? ev?.type ?? ev?.tipo ?? "").trim().toUpperCase().replace(/[ ._-]/g, "");
+    const text = String(ev?.Text ?? ev?.text ?? ev?.evento ?? ev?.event ?? "").trim().toUpperCase();
+    return type === "PENALTYMISS" || type === "RIGOREERRATO" || /(?:7\s*M|RIGORE).*(?:MISS|ERRAT|SBAGLIAT)/i.test(text);
+}
+
 eventi7m.forEach(ev => {
-    const team = String(ev.Team ?? ev.team ?? "").trim().toUpperCase();
-    const type = String(ev.Type ?? ev.type ?? "").trim().toUpperCase();
-    const text = String(ev.Text ?? ev.text ?? "").trim().toUpperCase();
-
-    // Compatibilità anche con le vecchie diciture del registro.
-    const realizzato =
-        type === "PENALTY_GOAL" ||
-        type === "RIGORE_GOAL" ||
-        /7\s*M\s*(GOAL|RETE)|RIGORE\s*(REALIZZATO|GOAL)/i.test(text);
-
-    const errato =
-        type === "PENALTY_MISS" ||
-        type === "RIGORE_ERRATO" ||
-        /7\s*M\s*(MISS|ERRATO)|RIGORE\s*(ERRATO|SBAGLIATO)/i.test(text);
-
-    if(team === "A" && (realizzato || errato)){
-        tiriA7++;
-        if(realizzato) retiA7++;
-    }
-    if(team === "B" && (realizzato || errato)){
-        tiriB7++;
-        if(realizzato) retiB7++;
-    }
+    const team = String(ev?.Team ?? ev?.team ?? ev?.squadra ?? "").trim().toUpperCase();
+    const realizzato = isPenaltyGoalEvent(ev);
+    const errato = isPenaltyMissEvent(ev);
+    if(team === "A" && (realizzato || errato)){ tiriA7++; if(realizzato) retiA7++; }
+    if(team === "B" && (realizzato || errato)){ tiriB7++; if(realizzato) retiB7++; }
 });
 
-// Se non ci sono eventi disponibili, manteniamo il dato già preparato
-// dalla pagina principale.
+// Preferiamo il conteggio del Registro; se una gara vecchia non contiene
+// gli eventi nel formato nuovo, usiamo i totali passati da GameService.
+const has7mEvents = (tiriA7 + tiriB7) > 0;
 risultati.setteMetri = {
-    tiriA : eventi7m.length ? tiriA7 : (partita.penaltyTotalA ?? 0),
-    retiA : eventi7m.length ? retiA7 : (partita.penaltyScoredA ?? 0),
-    tiriB : eventi7m.length ? tiriB7 : (partita.penaltyTotalB ?? 0),
-    retiB : eventi7m.length ? retiB7 : (partita.penaltyScoredB ?? 0)
+    tiriA: has7mEvents ? tiriA7 : Number(partita.penaltyTotalA ?? 0),
+    retiA: has7mEvents ? retiA7 : Number(partita.penaltyScoredA ?? 0),
+    tiriB: has7mEvents ? tiriB7 : Number(partita.penaltyTotalB ?? 0),
+    retiB: has7mEvents ? retiB7 : Number(partita.penaltyScoredB ?? 0)
 };
-    //------------------------------------------------
-    // TIME OUT
-    //------------------------------------------------
 
-// TIME-OUT: prima dai dati ricostruiti dal Registro Gara;
-// fallback ai campi già preparati dalla pagina principale.
+// TIME OUT: orari letti dal Registro Gara.
+function isTimeoutEvent(ev){
+    const type = String(ev?.Type ?? ev?.type ?? ev?.tipo ?? "").trim().toUpperCase().replace(/[.]/g, "");
+    const text = String(ev?.Text ?? ev?.text ?? ev?.evento ?? ev?.event ?? "").trim().toUpperCase().replace(/[.]/g, "");
+    return ["TIMEOUT","TO","T.O","TIME OUT"].includes(type) || ["TIMEOUT","TO","T.O","TIME OUT"].includes(text);
+}
 const eventiReferto = Array.isArray(partita.eventi) ? partita.eventi : [];
-const estraiTimeout = team => eventiReferto
-    .filter(e => {
-        const t = String(e.Team ?? e.team ?? "").trim().toUpperCase();
-        const type = String(e.Type ?? e.type ?? "").trim().toUpperCase();
-        const text = String(e.Text ?? e.text ?? "").trim().toUpperCase().replace(/[.]/g, "");
-        return t === team && (
-            ["TIMEOUT", "T.O", "TO", "TIME OUT"].includes(type) ||
-            text === "TIME OUT" || text === "TIMEOUT" || text === "T.O" || text === "TO"
-        );
-    })
-    .map(e => e.Time ?? e.time ?? "")
-    .filter(Boolean);
+const estraiTimeout = team => eventiReferto.filter(e =>
+    String(e?.Team ?? e?.team ?? e?.squadra ?? "").trim().toUpperCase() === team && isTimeoutEvent(e)
+).map(e => String(e?.Time ?? e?.time ?? e?.tempo ?? "")).filter(Boolean);
 
 timeout.A = estraiTimeout("A");
 timeout.B = estraiTimeout("B");
 
-if(!timeout.A.length){
-    timeout.A = [
-        partita.timeoutsA?.firstTime,
-        partita.timeoutsA?.secondTime,
-        partita.timeoutsA?.thirdTime
-    ].filter(Boolean);
-}
-if(!timeout.B.length){
-    timeout.B = [
-        partita.timeoutsB?.firstTime,
-        partita.timeoutsB?.secondTime,
-        partita.timeoutsB?.thirdTime
-    ].filter(Boolean);
-}
+const directTimeoutA = Array.isArray(partita.timeoutA) ? partita.timeoutA : [];
+const directTimeoutB = Array.isArray(partita.timeoutB) ? partita.timeoutB : [];
+if(!timeout.A.length) timeout.A = directTimeoutA.length ? directTimeoutA : [partita.timeoutsA?.firstTime, partita.timeoutsA?.secondTime, partita.timeoutsA?.thirdTime].filter(Boolean);
+if(!timeout.B.length) timeout.B = directTimeoutB.length ? directTimeoutB : [partita.timeoutsB?.firstTime, partita.timeoutsB?.secondTime, partita.timeoutsB?.thirdTime].filter(Boolean);
+
     //------------------------------------------------
     // UFFICIALI
     //------------------------------------------------
