@@ -1089,13 +1089,7 @@
             events = Game.State.Events.Select(e => new { e.Time, e.Team, e.Number, e.Type, e.Text, e.Result, e.SuspensionStartSeconds }),
             shootout = Game.State.Shootout.Select(x => new { x.Id, x.Phase, x.Round, x.Team, x.Number, x.PlayerName, x.Goal, x.ScoreA, x.ScoreB }),
             shootoutScoreA = Game.State.ShootoutScoreA,
-            shootoutScoreB = Game.State.ShootoutScoreB,
-            penaltyTotalA = Game.PenaltyAttempts("A"),
-            penaltyScoredA = Game.PenaltyRealized("A"),
-            penaltyTotalB = Game.PenaltyAttempts("B"),
-            penaltyScoredB = Game.PenaltyRealized("B"),
-            timeoutA = Game.State.Events.Where(e => e.Team == "A" && e.Type == "TIMEOUT").Select(e => e.Time).ToArray(),
-            timeoutB = Game.State.Events.Where(e => e.Team == "B" && e.Type == "TIMEOUT").Select(e => e.Time).ToArray()
+            shootoutScoreB = Game.State.ShootoutScoreB
         });
     }
     public async void Dispose()

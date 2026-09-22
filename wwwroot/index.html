@@ -140,37 +140,24 @@ window.stampaReferto = (d) => {
     // Usiamo sia il tipo evento sia il testo, così il dato non va perso
     // anche se una versione precedente del registro ha serializzato
     // "TIME OUT" nel campo Text invece di Type.
-    const isTimeoutEvent = e => {
-      const type = String(e.Type || "").trim().toUpperCase().replace(/\./g, "");
-      const text = String(e.Text || "").trim().toUpperCase().replace(/[.]/g, "");
-      return ["TIMEOUT", "T.O", "TO", "TIME OUT"].includes(type) ||
-             text === "TIME OUT" || text === "TIMEOUT" || text === "T.O" || text === "TO";
-    };
     const timeoutList = team => events
-      .filter(e => e.Team === team && isTimeoutEvent(e))
+      .filter(e => {
+        if (e.Team !== team) return false;
+        const type = String(e.Type || "").trim().toUpperCase();
+        const text = String(e.Text || "").trim().toUpperCase().replace(/[.]/g, "");
+        return ["TIMEOUT", "T.O", "TO", "TIME OUT"].includes(type) ||
+               text === "TIME OUT" || text === "TIMEOUT" || text === "T.O" || text === "TO";
+      })
       .map(e => e.Time || "")
       .filter(Boolean);
 
-    const isPenaltyGoal = e => {
-      const type = String(e.Type || "").trim().toUpperCase().replace(/[ ._-]/g, "");
-      const text = String(e.Text || "").trim().toUpperCase();
-      return type === "PENALTYGOAL" || type === "RIGOREGOAL" ||
-             /(?:7\s*M|RIGORE).*(?:GOAL|RETE|REALIZZAT)/i.test(text);
-    };
-    const isPenaltyMiss = e => {
-      const type = String(e.Type || "").trim().toUpperCase().replace(/[ ._-]/g, "");
-      const text = String(e.Text || "").trim().toUpperCase();
-      return type === "PENALTYMISS" || type === "RIGOREERRATO" ||
-             /(?:7\s*M|RIGORE).*(?:MISS|ERRAT|SBAGLIAT)/i.test(text);
-    };
-
-    // 7 metri DURANTE LA GARA. I tipi SHOOTOUT_* sono volutamente esclusi.
-    const penaltyGoalEvents = events.filter(isPenaltyGoal);
-    const penaltyMissEvents = events.filter(isPenaltyMiss);
-    const penaltyTotalA = penaltyGoalEvents.filter(e => e.Team === "A").length + penaltyMissEvents.filter(e => e.Team === "A").length;
-    const penaltyScoredA = penaltyGoalEvents.filter(e => e.Team === "A").length;
-    const penaltyTotalB = penaltyGoalEvents.filter(e => e.Team === "B").length + penaltyMissEvents.filter(e => e.Team === "B").length;
-    const penaltyScoredB = penaltyGoalEvents.filter(e => e.Team === "B").length;
+    // I 7 metri sono ricostruiti direttamente dal Registro Gara.
+    // I tiri di rigore finali hanno tipi SHOOTOUT_* e quindi non entrano qui.
+    const penaltyAttempts = events.filter(e => e.Type === "PENALTY_GOAL" || e.Type === "PENALTY_MISS");
+    const penaltyTotalA = penaltyAttempts.filter(e => e.Team === "A").length;
+    const penaltyScoredA = penaltyAttempts.filter(e => e.Team === "A" && e.Type === "PENALTY_GOAL").length;
+    const penaltyTotalB = penaltyAttempts.filter(e => e.Team === "B").length;
+    const penaltyScoredB = penaltyAttempts.filter(e => e.Team === "B" && e.Type === "PENALTY_GOAL").length;
 
     const phase = d.phaseScores || {};
     const scoreOf = key => phase[key] ?? "0-0";
@@ -210,12 +197,12 @@ window.stampaReferto = (d) => {
       overtime2ScoreB: p3.B,
       overtime4ScoreA: p4.A,
       overtime4ScoreB: p4.B,
-      penaltyTotalA: penaltyTotalA || Number(d.penaltyTotalA || 0),
-      penaltyScoredA: penaltyScoredA || Number(d.penaltyScoredA || 0),
-      penaltyTotalB: penaltyTotalB || Number(d.penaltyTotalB || 0),
-      penaltyScoredB: penaltyScoredB || Number(d.penaltyScoredB || 0),
-      timeoutsA: { firstTime: (timeoutList("A")[0] || (d.timeoutA || [])[0] || ""), secondTime: (timeoutList("A")[1] || (d.timeoutA || [])[1] || ""), thirdTime: (timeoutList("A")[2] || (d.timeoutA || [])[2] || "") },
-      timeoutsB: { firstTime: (timeoutList("B")[0] || (d.timeoutB || [])[0] || ""), secondTime: (timeoutList("B")[1] || (d.timeoutB || [])[1] || ""), thirdTime: (timeoutList("B")[2] || (d.timeoutB || [])[2] || "") },
+      penaltyTotalA,
+      penaltyScoredA,
+      penaltyTotalB,
+      penaltyScoredB,
+      timeoutsA: { firstTime: timeoutList("A")[0] || "", secondTime: timeoutList("A")[1] || "", thirdTime: timeoutList("A")[2] || "" },
+      timeoutsB: { firstTime: timeoutList("B")[0] || "", secondTime: timeoutList("B")[1] || "", thirdTime: timeoutList("B")[2] || "" },
       penaltyShootout: { scoreA: Number(d.shootoutScoreA || 0), scoreB: Number(d.shootoutScoreB || 0) },
       rigoriFinali: { A: Number(d.shootoutScoreA || 0), B: Number(d.shootoutScoreB || 0) },
       risultati: {
