@@ -1211,6 +1211,7 @@ function integraRetiDaEventi(lista, squadra){
         const realizzato =
             tipo === "GOAL" ||
             tipo === "RETE" ||
+            tipo === "PENALTY_GOAL" ||
             (
                 tipo === "PENALTY" &&
                 testo.includes("REALIZZATO")
@@ -1766,6 +1767,7 @@ function ricostruisciGoalDaRegistro(){
         const èRete =
             tipo === "GOAL" ||
             tipo === "RETE" ||
+            tipo === "PENALTY_GOAL" ||
             (
                 tipo === "PENALTY" &&
                 testo.includes("REALIZZATO")
@@ -2051,15 +2053,9 @@ function compilaReferto(){
     let finaleA = Number(risultati.finale.A ?? 0);
     let finaleB = Number(risultati.finale.B ?? 0);
 
-    // I tiri di rigore finali non vengono sommati alle reti dei giocatori;
-    // servono solo a rappresentare l'esito della gara ai rigori.
-    if(
-        Number(risultati.rigoriFinale.A ?? 0) > 0 ||
-        Number(risultati.rigoriFinale.B ?? 0) > 0
-    ){
-        finaleA += Number(risultati.rigoriFinale.A ?? 0);
-        finaleB += Number(risultati.rigoriFinale.B ?? 0);
-    }
+    // I tiri di rigore finali NON fanno parte del punteggio di gara
+    // e non sono reti attribuite ai giocatori. Sono riportati separatamente
+    // nella riga "Rigori finali".
 
     document.getElementById("risultatoFinale").innerHTML = `
     <div style="

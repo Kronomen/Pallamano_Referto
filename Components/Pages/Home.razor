@@ -387,7 +387,26 @@
                     <span>—</span>
                     <strong>@Game.State.ScoreB</strong>
                 </div>
-                <p>Confermare la fine del periodo</p>
+                @if (Game.State.Phase == 2 && Game.State.ScoreA == Game.State.ScoreB && Game.State.MatchMode == "SUPPLEMENTARI")
+                {
+                    <p><strong>La gara è ancora in parità.</strong><br />Iniziano i tempi supplementari: <strong>2 tempi da 5 minuti ciascuno</strong>.</p>
+                }
+                else if (Game.State.Phase == 4 && Game.State.ScoreA == Game.State.ScoreB && Game.State.MatchMode == "SUPPLEMENTARI")
+                {
+                    <p><strong>La gara è ancora in parità.</strong><br />Iniziano il <strong>3° e 4° tempo supplementare</strong>: <strong>5 minuti ciascuno</strong>.</p>
+                }
+                else if (Game.State.Phase == 3)
+                {
+                    <p>Confermare il passaggio al <strong>2° tempo supplementare</strong> (5 minuti).</p>
+                }
+                else if (Game.State.Phase == 5)
+                {
+                    <p>Confermare il passaggio al <strong>4° tempo supplementare</strong> (5 minuti).</p>
+                }
+                else
+                {
+                    <p>Confermare la fine del periodo</p>
+                }
                 <div class="period-end-actions-top">
                     <button type="button" class="period-end-referto" @onclick="PrintReferto">▣&nbsp; APRI REFERTO FIGH</button>
                     @if (Game.State.Phase > 1)
@@ -395,7 +414,19 @@
                         <button type="button" class="period-end-exit" @onclick="ExitApplication">⇱&nbsp; ESCI DAL PROGETTO</button>
                     }
                 </div>
-                <button type="button" class="period-end-close" @onclick="Game.ClosePeriodDialog">@(Game.State.Phase == 1 ? "INIZIA 2° TEMPO" : "CONFERMA")</button>
+                <button type="button" class="period-end-close" @onclick="Game.ClosePeriodDialog">
+                    @(Game.State.Phase == 1
+                        ? "INIZIA 2° TEMPO"
+                        : Game.State.Phase == 2 && Game.State.ScoreA == Game.State.ScoreB && Game.State.MatchMode == "SUPPLEMENTARI"
+                            ? "INIZIA SUPPLEMENTARI"
+                            : Game.State.Phase == 3
+                                ? "INIZIA 2° SUPPLEMENTARE"
+                                : Game.State.Phase == 4 && Game.State.ScoreA == Game.State.ScoreB && Game.State.MatchMode == "SUPPLEMENTARI"
+                                    ? "INIZIA 3° E 4° SUPPLEMENTARE"
+                                    : Game.State.Phase == 5
+                                        ? "INIZIA 4° SUPPLEMENTARE"
+                                        : "CONFERMA")
+                </button>
             </div>
         </div>
     </div>
