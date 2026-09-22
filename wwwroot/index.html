@@ -132,7 +132,7 @@ window.stampaReferto = (d) => {
         susp1Time: two?.Time || "",
         red: !!red,
         redTime: red?.Time || "",
-        sanction: red ? (/3\s*[Xx×]\s*2|3x2/i.test(red.Text) ? "3x2'" : "SQ") : ""
+        sanction: red ? (/3\s*[Xx×]\s*2|3x2/i.test(red.Text) ? "3x2'" : "") : ""
       };
     });
 

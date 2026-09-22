@@ -1636,7 +1636,7 @@ if(!timeout.B.length){
             scriviCella(r.cells[3], y?.Time || y?.time || d.yellowTime || "", "7pt");
             scriviCella(r.cells[4], t?.Time || t?.time || d.susp1Time || "");
             scriviCella(r.cells[7], red?.Time || red?.time || d.redTime || "");
-            scriviCella(r.cells[8], red ? (isThreeByTwoText(red.Text || red.text || "") ? "3x2'" : "SQ") : (d.sanction || ""));
+            scriviCella(r.cells[8], red ? "" : (d.sanction || ""));
         });
     }
     compilaDirigentiDaEventi("A", partita.currentRosterA?.officials || []);
@@ -1823,7 +1823,7 @@ function compilaReferto(){
             const thirdTwoTime = ev.thirdTwo ? (ev.susp3Time || g.susp3Time || "") : "";
             scriviCella(r.cells[6], thirdTwoTime || ev.susp3Time || g.susp3Time || "");
             scriviCella(r.cells[7], ev.directRedTime || thirdTwoTime || g.directRedTime || "");
-            scriviCella(r.cells[8], ev.thirdTwo ? "3x2'" : (ev.directRed ? "SQ" : (g.directRedSanction || "")));
+            scriviCella(r.cells[8], (ev.thirdTwo || ev.directRed) ? "" : (g.directRedSanction || ""));
         });
     }
     compilaGiocatori("A", partita.currentRosterA?.players || []);
