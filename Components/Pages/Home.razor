@@ -1,0 +1,1147 @@
+@page "/"
+@using Microsoft.JSInterop
+@using RefertoPallamano_Blazor.Models
+@using System.Linq
+@implements IDisposable
+@inject GameService Game
+@inject IJSRuntime JS
+
+<PageTitle>Referto Pallamano</PageTitle>
+
+<div class="match-app tablet-app">
+    @if (Game.State.ShootoutStarted)
+    {
+        <header class="shootout-header">
+            <div class="shootout-brand">
+                <img src="images/FIGH.png" alt="FIGH" />
+                <div class="shootout-federation">FEDERAZIONE<br />ITALIANA<br />GIUOCO HANDBALL</div>
+            </div>
+            <div class="shootout-teams-score">
+                <div class="shootout-team-name home">@Game.State.Casa.Name<span>CASA</span></div>
+                <div class="shootout-main-score">@Game.State.ShootoutScoreA <span>−</span> @Game.State.ShootoutScoreB</div>
+                <div class="shootout-team-name away">@Game.State.Ospiti.Name<span>OSPITI</span></div>
+            </div>
+            <div class="shootout-official-brand">
+                <div class="official-symbol">F.I.Cr.</div>
+                <div>FEDERAZIONE ITALIANA<br /><strong>CRONOMETRISTI</strong></div>
+            </div>
+        </header>
+
+        <div class="shootout-phase-pill">RIGORI</div>
+        <div class="shootout-pre-match-score">GARA FINO AI RIGORI: @Game.State.ScoreA.ToString("00") - @Game.State.ScoreB.ToString("00")</div>
+
+        <main class="shootout-layout">
+            <section class="shootout-team-side home-shootout-side">
+                <TeamPanel Team="A" Title="CASA" />
+            </section>
+
+            <section class="shootout-center-panel">
+                <div class="shootout-center-heading">
+                    <span class="shootout-goal-icon">▦</span>
+                    <span>@(Game.State.ShootoutPhase == 2 ? "MORTE IMPROVVISA · SERIE UFFICIALE DEI RIGORI" : "SERIE UFFICIALE DEI RIGORI")</span>
+                    <small>SERIE DEI 5 RIGORI</small>
+                    <b class="shootout-current-team">Tira: @(Game.ShootoutCurrentTeam == "A" ? "CASA" : "OSPITI")</b>
+                </div>
+                <div class="shootout-actions">
+                    <button type="button" class="shootout-undo" @onclick="UndoEvent" disabled="@(!Game.CanUndo)">↩ UNDO</button>
+                    <button type="button" class="shootout-save" @onclick="SaveGame">▣ SALVA</button>
+                    @if (Game.State.ShootoutFinished)
+                    {
+                        <button type="button" class="shootout-referto" @onclick="PrintReferto">▣ REFERTO FIGH</button>
+                    }
+                </div>
+                <div class="shootout-table-wrap">
+                    <table class="shootout-table">
+                        <thead>
+                            <tr>
+                                <th>T</th>
+                                <th>N°</th>
+                                <th>CASA</th>
+                                <th>ESITO</th>
+                                <th>ESITO</th>
+                                <th>N°</th>
+                                <th>OSPITI</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var pair in GetShootoutPairs().Where(x => x.Round <= 5))
+                            {
+                                <tr>
+                                    <td class="shootout-round">@pair.Round</td>
+                                    <td class="shootout-number">@(pair.Home?.Number ?? "")</td>
+                                    <td class="shootout-player-name">@(string.IsNullOrWhiteSpace(pair.Home?.PlayerName) ? "" : pair.Home.PlayerName)</td>
+                                    <td class="shootout-result">@(pair.Home is null ? "" : (pair.Home.Goal ? "✓" : "×"))</td>
+                                    <td class="shootout-result">@(pair.Away is null ? "" : (pair.Away.Goal ? "✓" : "×"))</td>
+                                    <td class="shootout-number">@(pair.Away?.Number ?? "")</td>
+                                    <td class="shootout-player-name">@(string.IsNullOrWhiteSpace(pair.Away?.PlayerName) ? "" : pair.Away.PlayerName)</td>
+                                </tr>
+                            }
+                            @for (var i = GetShootoutPairs().Count(x => x.Round <= 5); i < 5; i++)
+                            {
+                                <tr class="shootout-empty-row"><td>@(i + 1)</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                            }
+                            @if (GetShootoutPairs().Any(x => x.Round >= 6))
+                            {
+                                <tr class="shootout-sudden-separator"><td colspan="7"></td></tr>
+                                @foreach (var pair in GetShootoutPairs().Where(x => x.Round >= 6))
+                                {
+                                    <tr>
+                                        <td class="shootout-round">@pair.Round</td>
+                                        <td class="shootout-number">@(pair.Home?.Number ?? "")</td>
+                                        <td class="shootout-player-name">@(pair.Home?.PlayerName ?? "")</td>
+                                        <td class="shootout-result">@(pair.Home is null ? "" : (pair.Home.Goal ? "✓" : "×"))</td>
+                                        <td class="shootout-result">@(pair.Away is null ? "" : (pair.Away.Goal ? "✓" : "×"))</td>
+                                        <td class="shootout-number">@(pair.Away?.Number ?? "")</td>
+                                        <td class="shootout-player-name">@(pair.Away?.PlayerName ?? "")</td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <div class="shootout-help">| Barra Spaziatrice: Avvia / Ferma Cronometro |</div>
+            </section>
+
+            <section class="shootout-team-side away-shootout-side">
+                <TeamPanel Team="B" Title="OSPITI" />
+            </section>
+        </main>
+
+        <footer class="shootout-footer">
+            <button type="button" class="shootout-back" @onclick="Game.BackToMatchAfterShootout" disabled="@(!Game.State.ShootoutFinished)">← TORNA ALLA GARA</button>
+            <div class="shootout-footer-center">
+                <strong>@(Game.State.ShootoutFinished ? "GARA TERMINATA" : $"SELEZIONA IL GIOCATORE DELLA SQUADRA {(Game.ShootoutCurrentTeam == "A" ? "CASA" : "OSPITI")} PER IL PROSSIMO TIRO")</strong>
+                <small>@(Game.State.ShootoutFinished ? $"Serie finale: {Game.State.ShootoutScoreA:00} - {Game.State.ShootoutScoreB:00}" : "Chi ha già tirato resta escluso fino al completamento del giro di tutti gli eleggibili.")</small>
+            </div>
+            <button type="button" class="shootout-finish" @onclick="Game.OpenShootoutWinner" disabled="@(!Game.State.ShootoutFinished)">⚑ TERMINA SERIE RIGORI</button>
+        </footer>
+    }
+    else
+    {
+        <header class="topbar">
+            <div class="brand"><img src="images/FIGH.png" alt="FIGH" /><div><div class="federation">FEDERAZIONE ITALIANA GIUOCO HANDBALL</div><div class="app-title">REFERTO PALLAMANO</div></div></div>
+            <div class="phase-box">@GameService.PhaseName(Game.State.Phase)</div>
+        </header>
+
+        <section class="scorebar">
+            <div class="team-name-box home-team-name" style="--team-color:@Game.State.Casa.Color">@Game.State.Casa.Name</div>
+            <div class="team-points-box home-team-points" style="--team-color:@Game.State.Casa.Color">@Game.State.ScoreA</div>
+            <div class="clock-area timer-yellow-panel">
+                <div class="clock-adjust-row">
+                    <button type="button" class="clock-adjust clock-minus" @onclick='() => Game.AdjustTimer(-1)'>−1</button>
+                    <button type="button" class="clock @(Game.State.Running ? "clock-running" : "clock-stopped")" @onclick="OpenTimerEditor" disabled="@Game.State.Running" title="A cronometro fermo, clicca per modificare il tempo">
+                        <span>@GameService.FormatTime(Game.State.TimerSeconds)</span><span class="clock-edit-icon">✎</span>
+                    </button>
+                    <button type="button" class="clock-adjust clock-plus" @onclick='() => Game.AdjustTimer(1)'>+1</button>
+                </div>
+
+                @if (Game.State.TimeoutRemainingSeconds > 0)
+                {
+                    <div class="match-timeout-countdown">TIME OUT @(Game.State.TimeoutTeam == "A" ? Game.State.Casa.Name : Game.State.Ospiti.Name) · @GameService.FormatTime(Game.State.TimeoutRemainingSeconds)</div>
+                }
+                <div class="timer-command-card">
+                    <div class="timer-command-row">
+                        <button type="button" class="event-button cancel timer-command-button" @onclick="CancelEvent" disabled="@(Game.PendingEvent is null)">ANNULLA</button>
+                        <button type="button" class="primary start-button timer-command-button @(Game.State.Running ? "stop-active" : "start-active")" @onclick="Game.StartStop">@(Game.State.Running ? "STOP" : "START")</button>
+                        <button type="button" class="event-button undo timer-command-button" @onclick="UndoEvent" disabled="@(!Game.CanUndo)">UNDO</button>
+                    </div>
+                </div>
+
+            </div>
+            <div class="team-points-box away-team-points" style="--team-color:@Game.State.Ospiti.Color">@Game.State.ScoreB</div>
+            <div class="team-name-box away-team-name" style="--team-color:@Game.State.Ospiti.Color">@Game.State.Ospiti.Name</div>
+        </section>
+
+        <main class="three-columns">
+            <section class="side-team-column home-side-column" aria-label="CASA">
+                <div class="team-event-zone">
+                    <div class="team-event-grid">
+                        @foreach (var e in EventTypes) { <button type="button" class="event-button @e.Css @(Game.PendingEvent?.Type == e.Code ? "selected" : "")" @onclick="() => SelectEvent(e.Code)">@e.Label</button> }
+                        <button type="button" class="event-button timeout" @onclick='() => RegisterTimeout("A")' disabled="@(Game.TimeoutCount("A") >= 3)">TIME OUT</button>
+                    </div>
+                </div>
+                <TeamPanel Team="A" Title="CASA" />
+            </section>
+            <section class="log-panel">
+                <div class="panel-title">REGISTRO GARA <span class="event-edit-hint">@(Game.CanEditEvents ? "· TOCCA UN EVENTO PER MODIFICARLO" : "")</span></div>
+                <div class="event-list">
+                    <div class="event-row event-header"><span>Tempo</span><span>Sq</span><span>N.</span><span>Evento</span><strong>Ris.</strong></div>
+                    @for (var displayIndex = Game.State.Events.Count - 1; displayIndex >= 0; displayIndex--)
+                    {
+                        // Copia locale indispensabile: il callback Blazor deve catturare
+                        // l'indice della singola riga e non la variabile del ciclo for.
+                        var eventIndex = displayIndex;
+                        var ev = Game.State.Events[eventIndex];
+                        <button type="button" class="event-row event-row-button @(ev.Type == "SYSTEM" ? "system-row" : "")" style="--event-team-color:@GetEventTeamColor(ev.Team)" disabled="@(ev.Type == "SYSTEM")" @onclick="() => OpenEventEditor(eventIndex)" title="@(Game.CanEditEvents && ev.Type != "SYSTEM" ? "Modifica evento" : "")">
+                            <span class="event-time">@ev.Time</span><span class="event-team-cell">@ev.Team</span><span class="event-number">@(ev.Number == "—" ? "" : ev.Number)</span><span class="event-description">@ev.Text</span><strong class="event-result">@ev.Result</strong>
+                        </button>
+                    }
+                    @if (Game.State.Events.Count == 0) { <div class="empty-log">Nessun evento registrato</div> }
+                </div>
+            </section>
+            <section class="side-team-column away-side-column" aria-label="OSPITI">
+                <div class="team-event-zone">
+
+
+<div class="team-event-grid">
+                        @foreach (var e in EventTypes) { <button type="button" class="event-button @e.Css @(Game.PendingEvent?.Type == e.Code ? "selected" : "")" @onclick="() => SelectEvent(e.Code)">@e.Label</button> }
+                        <button type="button" class="event-button timeout" @onclick='() => RegisterTimeout("B")' disabled="@(Game.TimeoutCount("B") >= 3)">TIME OUT</button>
+                    </div>
+                </div>
+                <TeamPanel Team="B" Title="OSPITI" />
+            </section>
+        </main>
+
+        <footer class="bottom-bar">
+            <button @onclick="SaveGame">💾 SALVA GARA</button><button @onclick="RestoreRecovery">↩ RIPRISTINA</button><button @onclick="LoadMatchData">📥 CARICA DATI GARA</button><button @onclick="PrintReferto">📄 REFERTO</button><button @onclick="Game.OpenConfiguration" disabled="@Game.State.MatchStarted">⚙ CONFIGURAZIONE</button><button @onclick="Game.FinishCurrentPeriod" disabled="@(Game.State.MatchFinished || Game.State.ShootoutStarted)">FINE PERIODO</button><button @onclick="ProceedToNextPeriod" disabled="@(Game.PeriodStartConfirmed || Game.State.MatchFinished)">PROSSIMO PERIODO</button>        <div class="mini-timer-card mini-timer-toolbar">
+            <div class="mini-timer-label">CRONOMETRO</div>
+            <div class="mini-timer-display">@GameService.FormatTime(Game.GetMiniTimerSeconds())</div>
+        </div>
+@if (Game.State.MatchFinished)
+        {
+            <button type="button" class="status game-finished-close" @onclick="ExitApplication" title="Chiudi il progetto">GARA TERMINATA</button>
+        }
+        else
+        {
+            <span class="status">@(Game.State.Running ? "CRONOMETRO ATTIVO" : "PRONTA / FERMA")</span>
+        }
+        </footer>
+    }
+</div>
+
+@if (Game.ShowConfiguration)
+{
+    <div class="overlay config-overlay">
+        <div class="config-card ipad11-config-card">
+            <div class="config-topbar">
+                <div class="config-duration-top">
+                    <strong>DURATA DI OGNI TEMPO</strong>
+                    <input class="duration-input" type="number" min="1" max="60" @bind="Game.State.HalfDurationMinutes" />
+                    <span>MINUTI</span>
+                </div>
+                <div class="config-checks-top">
+                    <label class="config-check-option"><input type="checkbox" @bind="Game.State.CronometroContinuativo" /><span>CRONOMETRO PALAZZETTO CONTINUATIVO</span></label>
+                </div>
+                <div class="config-checks-top config-print-top">
+                    <label class="config-check-option"><input type="checkbox" @bind="Game.State.RichiediCartellinoEsclusione" /><span>STAMPA CARTELLINO</span></label>
+                </div>
+            </div>
+
+            <div class="config-main-columns">
+                <section class="config-side-team config-side-home" style="--config-team-color:@Game.State.Casa.Color;--config-team-text:@GetContrastTextColor(Game.State.Casa.Color)">
+                    <div class="config-team-heading">SQUADRA DI CASA</div>
+                    <label class="config-team-name-field">NOME SQUADRA<input @bind="Game.State.Casa.Name" @bind:event="oninput" /></label>
+                    <div class="config-roster-title">GIOCATORI <small>(max 16)</small></div>
+                    <div class="config-player-grid">
+                        @for (var i = 0; i < 16; i++)
+                        {
+                            var ix = i;
+                            var label = GetNumberLabel("A", ix);
+                            var active = IsPlayerConfigured("A", ix);
+                            <div class="config-player-card @(active ? "configured" : "unconfigured")">
+                                <div class="config-number-line">
+                                    <input class="config-number-input" type="text" inputmode="numeric" maxlength="2" value="@label" placeholder="" aria-label="Numero giocatore @(ix + 1)" @oninput='e => SetNumberLabel("A", ix, e.Value?.ToString())' />
+                                    <button type="button" class="config-clear-button" title="Cancella giocatore" aria-label="Cancella giocatore @(ix + 1)" @onclick='() => ClearPlayer("A", ix)'>×</button>
+                                </div>
+                                <input class="config-player-name" type="text" placeholder="Nome" @bind="Game.State.Casa.PlayerNames[ix]" @bind:event="oninput" />
+                            </div>
+                        }
+                    </div>
+                    <div class="config-roster-title staff-title">DIRIGENTI</div>
+                    <div class="config-staff-grid">
+                        @for (var i = 0; i < 5; i++)
+                        {
+                            var ix = i;
+                            var letter = Game.State.Casa.StaffLetters[ix] ?? "";
+                            var active = IsStaffConfigured("A", ix);
+                            <div class="config-staff-card @(active ? "configured" : "unconfigured")">
+                                <div class="config-number-line">
+                                    <input class="config-staff-letter" type="text" maxlength="1" value="@letter" placeholder="" aria-label="Identificativo dirigente @(ix + 1)" @oninput='e => SetStaffLetter("A", ix, e.Value?.ToString())' />
+                                    <button type="button" class="config-clear-button" title="Cancella dirigente" aria-label="Cancella dirigente @(ix + 1)" @onclick='() => ClearStaff("A", ix)'>×</button>
+                                </div>
+                                <input class="config-player-name" type="text" placeholder="Nome" @bind="Game.State.Casa.StaffNames[ix]" @bind:event="oninput" />
+                            </div>
+                        }
+                    </div>
+                    <div class="config-side-color-box">
+                        <strong>COLORE CASA</strong>
+                        <div class="team-color-palette">
+                            @foreach (var c in TeamColors)
+                            {
+                                <button type="button" title="@c.Name" aria-label="Colore CASA @c.Name" class="team-color-swatch @(Game.State.Casa.Color == c.Hex ? "selected" : "")" style="background:@c.Hex" @onclick='() => SetTeamColor("A", c.Hex)'></button>
+                            }
+                        </div>
+                    </div>
+                </section>
+
+                <section class="config-center-team">
+                    <div class="config-center-heading"><span>⚙</span> CONFIGURAZIONE GARA</div>
+                    <div class="config-details-grid">
+                        <label>NUMERO GARA<input @bind="Game.State.MatchNumber" @bind:event="oninput" /></label>
+                        <label>DATA<input type="date" value="@Game.State.MatchDate" @oninput="OnMatchDateInput" /></label>
+                        <label>LOCALITÀ<input @bind="Game.State.City" @bind:event="oninput" /></label>
+                        <label>IMPIANTO<input @bind="Game.State.Venue" @bind:event="oninput" /></label>
+                        <label class="championship-field">CAMPIONATO<input @bind="Game.State.Championship" @bind:event="oninput" /></label>
+                        <label class="referee-field">ARBITRO 1<input @bind="Game.State.Referee1" @bind:event="oninput" /></label>
+                        <label class="referee-field">ARBITRO 2<input @bind="Game.State.Referee2" @bind:event="oninput" /></label>
+                        <label class="wide-field">DELEGATO F.I.G.H.<input @bind="Game.State.Delegate1" @bind:event="oninput" /></label>
+                    </div>
+                    <div class="config-mode-heading">TIPO DI GARA</div>
+                    <div class="config-mode-grid">
+                        <button type="button" class="config-mode-card @(Game.State.MatchMode == "STANDARD" ? "selected" : "")" @onclick='() => SetMatchMode("STANDARD")'>
+                            <span class="config-mode-checkbox">@(Game.State.MatchMode == "STANDARD" ? "✓" : "")</span>
+                            <strong>PARTITA<br />STANDARD</strong><small>2 TEMPI</small>
+                        </button>
+                        <button type="button" class="config-mode-card @(Game.State.MatchMode == "SUPPLEMENTARI" ? "selected" : "")" @onclick='() => SetMatchMode("SUPPLEMENTARI")'>
+                            <span class="config-mode-checkbox">@(Game.State.MatchMode == "SUPPLEMENTARI" ? "✓" : "")</span>
+                            <strong>CON<br />SUPPLEMENTARI</strong><small>2 SUPP. + 2 SUPP. + TIRI RIGORI</small>
+                        </button>
+                        <button type="button" class="config-mode-card @(Game.State.MatchMode == "RIGORI" ? "selected" : "")" @onclick='() => SetMatchMode("RIGORI")'>
+                            <span class="config-mode-checkbox">@(Game.State.MatchMode == "RIGORI" ? "✓" : "")</span>
+                            <strong>CON<br />TIRI DI RIGORE</strong><small>DOPO IL 2° TEMPO</small>
+                        </button>
+                    </div>
+                    <div class="config-overtime-box @(Game.State.MatchMode == "STANDARD" ? "disabled" : "")">
+                        <strong>DURATA SUPPLEMENTARI</strong>
+                        <div><input type="number" min="1" max="15" value="5" disabled /> <span>MINUTI</span></div>
+                        <small>(ogni tempo supplementare)</small>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(Game.ValidationError)) { <div class="validation-error config-validation">@Game.ValidationError</div> }
+                </section>
+
+                <section class="config-side-team config-side-away" style="--config-team-color:@Game.State.Ospiti.Color;--config-team-text:@GetContrastTextColor(Game.State.Ospiti.Color)">
+                    <div class="config-team-heading">SQUADRA OSPITE</div>
+                    <label class="config-team-name-field">NOME SQUADRA<input @bind="Game.State.Ospiti.Name" @bind:event="oninput" /></label>
+                    <div class="config-roster-title">GIOCATORI <small>(max 16)</small></div>
+                    <div class="config-player-grid">
+                        @for (var i = 0; i < 16; i++)
+                        {
+                            var ix = i;
+                            var label = GetNumberLabel("B", ix);
+                            var active = IsPlayerConfigured("B", ix);
+                            <div class="config-player-card @(active ? "configured" : "unconfigured")">
+                                <div class="config-number-line">
+                                    <input class="config-number-input" type="text" inputmode="numeric" maxlength="2" value="@label" placeholder="" aria-label="Numero giocatore @(ix + 1)" @oninput='e => SetNumberLabel("B", ix, e.Value?.ToString())' />
+                                    <button type="button" class="config-clear-button" title="Cancella giocatore" aria-label="Cancella giocatore @(ix + 1)" @onclick='() => ClearPlayer("B", ix)'>×</button>
+                                </div>
+                                <input class="config-player-name" type="text" placeholder="Nome" @bind="Game.State.Ospiti.PlayerNames[ix]" @bind:event="oninput" />
+                            </div>
+                        }
+                    </div>
+                    <div class="config-roster-title staff-title">DIRIGENTI</div>
+                    <div class="config-staff-grid">
+                        @for (var i = 0; i < 5; i++)
+                        {
+                            var ix = i;
+                            var letter = Game.State.Ospiti.StaffLetters[ix] ?? "";
+                            var active = IsStaffConfigured("B", ix);
+                            <div class="config-staff-card @(active ? "configured" : "unconfigured")">
+                                <div class="config-number-line">
+                                    <input class="config-staff-letter" type="text" maxlength="1" value="@letter" placeholder="" aria-label="Identificativo dirigente @(ix + 1)" @oninput='e => SetStaffLetter("B", ix, e.Value?.ToString())' />
+                                    <button type="button" class="config-clear-button" title="Cancella dirigente" aria-label="Cancella dirigente @(ix + 1)" @onclick='() => ClearStaff("B", ix)'>×</button>
+                                </div>
+                                <input class="config-player-name" type="text" placeholder="Nome" @bind="Game.State.Ospiti.StaffNames[ix]" @bind:event="oninput" />
+                            </div>
+                        }
+                    </div>
+                    <div class="config-side-color-box">
+                        <strong>COLORE OSPITI</strong>
+                        <div class="team-color-palette">
+                            @foreach (var c in TeamColors)
+                            {
+                                <button type="button" title="@c.Name" aria-label="Colore OSPITI @c.Name" class="team-color-swatch @(Game.State.Ospiti.Color == c.Hex ? "selected" : "")" style="background:@c.Hex" @onclick='() => SetTeamColor("B", c.Hex)'></button>
+                            }
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <div class="config-bottom-actions">
+                <button type="button" class="config-back-action" @onclick="CloseConfigWithoutStarting">← TORNA AL REFERTO</button>
+                <button type="button" class="config-save-action" @onclick="SaveConfiguration">▣ REFERTO GARA</button>
+                <button type="button" class="config-load-action" @onclick="LoadMatchData">▤ CARICA CONFIGURAZIONE</button>
+                <button type="button" class="config-reset-action" @onclick="Game.Reset">↻ RESET</button>
+                <button type="button" class="config-exit-action" @onclick="ExitApplication">⇱ ESCI</button>
+            </div>
+            <div class="config-footnote"><span>ⓘ</span> I giocatori e i dirigenti senza numero/lettera (campo vuoto) non saranno inclusi nel referto di gara e non potranno essere selezionati durante la partita.</div>
+        </div>
+    </div>
+}
+
+@if (Game.ShowPeriodEnd)
+{
+    <div class="overlay period-end-overlay">
+        <div class="period-end-dialog" role="dialog" aria-modal="true" aria-labelledby="period-end-title">
+            <div class="period-end-header">
+                <div class="period-end-header-title">
+                    <span class="period-end-flag" aria-hidden="true">⚑</span>
+                    <span>FINE @GameService.PhaseName(Game.State.Phase)</span>
+                </div>
+            </div>
+
+            <div class="period-end-body">
+                <h2 id="period-end-title">@GameService.PhaseName(Game.State.Phase) terminato.</h2>
+                <div class="period-end-score-label">RISULTATO</div>
+                <div class="period-end-score">
+                    <strong>@Game.State.ScoreA</strong>
+                    <span>—</span>
+                    <strong>@Game.State.ScoreB</strong>
+                </div>
+                <p>Confermare la fine del periodo</p>
+                <div class="period-end-actions-top">
+                    <button type="button" class="period-end-referto" @onclick="PrintReferto">▣&nbsp; APRI REFERTO FIGH</button>
+                    @if (Game.State.Phase > 1)
+                    {
+                        <button type="button" class="period-end-exit" @onclick="ExitApplication">⇱&nbsp; ESCI DAL PROGETTO</button>
+                    }
+                </div>
+                <button type="button" class="period-end-close" @onclick="Game.ClosePeriodDialog">@(Game.State.Phase == 1 ? "INIZIA 2° TEMPO" : "CONFERMA")</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (Game.ShowShootoutStart)
+{
+    <div class="overlay"><div class="dialog-card shootout-dialog">
+        <div class="dialog-kicker">GARA ANCORA IN PARITÀ</div>
+        <h2>INIZIO TIRI DI RIGORE</h2>
+        <div class="dialog-score">@Game.State.ScoreA <span>—</span> @Game.State.ScoreB</div>
+        <p>Conferma l'avvio della serie dei tiri di rigore.</p>
+        <button class="primary dialog-main" @onclick="Game.ConfirmShootoutStart">INIZIA TIRI DI RIGORE</button>
+        <button @onclick="Game.CancelShootoutStart">ANNULLA</button>
+    </div></div>
+}
+
+@if (Game.ShowShootoutFirstTeam)
+{
+    <div class="overlay"><div class="dialog-card shootout-dialog">
+        <div class="dialog-kicker">SERIE DEI RIGORI</div>
+        <h2>CHI ESEGUE IL PRIMO TIRO?</h2>
+        <p>Seleziona la squadra che esegue il primo tiro della serie.</p>
+        <div class="dialog-grid shootout-first-team-grid">
+            <button class="primary" @onclick='() => Game.ChooseShootoutFirstTeam("A")'>@Game.State.Casa.Name</button>
+            <button class="shootout-away-first" @onclick='() => Game.ChooseShootoutFirstTeam("B")'>@Game.State.Ospiti.Name</button>
+        </div>
+    </div></div>
+}
+
+@if (Game.PendingShootout is not null)
+{
+    var p = Game.PendingShootout.Value;
+    var roster = p.Team == "A" ? Game.State.Casa : Game.State.Ospiti;
+    var playerName = p.Index >= 0 && p.Index < roster.PlayerNames.Length ? roster.PlayerNames[p.Index] : "";
+    var number = p.Index >= 0 && p.Index < roster.NumberLabels.Length ? roster.NumberLabels[p.Index] : "";
+    <div class="overlay"><div class="dialog-card shootout-result-dialog">
+        <div class="dialog-kicker">TIRO DA 7 METRI · @(p.Team == "A" ? Game.State.Casa.Name : Game.State.Ospiti.Name)</div>
+        <h2>N° @number</h2>
+        <p>@(string.IsNullOrWhiteSpace(playerName) ? "GIOCATORE" : playerName)</p>
+        <div class="dialog-grid shootout-result-grid">
+            <button class="primary" @onclick='() => Game.RecordShootoutShot(true)'>RIGORE REALIZZATO</button>
+            <button class="danger" @onclick='() => Game.RecordShootoutShot(false)'>RIGORE ERRATO</button>
+            <button class="shootout-cancel" @onclick="Game.CancelShootoutShot">ANNULLA</button>
+        </div>
+    </div></div>
+}
+
+@if (Game.ShowMatchEnd)
+{
+    <div class="overlay match-end-overlay">
+        <div class="match-end-dialog">
+            <div class="match-end-kicker">GARA TERMINATA</div>
+            <div class="match-end-title">
+                @(Game.State.ScoreA == Game.State.ScoreB ? "PAREGGIO" : "SQUADRA VINCENTE")
+            </div>
+            <div class="match-end-score">@Game.State.ScoreA <span>−</span> @Game.State.ScoreB</div>
+            @if (Game.State.ScoreA == Game.State.ScoreB)
+            {
+                <div class="match-end-label">RISULTATO FINALE</div>
+                <div class="match-end-team draw">@Game.State.Casa.Name <span>—</span> @Game.State.Ospiti.Name</div>
+                <p>La gara è terminata in parità. Il risultato è stato registrato nel Registro Gara.</p>
+            }
+            else
+            {
+                <div class="match-end-label">SQUADRA VINCENTE</div>
+                <div class="match-end-team">@(Game.State.ScoreA > Game.State.ScoreB ? Game.State.Casa.Name : Game.State.Ospiti.Name)</div>
+                <p>La gara è terminata. Il risultato è stato registrato nel Registro Gara e i dati sono pronti per il referto finale.</p>
+            }
+            <div class="match-end-actions">
+                <button type="button" class="primary" @onclick="PrintReferto">▣ APRI REFERTO FIGH</button>
+                <button type="button" @onclick="Game.CloseMatchEnd">CHIUDI</button>
+                <button type="button" class="danger" @onclick="ExitApplication">⇱ ESCI DAL PROGETTO</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (Game.ShowShootoutWinner)
+{
+    <div class="overlay shootout-winner-overlay">
+        <div class="shootout-winner-dialog">
+            <div class="shootout-winner-kicker">SERIE DEI RIGORI TERMINATA</div>
+            <div class="shootout-winner-title">GARA TERMINATA</div>
+            <div class="shootout-winner-score">@Game.State.ShootoutScoreA.ToString("00") <span>−</span> @Game.State.ShootoutScoreB.ToString("00")</div>
+            <div class="shootout-winner-label">SQUADRA VINCENTE</div>
+            <div class="shootout-winner-team">@Game.ShootoutWinnerName</div>
+            <p>La serie dei rigori è terminata. Il risultato è stato registrato nel Registro Gara.</p>
+            <div class="shootout-winner-actions">
+                <button type="button" class="primary" @onclick="PrintReferto">▣ APRI REFERTO FIGH</button>
+                <button type="button" @onclick="Game.CloseShootoutWinner">CHIUDI</button>
+                <button type="button" class="danger" @onclick="ExitApplication">⇱ ESCI DAL PROGETTO</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (Game.PendingYellow is not null)
+{
+    <div class="overlay"><div class="dialog-card"><div class="dialog-kicker">DECISIONE DISCIPLINARE</div><h2>AMMONIZIONE NON DISPONIBILE</h2><p>@(Game.PendingYellow?.IsStaff == true ? "Un dirigente della squadra ha già ricevuto l'unica ammonizione consentita alla panchina oppure la squadra ha raggiunto il limite di tre ammonizioni." : "Il giocatore ha già un'ammonizione oppure la squadra ha raggiunto il limite di tre ammonizioni.")</p><div class="dialog-grid"><button @onclick='() => Game.ResolveYellow("TWO")'>2 MINUTI</button><button class="danger" @onclick='() => Game.ResolveYellow("RED")'>ESPULSIONE</button><button @onclick='() => Game.ResolveYellow("CANCEL")'>ANNULLA</button></div></div></div>
+}
+
+@if (_timerEditorOpen)
+{
+    <div class="overlay timer-editor-overlay">
+        <div class="dialog-card timer-editor-dialog">
+            <div class="dialog-kicker">CRONOMETRO</div>
+            <h2>MODIFICA TEMPO</h2>
+            <p>Il cronometro deve essere fermo. Inserisci il tempo nel formato <strong>MM:SS</strong>.</p>
+            <input class="timer-editor-input" type="text" inputmode="numeric" maxlength="5" @bind="_timerEditValue" @bind:event="oninput" aria-label="Tempo" />
+            @if (!string.IsNullOrWhiteSpace(_timerEditorError))
+            {
+                <div class="validation-error">@_timerEditorError</div>
+            }
+            <div class="event-editor-actions">
+                <button type="button" @onclick="CloseTimerEditor">ANNULLA</button>
+                <button type="button" class="primary" @onclick="SaveTimerEditor">SALVA</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_eventEditorOpen && _editingEvent is not null)
+{
+    <div class="overlay event-editor-overlay">
+        <div class="dialog-card event-editor-dialog registro-gara">
+            <div class="dialog-kicker">REGISTRO GARA</div>
+            <h2>MODIFICA EVENTO</h2>
+            <div class="event-editor-grid">
+                <label>Tempo<input type="text" @bind="_editTime" /></label>
+                <label>Squadra
+                    <select @bind="_editTeam" @bind:after="RefreshEditorParticipants">
+                        <option value="A">CASA</option>
+                        <option value="B">OSPITI</option>
+                    </select>
+                </label>
+                <label>Numero / Dirigente
+                    <select @bind="_editNumber" disabled="@(_editType == "TIMEOUT")">
+                        @if (_editType == "TIMEOUT")
+                        {
+                            <option value="">—</option>
+                        }
+                        else
+                        {
+                            @foreach (var p in GetEditorParticipants(_editTeam))
+                            {
+                                <option value="@p.Value">@p.Label</option>
+                            }
+                        }
+                    </select>
+                </label>
+                <label>Evento
+                    <select @bind="_editType" @bind:after="RefreshEditorParticipants">
+                        <option value="GOAL">RETE</option>
+                        <option value="PENALTY_GOAL">RIGORE REALIZZATO</option>
+                        <option value="PENALTY_MISS">RIGORE ERRATO</option>
+                        <option value="YELLOW">AMMONIZIONE</option>
+                        <option value="TWO">2'</option>
+                        <option value="RED">ESPULSIONE</option>
+                        <option value="TIMEOUT">TIME OUT</option>
+                    </select>
+                </label>
+            </div>
+            @if (!string.IsNullOrWhiteSpace(_eventEditorError))
+            {
+                <div class="validation-error">@_eventEditorError</div>
+            }
+            <div class="event-editor-actions">
+                <button type="button" class="danger" @onclick="DeleteEditingEvent">ELIMINA</button>
+                <button type="button" @onclick="CloseEventEditor">ANNULLA</button>
+                <button type="button" class="primary" @onclick="SaveEditingEvent">SALVA</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (Game.State.TimeoutRemainingSeconds > 0)
+{
+    <div class="overlay timeout-overlay">
+        <div class="dialog-card timeout-dialog @(Game.State.TimeoutTeam == "A" ? "timeout-team-a" : "timeout-team-b")">
+            <div class="dialog-kicker">TIME OUT</div>
+            <h2>TIME OUT · @(Game.State.TimeoutTeam == "A" ? Game.State.Casa.Name : Game.State.Ospiti.Name)</h2>
+            <div class="timeout-big-countdown timer-layout-adjusted registro-layout-adjusted registro-redesign-shell">@GameService.FormatTime(Game.State.TimeoutRemainingSeconds)</div>
+            <p>Il cronometro di gara è fermo.</p>
+            <button type="button" class="timeout-exit-button" @onclick="Game.ExitTimeout">ESCI TIME OUT</button>
+        </div>
+    </div>
+}
+
+@code {
+    private static readonly (string Name, string Hex)[] TeamColors = [
+        ("BLU", "#2563eb"), ("VIOLA", "#7c3aed"), ("VERDE", "#16a34a"),
+        ("ARANCIONE", "#ea580c"), ("NERO", "#111827"),
+        ("GIALLO", "#eab308")
+    ];
+
+    private string GetNumberLabel(string team, int index)
+    {
+        var roster = team == "A" ? Game.State.Casa : Game.State.Ospiti;
+        return roster.NumberLabels is { Length: 16 } ? (roster.NumberLabels[index] ?? string.Empty) : string.Empty;
+    }
+
+    private IEnumerable<(int Round, ShootoutAttempt? Home, ShootoutAttempt? Away)> GetShootoutPairs()
+    {
+        var attempts = (Game.State.Shootout ?? []).OrderBy(x => x.Round).ToList();
+        var maxRound = attempts.Count == 0 ? 0 : (attempts.Max(x => x.Round) + 1) / 2;
+        for (var round = 1; round <= maxRound; round++)
+        {
+            var home = attempts.FirstOrDefault(x => x.Round == (round * 2 - 1) && x.Team == "A")
+                       ?? attempts.FirstOrDefault(x => x.Round == (round * 2) && x.Team == "A");
+            var away = attempts.FirstOrDefault(x => x.Round == (round * 2 - 1) && x.Team == "B")
+                       ?? attempts.FirstOrDefault(x => x.Round == (round * 2) && x.Team == "B");
+            yield return (round, home, away);
+        }
+    }
+
+    private void SetNumberLabel(string team, int index, string? value)
+    {
+        var roster = team == "A" ? Game.State.Casa : Game.State.Ospiti;
+        value = (value ?? string.Empty).Trim();
+        if (value.Length > 2 || value.Any(c => !char.IsDigit(c))) return;
+        roster.NumberLabels[index] = value;
+        roster.Numbers[index] = int.TryParse(value, out var n) ? n : -1;
+        roster.ActivePlayers[index] = !string.IsNullOrWhiteSpace(value);
+    }
+
+    private void SetStaffLetter(string team, int index, string? value)
+    {
+        var roster = team == "A" ? Game.State.Casa : Game.State.Ospiti;
+        value = (value ?? string.Empty).Trim().ToUpperInvariant();
+        if (value.Length > 1 || (!string.IsNullOrWhiteSpace(value) && value is not ("A" or "B" or "C" or "D" or "E"))) return;
+        roster.StaffLetters[index] = value;
+        roster.ActiveStaff[index] = !string.IsNullOrWhiteSpace(value);
+    }
+
+    private void ClearPlayer(string team, int index)
+    {
+        SetNumberLabel(team, index, string.Empty);
+        var roster = team == "A" ? Game.State.Casa : Game.State.Ospiti;
+        roster.PlayerNames[index] = string.Empty;
+    }
+
+    private void ClearStaff(string team, int index)
+    {
+        SetStaffLetter(team, index, string.Empty);
+        var roster = team == "A" ? Game.State.Casa : Game.State.Ospiti;
+        roster.StaffNames[index] = string.Empty;
+    }
+
+    private bool IsPlayerConfigured(string team, int index) =>
+        (team == "A" ? Game.State.Casa : Game.State.Ospiti).NumberLabels[index].Trim().Length > 0;
+
+    private bool IsStaffConfigured(string team, int index) =>
+        !string.IsNullOrWhiteSpace((team == "A" ? Game.State.Casa : Game.State.Ospiti).StaffLetters[index]);
+
+    private async Task ExitApplication()
+    {
+        try { await JS.InvokeVoidAsync("chiudiApplicazione"); } catch { }
+    }
+
+    private void CloseConfigWithoutStarting() => Game.CloseConfigurationWithoutStarting();
+
+    private static double NumberSortKey(string? label, int fallback)
+    {
+        var v = (label ?? string.Empty).Trim();
+        if (v == "0") return 0;
+        if (v == "00") return 0.5;
+        if (int.TryParse(v, out var n) && n >= 1) return n;
+        return fallback >= 1 ? fallback : 9999;
+    }
+
+    private void SetTeamColor(string team, string color) => Game.SetTeamColor(team, color);
+
+    private void SetMatchMode(string mode)
+    {
+        if (mode is "STANDARD" or "SUPPLEMENTARI" or "RIGORI")
+            Game.State.MatchMode = mode;
+    }
+
+    private static string GetContrastTextColor(string hex)
+    {
+        if (string.IsNullOrWhiteSpace(hex)) return "#ffffff";
+        var h = hex.Trim().TrimStart('#');
+        if (h.Length == 3) h = string.Concat(h.Select(c => new string(c, 2)));
+        if (h.Length != 6) return "#ffffff";
+        if (!int.TryParse(h.Substring(0, 2), System.Globalization.NumberStyles.HexNumber, null, out var r) ||
+            !int.TryParse(h.Substring(2, 2), System.Globalization.NumberStyles.HexNumber, null, out var g) ||
+            !int.TryParse(h.Substring(4, 2), System.Globalization.NumberStyles.HexNumber, null, out var b)) return "#ffffff";
+        return (0.299 * r + 0.587 * g + 0.114 * b) >= 160 ? "#111827" : "#ffffff";
+    }
+
+    private readonly (string Code, string Label, string Css)[] EventTypes = [
+        ("GOAL", "GOAL", "goal"),
+        ("PENALTY_GOAL", "7m GOAL", "penalty-goal"),
+        ("PENALTY_MISS", "7m MISS", "penalty-miss"),
+        ("YELLOW", "AMMONIZIONE", "yellow"),
+        ("TWO", "2'", "two"),
+        ("RED", "ESPULSIONE DIRETTA", "red")];
+
+    protected override void OnInitialized()
+    {
+        Game.Changed += OnChanged;
+    }
+
+    private void OnChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+        // Il recovery viene scritto immediatamente a ogni modifica reale
+        // della gara, non soltanto dopo un render della pagina.
+        _ = SaveRecoveryIfReady();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Leggiamo prima il recovery esistente. L'app non deve mai
+            // sovrascriverlo all'avvio con una gara vuota.
+            var existingRecovery = await JS.InvokeAsync<string?>("recuperaPartitaLocale");
+            // IMPORTANTISSIMO: all'avvio il recovery può contenere una gara
+            // precedente. Non deve essere sovrascritto dalla GameState vuota.
+            // Il confronto parte dallo stato appena creato e il primo autosave
+            // avviene soltanto quando lo stato cambia realmente.
+            _lastRecoveryJson = Game.ExportJson();
+            _recoveryReady = true;
+            _recoveryAvailable = !string.IsNullOrWhiteSpace(existingRecovery);
+
+            // Il recovery viene registrato autonomamente anche quando
+            // l'utente modifica campi della distinta/configurazione che
+            // non passano da Game.Notify(), e durante il trascorrere del
+            // cronometro.
+            _selfRef ??= DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("avviaAutoRecovery", _selfRef);
+        }
+    }
+
+    private async Task SaveRecoveryIfReady()
+    {
+        if (!_recoveryReady) return;
+        try
+        {
+            var json = Game.ExportJson();
+            if (!string.Equals(json, _lastRecoveryJson, StringComparison.Ordinal))
+            {
+                await JS.InvokeVoidAsync("salvaPartitaLocale", json);
+                _lastRecoveryJson = json;
+            }
+        }
+        catch (JSDisconnectedException) { }
+        catch (InvalidOperationException) { }
+    }
+
+    private bool _timerEditorOpen;
+    private string _timerEditValue = "00:00";
+    private string _timerEditorError = "";
+
+    private bool _eventEditorOpen;
+    private int? _editingEvent;
+    private string _editTime = "00:00";
+    private string _editTeam = "A";
+    private string _editNumber = "";
+    private string _editType = "GOAL";
+    private string _eventEditorError = "";
+
+    private IEnumerable<(string Value, string Label)> GetEditorParticipants(string team)
+    {
+        var roster = team == "A" ? Game.State.Casa : Game.State.Ospiti;
+        for (var i = 0; i < 16; i++)
+        {
+            if (!roster.ActivePlayers[i]) continue;
+            var n = GetNumberLabel(team, i).Trim();
+            if (string.IsNullOrWhiteSpace(n)) continue;
+            yield return (n, $"{n} - {roster.PlayerNames[i]}");
+        }
+        for (var i = 0; i < 5; i++)
+        {
+            if (!roster.ActiveStaff[i]) continue;
+            var l = roster.StaffLetters[i];
+            yield return (l, $"{l} - {roster.StaffNames[i]}");
+        }
+    }
+
+    private void OpenTimerEditor()
+    {
+        if (!Game.CanEditEvents) return;
+        _timerEditValue = GameService.FormatTime(Game.State.TimerSeconds);
+        _timerEditorError = "";
+        _timerEditorOpen = true;
+        StateHasChanged();
+    }
+
+    private void CloseTimerEditor()
+    {
+        _timerEditorOpen = false;
+        _timerEditorError = "";
+    }
+
+    private void SaveTimerEditor()
+    {
+        var value = (_timerEditValue ?? "").Trim();
+        var parts = value.Split(':');
+        if (parts.Length != 2 || !int.TryParse(parts[0], out var minutes) || !int.TryParse(parts[1], out var seconds) || seconds < 0 || seconds > 59 || minutes < 0)
+        {
+            _timerEditorError = "Inserisci un tempo valido nel formato MM:SS.";
+            return;
+        }
+
+        var normalized = $"{minutes:00}:{seconds:00}";
+        if (!Game.EditTimer(normalized))
+        {
+            _timerEditorError = $"Il tempo deve essere compreso tra {GameService.FormatTime(Game.GetPeriodStartSeconds(Game.State.Phase))} e {GameService.FormatTime(Game.GetCurrentPeriodEndSeconds())}.";
+            return;
+        }
+
+        CloseTimerEditor();
+    }
+
+    private void OpenEventEditor(int index)
+    {
+        // La modifica del Registro Gara è volutamente possibile SOLO a cronometro fermo.
+        // In questo modo l'operatore non può alterare un evento mentre il tempo ufficiale
+        // sta scorrendo. Al tocco di una riga viene aperta una vera finestra di modifica,
+        // come nel precedente referto HTML.
+        if (!Game.CanEditEvents) return;
+        if (index < 0 || index >= Game.State.Events.Count) return;
+
+        var ev = Game.State.Events[index];
+        if (ev.Type == "SYSTEM" || ev.Type is "SHOOTOUT_GOAL" or "SHOOTOUT_MISS") return;
+
+        _editingEvent = index;
+        _editTime = ev.Time;
+        _editTeam = ev.Team is "A" or "B" ? ev.Team : "A";
+        _editNumber = ev.Number == "—" ? "" : ev.Number;
+        _editType = ev.Type switch
+        {
+            "TIMEOUT" or "T.O." or "TO" => "TIMEOUT",
+            "GOAL" => "GOAL",
+            "PENALTY_GOAL" => "PENALTY_GOAL",
+            "PENALTY_MISS" => "PENALTY_MISS",
+            "YELLOW" => "YELLOW",
+            "TWO" => "TWO",
+            "RED" => "RED",
+            _ => "GOAL"
+        };
+        _eventEditorError = "";
+        _eventEditorOpen = true;
+        StateHasChanged();
+    }
+
+    private void RefreshEditorParticipants()
+    {
+        if (_editType == "TIMEOUT") { _editNumber = ""; return; }
+        if (!GetEditorParticipants(_editTeam).Any(p => p.Value == _editNumber))
+            _editNumber = GetEditorParticipants(_editTeam).Select(p => p.Value).FirstOrDefault() ?? "";
+    }
+
+    private void CloseEventEditor()
+    {
+        _eventEditorOpen = false;
+        _editingEvent = null;
+        _eventEditorError = "";
+    }
+
+    private void SaveEditingEvent()
+    {
+        if (_editingEvent is null) return;
+        if (!Game.CanEditEvents)
+        {
+            _eventEditorError = "Il cronometro deve essere fermo per registrare la modifica.";
+            return;
+        }
+
+        if (!Game.EditEvent(_editingEvent.Value, _editTime, _editTeam, _editNumber, _editType))
+        {
+            _eventEditorError = "Modifica non valida. Controlla tempo, squadra, numero/dirigente ed evento.";
+            return;
+        }
+
+        // EditEvent salva uno snapshot prima della variazione e ricalcola automaticamente
+        // risultato, reti, 7m, ammonizioni, 2', espulsioni e countdown.
+        CloseEventEditor();
+    }
+
+    private void DeleteEditingEvent()
+    {
+        if (_editingEvent is null) return;
+        if (!Game.DeleteEvent(_editingEvent.Value))
+        {
+            _eventEditorError = "L'evento non può essere eliminato in questo momento.";
+            return;
+        }
+        CloseEventEditor();
+    }
+
+    private void SelectEvent(string code)
+    {
+        if (Game.State.MatchFinished || Game.State.ShootoutStarted) return;
+        Game.SelectEvent(code);
+    }
+
+    private void CancelEvent() => Game.CancelPendingEvent();
+
+    private void RegisterTimeout(string team)
+    {
+        Game.RegisterTimeout(team);
+    }
+    private void UndoEvent() => Game.Undo();
+
+    private async Task SaveConfiguration()
+    {
+        if (Game.CloseConfiguration())
+            await SaveRecoveryIfReady();
+    }
+
+    private void ProceedToNextPeriod() { Game.NextPeriod(); }
+    private bool _recoveryReady;
+    private bool _recoveryAvailable;
+    private string? _lastRecoveryJson;
+    private string GetEventTeamColor(string team)
+    {
+        if (team == "A") return Game.State.Casa.Color;
+        if (team == "B") return Game.State.Ospiti.Color;
+        return "#64748b";
+    }
+
+    private async Task SaveGame() => await JS.InvokeVoidAsync("refertoDownload", "RefertoPallamano.json", Game.ExportJson());
+    private async Task RestoreRecovery()
+    {
+        try
+        {
+            var json = await JS.InvokeAsync<string?>("recuperaPartitaLocale");
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                Game.SetValidationMessage("NESSUN RECUPERO AUTOMATICO DISPONIBILE");
+                return;
+            }
+            Game.ImportJson(json);
+            _lastRecoveryJson = json;
+            _recoveryReady = true;
+            _recoveryAvailable = true;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            Game.SetValidationMessage("RIPRISTINO NON RIUSCITO: " + ex.Message);
+        }
+    }
+
+    private void OnMatchDateInput(ChangeEventArgs e)
+    {
+        Game.State.MatchDate = e.Value?.ToString() ?? "";
+    }
+
+    private async Task SaveRecovery()
+    {
+        if (_recoveryReady) await JS.InvokeVoidAsync("salvaPartitaLocale", Game.ExportJson());
+    }
+
+    private DotNetObjectReference<Home>? _selfRef;
+    private async Task LoadMatchData()
+    {
+        _selfRef ??= DotNetObjectReference.Create(this);
+        await JS.InvokeVoidAsync("apriCaricamentoExcel", _selfRef);
+    }
+
+    [JSInvokable("AutoSaveRecovery")]
+    public async Task AutoSaveRecovery()
+    {
+        await SaveRecoveryIfReady();
+    }
+
+    [JSInvokable("ImportMatchData")]
+    public void ImportMatchData(ImportedMatchData d)
+    {
+        Game.State.MatchNumber = d.MatchNumber ?? "";
+        Game.State.MatchDate = d.Date ?? "";
+        Game.State.MatchTime = d.Time ?? "";
+        Game.State.Championship = d.Championship ?? "";
+        Game.State.City = d.City ?? "";
+        Game.State.Venue = d.Venue ?? "";
+        Game.State.Season = d.Season ?? "";
+        Game.State.Referee1 = d.Referee1 ?? "";
+        Game.State.Referee2 = d.Referee2 ?? "";
+        Game.State.Delegate1 = d.Delegate1 ?? "";
+        Game.State.Delegate2 = d.Delegate2 ?? "";
+        Game.State.Timekeeper = d.Timekeeper ?? "";
+        Game.State.Secretary = d.Secretary ?? "";
+        if (!string.IsNullOrWhiteSpace(d.TeamA)) Game.State.Casa.Name = d.TeamA;
+        if (!string.IsNullOrWhiteSpace(d.TeamB)) Game.State.Ospiti.Name = d.TeamB;
+        LoadPlayers(Game.State.Casa, d.PlayersA);
+        LoadPlayers(Game.State.Ospiti, d.PlayersB);
+        LoadStaff(Game.State.Casa, d.StaffA);
+        LoadStaff(Game.State.Ospiti, d.StaffB);
+        StateHasChanged();
+    }
+
+    private static void LoadPlayers(TeamState team, ImportedPlayer[]? players)
+    {
+        team.Numbers = Enumerable.Range(1, 16).ToArray();
+        team.NumberLabels = Enumerable.Range(1, 16).Select(n => n.ToString()).ToArray();
+        team.PlayerNames = new string[16];
+        team.ActivePlayers = new bool[16];
+        var slot = 0;
+        foreach (var p in (players ?? Array.Empty<ImportedPlayer>()).Take(16))
+        {
+            var label = (p.Number ?? string.Empty).Trim();
+            if (label != "0" && label != "00" && (!int.TryParse(label, out var parsed) || parsed < 1 || parsed > 99)) continue;
+            if (slot >= 16) break;
+            team.Numbers[slot] = int.TryParse(label, out var parsedNumber) ? parsedNumber : 0;
+            team.NumberLabels[slot] = label;
+            team.PlayerNames[slot] = p.Name ?? "";
+            team.ActivePlayers[slot] = true;
+            slot++;
+        }
+    }
+
+    private static void LoadStaff(TeamState team, ImportedStaff[]? staff)
+    {
+        team.StaffLetters = ["A", "B", "C", "D", "E"];
+        team.StaffNames = new string[5];
+        team.ActiveStaff = Enumerable.Repeat(true, 5).ToArray();
+        foreach (var p in (staff ?? Array.Empty<ImportedStaff>()))
+        {
+            var i = Array.IndexOf(team.StaffLetters, (p.Letter ?? "").ToUpperInvariant());
+            if (i >= 0) team.StaffNames[i] = p.Name ?? "";
+        }
+    }
+
+    public sealed class ImportedMatchData
+    {
+        public string? MatchNumber { get; set; } public string? Date { get; set; } public string? Time { get; set; }
+        public string? Championship { get; set; } public string? City { get; set; } public string? Venue { get; set; } public string? Season { get; set; }
+        public string? Referee1 { get; set; } public string? Referee2 { get; set; } public string? Delegate1 { get; set; } public string? Delegate2 { get; set; }
+        public string? Timekeeper { get; set; } public string? Secretary { get; set; } public string? TeamA { get; set; } public string? TeamB { get; set; }
+        public ImportedPlayer[]? PlayersA { get; set; } public ImportedPlayer[]? PlayersB { get; set; }
+        public ImportedStaff[]? StaffA { get; set; } public ImportedStaff[]? StaffB { get; set; }
+    }
+    public sealed class ImportedPlayer { public string? Number { get; set; } public string? Name { get; set; } }
+    public sealed class ImportedStaff { public string? Letter { get; set; } public string? Name { get; set; } }
+
+    private async Task PrintReferto()
+    {
+        // Il referto viene costruito dal modello HTML ufficiale FIGH presente in wwwroot/RefertoFIGH.html.
+        // Qui passiamo soltanto i dati già presenti nel progetto.
+        await JS.InvokeVoidAsync("stampaReferto", new
+        {
+            matchNumber = Game.State.MatchNumber,
+            date = Game.State.MatchDate,
+            time = Game.State.MatchTime,
+            championship = Game.State.Championship,
+            city = Game.State.City,
+            venue = Game.State.Venue,
+            season = Game.State.Season,
+            referee1 = Game.State.Referee1,
+            referee2 = Game.State.Referee2,
+            delegate1 = Game.State.Delegate1,
+            delegate2 = Game.State.Delegate2,
+            timekeeper = Game.State.Timekeeper,
+            secretary = Game.State.Secretary,
+            casa = Game.State.Casa.Name,
+            ospiti = Game.State.Ospiti.Name,
+            playersA = Game.State.Casa.Numbers.Select((n, i) => new
+            {
+                number = n,
+                label = GetNumberLabel("A", i),
+                name = Game.State.Casa.PlayerNames[i] ?? "",
+                active = Game.State.Casa.ActivePlayers[i],
+                originalIndex = i,
+                goals = Game.State.Events.Count(e => e.Team == "A" && e.Number == GetNumberLabel("A", i) && (e.Type == "GOAL" || e.Type == "PENALTY_GOAL"))
+            }).Where(p => p.active)
+              .OrderBy(p => NumberSortKey(p.label, p.number))
+              .ThenBy(p => p.originalIndex)
+              .ToArray(),
+            playersB = Game.State.Ospiti.Numbers.Select((n, i) => new
+            {
+                number = n,
+                label = GetNumberLabel("B", i),
+                name = Game.State.Ospiti.PlayerNames[i] ?? "",
+                active = Game.State.Ospiti.ActivePlayers[i],
+                originalIndex = i,
+                goals = Game.State.Events.Count(e => e.Team == "B" && e.Number == GetNumberLabel("B", i) && (e.Type == "GOAL" || e.Type == "PENALTY_GOAL"))
+            }).Where(p => p.active)
+              .OrderBy(p => NumberSortKey(p.label, p.number))
+              .ThenBy(p => p.originalIndex)
+              .ToArray(),
+            staffA = Game.State.Casa.StaffLetters.Select((l, i) => new
+            {
+                letter = l,
+                name = Game.State.Casa.StaffNames[i] ?? "",
+                active = Game.State.Casa.ActiveStaff[i]
+            }).Where(p => p.active).ToArray(),
+            staffB = Game.State.Ospiti.StaffLetters.Select((l, i) => new
+            {
+                letter = l,
+                name = Game.State.Ospiti.StaffNames[i] ?? "",
+                active = Game.State.Ospiti.ActiveStaff[i]
+            }).Where(p => p.active).ToArray(),
+            events = Game.State.Events.Select(e => new
+            {
+                e.Time,
+                e.Team,
+                e.Number,
+                e.Type,
+                e.Text,
+                e.Result
+            }).ToArray(),
+            phaseScores = Game.State.PhaseScores,
+            penaltyTotalA = Game.State.Events.Count(e => e.Team == "A" && (e.Type == "PENALTY_GOAL" || e.Type == "PENALTY_MISS")),
+            penaltyTotalB = Game.State.Events.Count(e => e.Team == "B" && (e.Type == "PENALTY_GOAL" || e.Type == "PENALTY_MISS")),
+            penaltyScoredA = Game.State.Events.Count(e => e.Team == "A" && e.Type == "PENALTY_GOAL"),
+            penaltyScoredB = Game.State.Events.Count(e => e.Team == "B" && e.Type == "PENALTY_GOAL"),
+            timeoutsA = new
+            {
+                firstTime = Game.State.Events.Where(e => e.Team == "A" && e.Type == "TIMEOUT").Select(e => e.Time).ElementAtOrDefault(0),
+                secondTime = Game.State.Events.Where(e => e.Team == "A" && e.Type == "TIMEOUT").Select(e => e.Time).ElementAtOrDefault(1),
+                thirdTime = Game.State.Events.Where(e => e.Team == "A" && e.Type == "TIMEOUT").Select(e => e.Time).ElementAtOrDefault(2)
+            },
+            timeoutsB = new
+            {
+                firstTime = Game.State.Events.Where(e => e.Team == "B" && e.Type == "TIMEOUT").Select(e => e.Time).ElementAtOrDefault(0),
+                secondTime = Game.State.Events.Where(e => e.Team == "B" && e.Type == "TIMEOUT").Select(e => e.Time).ElementAtOrDefault(1),
+                thirdTime = Game.State.Events.Where(e => e.Team == "B" && e.Type == "TIMEOUT").Select(e => e.Time).ElementAtOrDefault(2)
+            },
+            shootout = Game.State.Shootout.Select(x => new
+            {
+                x.Id,
+                x.Phase,
+                x.Round,
+                x.Team,
+                x.Number,
+                x.PlayerName,
+                x.Goal,
+                x.ScoreA,
+                x.ScoreB
+            }).ToArray(),
+            shootoutScoreA = Game.State.ShootoutScoreA,
+            shootoutScoreB = Game.State.ShootoutScoreB,
+            scoreA = Game.State.ScoreA,
+            scoreB = Game.State.ScoreB
+        });
+    }
+
+    public async void Dispose()
+    {
+        Game.Changed -= OnChanged;
+        try { await JS.InvokeVoidAsync("fermaAutoRecovery"); } catch { }
+        _selfRef?.Dispose();
+    }
+}
