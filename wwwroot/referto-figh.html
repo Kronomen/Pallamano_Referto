@@ -1174,6 +1174,7 @@ function integraRetiDaEventi(lista, squadra){
 
         const realizzato =
             tipo === "GOAL" ||
+            tipo === "PENALTY_GOAL" ||
             tipo === "RETE" ||
             (
                 tipo === "PENALTY" &&
@@ -1574,17 +1575,39 @@ risultati.setteMetri = {
     // TIME OUT
     //------------------------------------------------
 
-timeout.A = [
-    partita.timeoutsA?.firstTime,
-    partita.timeoutsA?.secondTime,
-    partita.timeoutsA?.thirdTime
-].filter(Boolean);
+// TIME-OUT: prima dai dati ricostruiti dal Registro Gara;
+// fallback ai campi già preparati dalla pagina principale.
+const eventiReferto = Array.isArray(partita.eventi) ? partita.eventi : [];
+const estraiTimeout = team => eventiReferto
+    .filter(e => {
+        const t = String(e.Team ?? e.team ?? "").trim().toUpperCase();
+        const type = String(e.Type ?? e.type ?? "").trim().toUpperCase();
+        const text = String(e.Text ?? e.text ?? "").trim().toUpperCase().replace(/[.]/g, "");
+        return t === team && (
+            ["TIMEOUT", "T.O", "TO", "TIME OUT"].includes(type) ||
+            text === "TIME OUT" || text === "TIMEOUT" || text === "T.O" || text === "TO"
+        );
+    })
+    .map(e => e.Time ?? e.time ?? "")
+    .filter(Boolean);
 
-timeout.B = [
-    partita.timeoutsB?.firstTime,
-    partita.timeoutsB?.secondTime,
-    partita.timeoutsB?.thirdTime
-].filter(Boolean);
+timeout.A = estraiTimeout("A");
+timeout.B = estraiTimeout("B");
+
+if(!timeout.A.length){
+    timeout.A = [
+        partita.timeoutsA?.firstTime,
+        partita.timeoutsA?.secondTime,
+        partita.timeoutsA?.thirdTime
+    ].filter(Boolean);
+}
+if(!timeout.B.length){
+    timeout.B = [
+        partita.timeoutsB?.firstTime,
+        partita.timeoutsB?.secondTime,
+        partita.timeoutsB?.thirdTime
+    ].filter(Boolean);
+}
     //------------------------------------------------
     // UFFICIALI
     //------------------------------------------------
@@ -1596,30 +1619,28 @@ timeout.B = [
     ufficiali.delegato2 = partita.delegate2 ?? "";
 
 //------------------------------------------------
-    // DIRIGENTI SQUALIFICATI (PROTETTO CONTRO GLI ERRORI)
-    //------------------------------------------------
-
-    (partita.currentRosterA?.officials || []).forEach(d => {
-        if (!d.red) return;
-        const riga = [...document.querySelectorAll("#bodyA tr")]
-            .find(r => r.cells.length > 1 && r.cells[0].textContent === String(d.num || ''));
-        
-        if (riga && riga.cells.length > 8) {
-            riga.cells[7].textContent = d.redTime || "";
-            riga.cells[8].textContent = d.sanction || "";
-        }
-    });
-
-    (partita.currentRosterB?.officials || []).forEach(d => {
-        if (!d.red) return;
-        const riga = [...document.querySelectorAll("#bodyB tr")]
-            .find(r => r.cells.length > 1 && r.cells[0].textContent === String(d.num || ''));
-        
-        if (riga && riga.cells.length > 8) {
-            riga.cells[7].textContent = d.redTime || "";
-            riga.cells[8].textContent = d.sanction || "";
-        }
-    });
+    // SANZIONI DIRIGENTI: ricostruite direttamente dal Registro Gara.
+    function compilaDirigentiDaEventi(squadra, dirigenti){
+        const body = document.getElementById("body" + squadra);
+        if(!body) return;
+        const eventi = partita.eventi || [];
+        (dirigenti || []).forEach(d => {
+            const lettera = String(d.num ?? d.lettera ?? d.role ?? d.letter ?? "").trim().toUpperCase();
+            if(!lettera) return;
+            const r = [...body.rows].find(row => row.classList.contains("dirigente-row") && String(row.cells[0]?.textContent || "").trim().toUpperCase() === lettera);
+            if(!r) return;
+            const mine = eventi.filter(e => String(e.Team ?? e.team ?? "").trim().toUpperCase() === squadra && String(e.Number ?? e.number ?? "").trim().toUpperCase() === lettera);
+            const y = mine.find(e => String(e.Type ?? e.type ?? "").toUpperCase() === "YELLOW");
+            const t = mine.find(e => String(e.Type ?? e.type ?? "").toUpperCase() === "TWO");
+            const red = mine.find(e => String(e.Type ?? e.type ?? "").toUpperCase() === "RED");
+            scriviCella(r.cells[3], y?.Time || y?.time || d.yellowTime || "", "7pt");
+            scriviCella(r.cells[4], t?.Time || t?.time || d.susp1Time || "");
+            scriviCella(r.cells[7], red?.Time || red?.time || d.redTime || "");
+            scriviCella(r.cells[8], red ? (isThreeByTwoText(red.Text || red.text || "") ? "3x2'" : "SQ") : (d.sanction || ""));
+        });
+    }
+    compilaDirigentiDaEventi("A", partita.currentRosterA?.officials || []);
+    compilaDirigentiDaEventi("B", partita.currentRosterB?.officials || []);
 
 }
 
@@ -1690,6 +1711,7 @@ function ricostruisciGoalDaRegistro(){
         const numero = String(
             ev.numero ??
             ev.num ??
+            ev.number ??
             ""
         ).trim();
 
@@ -1711,6 +1733,7 @@ function ricostruisciGoalDaRegistro(){
 
         const èRete =
             tipo === "GOAL" ||
+            tipo === "PENALTY_GOAL" ||
             tipo === "RETE" ||
             (
                 tipo === "PENALTY" &&
@@ -1736,79 +1759,99 @@ function ricostruisciGoalDaRegistro(){
 // COMPILA IL REFERTO FIGH
 //====================================================
 
+function isThreeByTwoText(text){
+    const t = String(text ?? "").toUpperCase()
+        .replace(/\s+/g, "")
+        .replace(/[°'’]/g, "");
+    return /3[X×]2/.test(t);
+}
+
+function datiGiocatoreDaEventi(squadra, numero){
+    const n = String(numero ?? "").trim();
+    const mine = (partita.eventi || []).filter(e =>
+        String(e.Team ?? e.team ?? "").trim().toUpperCase() === squadra &&
+        String(e.Number ?? e.number ?? "").trim() === n
+    );
+    const yellow = mine.find(e => String(e.Type ?? e.type ?? "").toUpperCase() === "YELLOW");
+    const twos = mine.filter(e => {
+        const type = String(e.Type ?? e.type ?? "").toUpperCase();
+        const text = String(e.Text ?? e.text ?? "").toUpperCase();
+        return type === "TWO" && !isThreeByTwoText(text);
+    });
+    const third = mine.find(e => {
+        const type = String(e.Type ?? e.type ?? "").toUpperCase();
+        const text = String(e.Text ?? e.text ?? "").toUpperCase();
+        return (type === "RED" || type === "TWO") && isThreeByTwoText(text);
+    });
+    const red = mine.find(e => {
+        const type = String(e.Type ?? e.type ?? "").toUpperCase();
+        const text = String(e.Text ?? e.text ?? "").toUpperCase();
+        return type === "RED" && !isThreeByTwoText(text);
+    });
+    const goals = mine.filter(e => {
+        const type = String(e.Type ?? e.type ?? "").toUpperCase();
+        const text = String(e.Text ?? e.text ?? "").toUpperCase();
+        return type === "GOAL" || type === "PENALTY_GOAL" || type === "RETE" || /^(GOAL|7M GOAL|RETE)/.test(text);
+    }).length;
+    return {
+        goals,
+        yellowTime: yellow?.Time ?? yellow?.time ?? "",
+        susp1Time: twos[0]?.Time ?? twos[0]?.time ?? "",
+        susp2Time: twos[1]?.Time ?? twos[1]?.time ?? "",
+        susp3Time: third?.Time ?? third?.time ?? "",
+        directRedTime: red?.Time ?? red?.time ?? "",
+        directRed: !!red,
+        thirdTwo: !!third
+    };
+}
+
 function compilaReferto(){
-
-    //------------------------------------------------
-    // GOAL RICOSTRUITI DAL REGISTRO EVENTI
-    //------------------------------------------------
-
     const goalRegistro = ricostruisciGoalDaRegistro();
+    function compilaGiocatori(squadra, players){
+        (players || []).forEach(g=>{
+            const numero = String(g.num ?? g.number ?? g.label ?? "").trim();
+            const r = trovaRigaGiocatore(squadra, numero);
+            if(!r) return;
+            const ev = datiGiocatoreDaEventi(squadra, numero);
+            const goals = goalRegistro[squadra]?.[numero] ?? ev.goals ?? Number(g.goals ?? 0);
+            scriviCella(r.cells[2], goals > 0 ? goals : "", "9pt");
+            scriviCella(r.cells[3], ev.yellowTime || g.yellowTime || "", "7pt");
+            scriviCella(r.cells[4], ev.susp1Time || g.susp1Time || "");
+            scriviCella(r.cells[5], ev.susp2Time || g.susp2Time || "");
+            // 3° x 2': il tempo deve comparire sia nella colonna 2'+D
+            // sia nella colonna SQ, come nel referto ufficiale.
+            const thirdTwoTime = ev.thirdTwo ? (ev.susp3Time || g.susp3Time || "") : "";
+            scriviCella(r.cells[6], thirdTwoTime || ev.susp3Time || g.susp3Time || "");
+            scriviCella(r.cells[7], ev.directRedTime || thirdTwoTime || g.directRedTime || "");
+            scriviCella(r.cells[8], ev.thirdTwo ? "3x2'" : (ev.directRed ? "SQ" : (g.directRedSanction || "")));
+        });
+    }
+    compilaGiocatori("A", partita.currentRosterA?.players || []);
+    compilaGiocatori("B", partita.currentRosterB?.players || []);
 
     //------------------------------------------------
-    // SQUADRA A
+    // SANZIONI DIRIGENTI
     //------------------------------------------------
+    function compilaDirigenti(squadra, dirigenti){
+        const body = document.getElementById("body" + squadra);
+        if(!body) return;
+        (dirigenti || []).forEach(d=>{
+            const lettera = String(d.num ?? d.lettera ?? d.role ?? "").trim();
+            if(!lettera) return;
+            const r = [...body.rows].find(row =>
+                row.classList.contains("dirigente-row") &&
+                String(row.cells[0]?.textContent || "").trim() === lettera
+            );
+            if(!r) return;
+            scriviCella(r.cells[3], d.yellowTime || "", "7pt");
+            scriviCella(r.cells[4], d.susp1Time || "");
+            scriviCella(r.cells[7], d.redTime || "");
+            scriviCella(r.cells[8], d.sanction || "");
+        });
+    }
 
-    (partita.currentRosterA?.players || []).forEach(g=>{
-
-        const r = trovaRigaGiocatore("A", g.num ?? g.number ?? "");
-
-        if(!r) return;
-
-        const numero = String(g.num ?? g.number ?? "");
-
-        const goals =
-            goalRegistro.A?.[numero] ??
-            Number(g.goals ?? g.goal ?? g.reti ?? g.goalsScored ?? 0);
-
-        const yellow      = g.yellowTime ?? "";
-        const susp1       = g.susp1Time ?? "";
-        const susp2       = g.susp2Time ?? "";
-        const susp3       = g.susp3Time ?? "";
-        const directRed   = g.directRedTime ?? "";
-        const suspensions = g.suspensions ?? 0;
-
-        scriviCella(r.cells[2], goals > 0 ? goals : "", "9pt");
-        scriviCella(r.cells[3], yellow, "7pt");
-        scriviCella(r.cells[4], susp1);
-        scriviCella(r.cells[5], susp2);
-        scriviCella(r.cells[6], susp3);
-        scriviCella(r.cells[7], suspensions >= 3 ? susp3 : "");
-        scriviCella(r.cells[8], directRed);
-
-    });
-
-    //------------------------------------------------
-    // SQUADRA B
-    //------------------------------------------------
-
-    (partita.currentRosterB?.players || []).forEach(g=>{
-
-        const r = trovaRigaGiocatore("B", g.num ?? g.number ?? "");
-
-        if(!r) return;
-
-        const numero = String(g.num ?? g.number ?? "");
-
-        const goals =
-            goalRegistro.B?.[numero] ??
-            Number(g.goals ?? g.goal ?? g.reti ?? g.goalsScored ?? 0);
-
-        const yellow      = g.yellowTime ?? "";
-        const susp1       = g.susp1Time ?? "";
-        const susp2       = g.susp2Time ?? "";
-        const susp3       = g.susp3Time ?? "";
-        const directRed   = g.directRedTime ?? "";
-        const suspensions = g.suspensions ?? 0;
-
-        scriviCella(r.cells[2], goals > 0 ? goals : "", "9pt");
-        scriviCella(r.cells[3], yellow, "7pt");
-        scriviCella(r.cells[4], susp1);
-        scriviCella(r.cells[5], susp2);
-        scriviCella(r.cells[6], susp3);
-        scriviCella(r.cells[7], suspensions >= 3 ? susp3 : "");
-        scriviCella(r.cells[8], directRed);
-
-    });
+    compilaDirigenti("A", partita.currentRosterA?.officials || []);
+    compilaDirigenti("B", partita.currentRosterB?.officials || []);
 
     //------------------------------------------------
     // RISULTATI PARZIALI

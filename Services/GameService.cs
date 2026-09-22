@@ -170,15 +170,45 @@ public event Action<CardPrintRequest>? CardPrintRequested;
                     !e.Text.Contains("3x2", StringComparison.OrdinalIgnoreCase));
                 if (previousTwos >= 2)
                 {
-                    // 3° 2' dello stesso giocatore: UNA SOLA RIGA nel Registro Gara.
-                    // L'evento corrente viene trasformato nella sanzione definitiva,
-                    // senza aggiungere un secondo evento separato.
-                    PendingEvent.Type = "RED";
-                    PendingEvent.Text = "ESCLUSIONE PER 3x2'";
-                    PendingEvent.SuspensionStartSeconds = State.TimerSeconds;
-                    PendingEvent.Result = ScoreText();
-                    StopClockForDisciplinary();
-                    FinishPendingEvent();
+                    // 3° 2' dello stesso giocatore: nel Registro Gara devono
+                    // comparire DUE eventi con lo stesso tempo:
+                    // 1) ESCLUSIONE 2 MINUTI
+                    // 2) SQUALIFICA 3° X 2'
+                    var tempoEvento = PendingEvent.Time;
+                    CommitDisciplinaryPending(team, numberLabel, "TWO", "ESCLUSIONE 2 MINUTI", roster.PlayerNames[index], "2MIN");
+
+                    // Nel Registro Gara l'ordine visualizzato è dal più recente
+                    // al più vecchio. Per questo la squalifica viene inserita
+                    // immediatamente PRIMA dell'evento di esclusione nella lista
+                    // interna, così sullo schermo comparirà:
+                    //   ESCLUSIONE 2 MINUTI
+                    //   SQUALIFICA 3° X 2'
+                    // entrambi con lo stesso identico tempo di gara.
+                    var exclusionIndex = State.Events.FindIndex(e =>
+                        e.Team == team && e.Number == numberLabel &&
+                        e.Type == "TWO" && e.Time == tempoEvento &&
+                        e.Text.Equals("ESCLUSIONE 2 MINUTI", StringComparison.OrdinalIgnoreCase));
+
+                    var thirdTwoEvent = new EventRecord
+                    {
+                        // Deve avere esattamente lo stesso tempo dell'esclusione 2 minuti.
+                        Time = tempoEvento,
+                        Team = team,
+                        Number = numberLabel,
+                        Type = "RED",
+                        Text = "SQUALIFICA 3° X 2'",
+                        Result = ScoreText(),
+                        // Il countdown dei 2' resta associato all'evento ESCLUSIONE 2 MINUTI;
+                        // la squalifica è l'evento aggiuntivo che alimenta la colonna SQ.
+                        SuspensionStartSeconds = null
+                    };
+
+                    if (exclusionIndex >= 0)
+                        State.Events.Insert(exclusionIndex, thirdTwoEvent);
+                    else
+                        State.Events.Add(thirdTwoEvent);
+
+                    Notify();
                     return true;
                 }
                 CommitDisciplinaryPending(team, numberLabel, "TWO", "ESCLUSIONE 2 MINUTI", roster.PlayerNames[index], "2MIN");
@@ -1028,17 +1058,38 @@ public event Action<CardPrintRequest>? CardPrintRequested;
     public int PenaltyRealized(string team) => State.Events.Count(e =>
         e.Team == team && e.Type == "PENALTY_GOAL");
 
+    private static bool IsThreeByTwo(EventRecord e)
+    {
+        if (e.Type != "RED") return false;
+        var text = (e.Text ?? "").ToUpperInvariant()
+            .Replace("°", "")
+            .Replace("'", "")
+            .Replace(" ", "");
+        return text.Contains("3X2") || text.Contains("3×2");
+    }
+
     public int PlayerTwoCount(string team, string number) => State.Events.Count(e =>
         e.Team == team && e.Number == number &&
-        (e.Type == "TWO" || (e.Type == "RED" && e.Text.Contains("3x2", StringComparison.OrdinalIgnoreCase))));
+        (e.Type == "TWO" || IsThreeByTwo(e)));
 
-    // Il giocatore viene inibito SOLO quando raggiunge la terza esclusione (3x2)
-    // oppure riceve una espulsione diretta. Le prime due esclusioni 2'
-    // non devono mai disabilitare la card.
-    public bool PlayerIsInhibited(string team, string number) =>
-        PlayerTwoCount(team, number) >= 3 ||
-        State.Events.Any(e => e.Team == team && e.Number == number &&
-            e.Type == "RED" && !e.Text.Contains("3x2", StringComparison.OrdinalIgnoreCase));
+    // Un giocatore NON viene inibito per una singola esclusione di 2 minuti,
+    // né per la seconda. L'inibizione scatta esclusivamente:
+    // 1) con la terza esclusione (3x2'); oppure
+    // 2) con una ESPULSIONE DIRETTA.
+    //
+    // Il controllo è volutamente esplicito per evitare che un normale evento TWO
+    // venga interpretato come espulsione.
+    public bool PlayerIsInhibited(string team, string number)
+    {
+        var threeByTwo = State.Events.Any(e =>
+            e.Team == team && e.Number == number && IsThreeByTwo(e));
+
+        var directRed = State.Events.Any(e =>
+            e.Team == team && e.Number == number &&
+            e.Type == "RED" && !IsThreeByTwo(e));
+
+        return threeByTwo || directRed;
+    }
 
     public int PlayerGoals(string team, string number) => State.Events.Count(e => e.Team == team && e.Number == number && e.Type == "GOAL");
     public int PlayerPenaltyGoals(string team, string number) => State.Events.Count(e => e.Team == team && e.Number == number && e.Type == "PENALTY_GOAL");
