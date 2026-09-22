@@ -1,0 +1,2449 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<title>RefertoFIGH_Base_v01</title>
+<style>
+
+@page{size:A4;margin:6mm}
+*{box-sizing:border-box}
+body{margin:0;background:#d9d9d9;font-family:Arial,sans-serif
+
+}
+
+@page{
+    size:A4;
+    margin:4mm;
+}
+
+html,
+body{
+
+    width:210mm;
+    margin:0;
+    padding:0;
+    background:#d9d9d9;
+    font-family:Arial,sans-serif;
+
+}
+
+#page{
+
+    width:198mm;
+    margin:auto;
+    padding:1mm;
+
+}
+
+    background:#fff;
+
+    page-break-after:avoid;
+    page-break-before:avoid;
+    page-break-inside:avoid;
+
+}
+/* =====================================================
+   INTESTAZIONE UFFICIALE FIGH
+   ===================================================== */
+.official-header{
+    width:100%;
+    min-height:28mm;
+    display:grid;
+    grid-template-columns:22mm 1fr 42mm;
+    align-items:center;
+    position:relative;
+    margin-bottom:1.5mm;
+}
+.official-logo{
+    height:28mm;
+    display:flex;
+    align-items:center;
+    justify-content:flex-start;
+}
+.official-logo img{
+    width:18mm;
+    height:24mm;
+    object-fit:contain;
+}
+.official-title{
+    text-align:center;
+    color:#2457a6;
+    line-height:1.2;
+    padding:0 2mm;
+}
+.official-championship{
+    font-size:14pt;
+    font-weight:700;
+    margin-bottom:1mm;
+}
+.official-match-line{
+    font-size:8.5pt;
+    font-weight:600;
+}
+.official-venue-line{
+    font-size:8.5pt;
+    font-weight:600;
+    margin-top:1mm;
+}
+.official-season{
+    align-self:start;
+    padding-top:2mm;
+    text-align:right;
+    color:#2457a6;
+    font-size:8.5pt;
+    font-weight:700;
+    white-space:nowrap;
+}
+
+.header{
+ display:grid;
+ grid-template-columns:22mm 1fr 55mm;
+ align-items:center;
+ border:2px solid #1d4ed8;
+}
+.logo{
+ height:28mm;
+ border-right:1px solid #1d4ed8;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+}
+
+.title{
+ text-align:center;
+ color:#1d4ed8;
+}
+
+.title h1{margin:2mm 0 1mm;font-size:14pt}
+.title h2{margin:0;font-size:11pt;font-weight:normal}
+.result{
+ border-left:1px solid #1d4ed8;
+ height:100%;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ font-size:12pt;
+ font-weight:bold;
+}
+
+.info{
+
+    width:100%;
+    border-collapse:collapse;
+    margin-top:1mm;
+
+}
+
+.info td{
+
+    border:1px solid #1d4ed8;
+
+    height:8mm;
+
+    padding:1.2mm;
+
+    font-size:8pt;
+
+}
+
+.main{
+
+    display:table;
+
+    width:100%;
+
+    table-layout:fixed;
+
+    margin-top:1mm;
+
+}
+
+.team{
+
+    width:100%;
+    table-layout:fixed;
+    border-collapse:collapse;
+    margin-bottom:1mm;
+
+}
+
+.team th,
+
+
+.team td{
+
+    border:1px solid #1d4ed8;
+
+    height:5.8mm;
+
+    font-size:8.3pt;
+
+    padding:0 1.2mm;
+
+    vertical-align:middle;
+
+}
+
+/* ==============================
+   RIGHE DIRIGENTI
+============================== */
+
+.dirigente-row td{
+
+    height:5.8mm;
+
+    font-size:7.8pt;
+
+    font-weight:normal;
+
+    vertical-align:middle;
+
+}
+
+.dirigente-row .col-num{
+
+    text-align:center;
+
+    font-weight:bold;
+
+}
+
+.dirigente-row .col-name{
+
+    padding-left:2mm;
+
+    font-weight:bold;
+
+}
+
+.team thead th{
+
+    background:#d9d9d9;
+
+    font-size:7.5pt;
+
+    font-weight:bold;
+
+    height:6mm;
+
+    vertical-align:middle;
+
+    text-align:center;
+
+    border:1px solid #2457ff;
+
+    padding:0;
+
+}
+
+/* ===== LARGHEZZA COLONNE REFERT0 ===== */
+
+.col-num{
+
+    width:9mm;
+
+    text-align:center;
+
+    font-weight:bold;
+
+    font-size:8.5pt;
+
+}
+
+.col-name{
+
+    width:93mm;
+
+    text-align:left;
+
+    padding-left:2mm;
+
+    font-weight:bold;
+
+}
+
+.col-goals{
+    width:8mm;
+    text-align:center;
+}
+
+.col-yellow{
+    width:8mm;
+    text-align:center;
+    padding:0 !important;
+    vertical-align:middle;
+    line-height:6.25mm;
+    font-size:7pt;
+}
+
+.col2a{
+    width:8mm;
+    text-align:center;
+}
+
+.col2b{
+    width:8mm;
+    text-align:center;
+}
+
+.col2sq{
+    width:8mm;
+    text-align:center;
+}
+
+.col-red{
+    width:8mm;
+    text-align:center;
+}
+
+.col-san{
+    width:8mm;
+    text-align:center;
+}
+
+.side{
+ width:100%;
+ border-collapse:collapse;
+}
+
+.side td,.side th{
+ border:1px solid #1d4ed8;
+ height:6.5mm;
+ font-size:8pt;
+ text-align:center;
+ padding:0;
+}
+
+.logoBottom{
+
+    height:28mm;
+
+    display:flex;
+
+    align-items:flex-end;
+
+    justify-content:center;
+
+    border:none !important;
+
+}
+
+</style>
+
+<style>
+@media print{
+    #refertoControls,#popupStampa{display:none !important;}
+}
+</style>
+</head>
+<body>
+
+<div id="refertoControls" style="position:fixed;top:8px;right:8px;z-index:100000;display:flex;gap:5px;">
+<button type="button" onclick="apriPopupStampa()" style="padding:5px 8px;font-size:10px;font-weight:bold;background:#0b63ce;color:#fff;border:none;border-radius:4px;cursor:pointer;">🖨 STAMPA</button>
+<button type="button" onclick="esciReferto()" style="padding:4px 7px;font-size:10px;font-weight:bold;background:#d32f2f;color:#fff;border:none;border-radius:4px;cursor:pointer;">✕ CHIUDI</button>
+</div>
+
+<div id="popupStampa" style="
+position:fixed;
+inset:0;
+background:rgba(0,0,0,.45);
+display:none;
+align-items:center;
+justify-content:center;
+z-index:99999;
+">
+
+<div style="
+background:#fff;
+padding:28px;
+border-radius:12px;
+box-shadow:0 0 20px rgba(0,0,0,.35);
+width:340px;
+text-align:center;
+font-family:Arial;
+">
+
+<div style="
+font-size:22px;
+font-weight:bold;
+margin-bottom:25px;
+color:#173ea8;
+">
+REFERTO FIGH
+</div>
+
+<div style="
+font-size:16px;
+margin-bottom:25px;
+">
+Cosa desideri fare?
+</div>
+
+<div style="
+display:flex;
+gap:15px;
+justify-content:center;
+">
+
+<button onclick="stampaEdEsci()"
+style="
+flex:1;
+padding:12px;
+font-size:15px;
+font-weight:bold;
+background:#0b63ce;
+color:white;
+border:none;
+border-radius:8px;
+cursor:pointer;
+">
+
+🖨 STAMPA
+
+</button>
+
+<button onclick="chiudiPopupStampa()"
+style="
+flex:1;
+padding:12px;
+font-size:15px;
+font-weight:bold;
+background:#d32f2f;
+color:white;
+border:none;
+border-radius:8px;
+cursor:pointer;
+">
+
+✕ ANNULLA
+
+</button>
+
+</div>
+
+</div>
+
+</div>
+
+<div id="page">
+
+<!-- =====================================================
+     INTESTAZIONE UFFICIALE FIGH
+     ===================================================== -->
+<div class="official-header">
+    <div class="official-logo">
+        <img src="images/FIGH.png" alt="FIGH">
+    </div>
+
+    <div class="official-title">
+        <div id="campionato" class="official-championship"></div>
+        <div class="official-match-line">
+            Gara n.<span id="garaNumero"></span> - <span id="data"></span> ore <span id="ora"></span> - Località: <span id="localita"></span>
+        </div>
+        <div class="official-venue-line">
+            Impianto: <span id="impianto"></span>
+        </div>
+    </div>
+
+    <div class="official-season">
+        Stagione: <span id="stagione"></span>
+    </div>
+</div>
+
+<div class="main">
+
+<div style="display:table-cell; width:166mm; vertical-align:top;">
+
+<table class="team">
+
+<colgroup>
+    <col style="width:8mm">      <!-- N° -->
+    <col style="width:92mm">     <!-- Cognome e Nome -->
+    <col style="width:8mm">      <!-- Reti -->
+    <col style="width:8mm">      <!-- Amm. -->
+    <col style="width:8mm">      <!-- 2' -->
+    <col style="width:8mm">      <!-- 2' -->
+    <col style="width:8mm">      <!-- 2'+D -->
+    <col style="width:8mm">      <!-- SQ -->
+    <col style="width:8mm">      <!-- San.Sq. -->
+</colgroup>
+
+<thead>
+<tr>
+    <th colspan="9"
+        style="
+            background:#d9d9d9;
+            border:1px solid #2457ff;
+            text-align:left;
+            padding-left:3mm;
+            height:6mm;
+            font-size:10pt;
+            font-weight:bold;
+            vertical-align:middle;
+        ">
+        <span id="teamA"></span>
+    </th>
+</tr>
+<tr>
+
+<th class="col-num">N°</th>
+
+<th class="col-name">COGNOME E NOME</th>
+
+<th class="col-goals">Reti</th>
+
+<th class="col-yellow">Amm.</th>
+
+<th class="col2a">2'</th>
+
+<th class="col2b">2'</th>
+
+<th class="col2sq">2'+D</th>
+
+<th class="col-red">SQ</th>
+
+<th class="col-san">San.Sq.</th>
+
+</tr>
+</thead>
+<tbody id="bodyA">
+</tbody>
+</table>
+
+<table class="team">
+
+<colgroup>
+    <col style="width:8mm">      <!-- N° -->
+    <col style="width:92mm">     <!-- Cognome e Nome -->
+    <col style="width:8mm">      <!-- Reti -->
+    <col style="width:8mm">      <!-- Amm. -->
+    <col style="width:8mm">      <!-- 2' -->
+    <col style="width:8mm">      <!-- 2' -->
+    <col style="width:8mm">      <!-- 2'+D -->
+    <col style="width:8mm">      <!-- SQ -->
+    <col style="width:8mm">      <!-- San.Sq. -->
+</colgroup>
+
+<thead>
+<tr>
+    <th colspan="9"
+        style="
+            background:#d9d9d9;
+            border:1px solid #2457ff;
+            text-align:left;
+            padding-left:3mm;
+            height:6mm;
+            font-size:10pt;
+            font-weight:bold;
+            vertical-align:middle;
+        ">
+        <span id="teamB"></span>
+    </th>
+</tr>
+<tr>
+<th class="col-num">N°</th>
+
+<th class="col-name">COGNOME E NOME</th>
+
+<th class="col-goals">Reti</th>
+
+<th class="col-yellow">Amm.</th>
+
+<th class="col2a">2'</th>
+
+<th class="col2b">2'</th>
+
+<th class="col2sq">2'+D</th>
+
+<th class="col-red">SQ</th>
+
+<th class="col-san">San.Sq.</th>
+</tr>
+</thead>
+<tbody id="bodyB">
+</tbody>
+</table>
+
+</div>
+
+ <div style="
+display:table-cell;
+width:24mm;
+padding-left:4mm;
+vertical-align:top;
+">
+
+<table class="side" style="table-layout:fixed; width:100%;">
+
+<tr>
+
+    <th style="
+        width:50%;
+        background:#d9d9d9;
+        border:1px solid #2457ff;
+        height:7mm;
+        font-size:10pt;
+        font-weight:bold;
+        vertical-align:middle;
+        text-align:center;
+    ">
+        A
+    </th>
+
+    <th style="
+        width:50%;
+        background:#d9d9d9;
+        border:1px solid #2457ff;
+        height:7mm;
+        font-size:10pt;
+        font-weight:bold;
+        vertical-align:middle;
+        text-align:center;
+    ">
+        B
+    </th>
+
+</tr>
+
+<!-- ========================= -->
+<!-- RISULTATO FINALE -->
+<!-- ========================= -->
+
+<tr><td colspan="2">Risultato</td></tr>
+<tr>
+    <td id="risultatoFinale" colspan="2" style="background:#d9d9d9;height:9mm;font-size:16pt;font-weight:bold;text-align:center;vertical-align:middle;"></td>
+</tr>
+
+<!-- ========================= -->
+<!-- RISULTATI -->
+<!-- ========================= -->
+
+<tr><td colspan="2">1° tempo</td></tr>
+<tr>
+
+    <td id="fhA"
+        style="
+            background:#d9d9d9;
+            height:6.5mm;
+            font-size:10pt;
+            font-weight:bold;
+            text-align:center;
+            vertical-align:middle;
+        ">
+    </td>
+
+    <td id="fhB"
+        style="
+            background:#d9d9d9;
+            height:6.5mm;
+            font-size:10pt;
+            font-weight:bold;
+            text-align:center;
+            vertical-align:middle;
+        ">
+    </td>
+
+</tr>
+
+<tr><td colspan="2">2° tempo</td></tr>
+<tr>
+
+    <td id="shA"
+        style="
+            background:#d9d9d9;
+            height:6.5mm;
+            font-size:10pt;
+            font-weight:bold;
+            text-align:center;
+            vertical-align:middle;
+        ">
+    </td>
+
+    <td id="shB"
+        style="
+            background:#d9d9d9;
+            height:6.5mm;
+            font-size:10pt;
+            font-weight:bold;
+            text-align:center;
+            vertical-align:middle;
+        ">
+    </td>
+
+</tr>
+
+<tr><td colspan="2">1° extra</td></tr>
+<tr>
+
+    <td id="et1A"
+        style="
+            background:#d9d9d9;
+            height:6.5mm;
+            font-size:10pt;
+            font-weight:bold;
+            text-align:center;
+            vertical-align:middle;
+        ">
+    </td>
+
+    <td id="et1B"
+        style="
+            background:#d9d9d9;
+            height:6.5mm;
+            font-size:10pt;
+            font-weight:bold;
+            text-align:center;
+            vertical-align:middle;
+        ">
+    </td>
+
+</tr>
+
+<tr><td colspan="2">2° extra</td></tr>
+<tr>
+
+    <td id="et2A"
+        style="
+            background:#d9d9d9;
+            height:6.5mm;
+            font-size:10pt;
+            font-weight:bold;
+            text-align:center;
+            vertical-align:middle;
+        ">
+    </td>
+
+    <td id="et2B"
+        style="
+            background:#d9d9d9;
+            height:6.5mm;
+            font-size:10pt;
+            font-weight:bold;
+            text-align:center;
+            vertical-align:middle;
+        ">
+    </td>
+
+</tr>
+
+<tr><td colspan="2">7 m.</td></tr>
+<tr>
+
+    <td id="rigA"
+        style="
+            background:#d9d9d9;
+            height:6.5mm;
+            font-size:10pt;
+            font-weight:bold;
+            text-align:center;
+            vertical-align:middle;
+        ">
+    </td>
+
+    <td id="rigB"
+        style="
+            background:#d9d9d9;
+            height:6.5mm;
+            font-size:10pt;
+            font-weight:bold;
+            text-align:center;
+            vertical-align:middle;
+        ">
+    </td>
+
+</tr>
+
+<tr><td colspan="2">7 m. tiri / reti</td></tr>
+<tr>
+    <td id="rigStatA" style="background:#cfcfcf;"></td>
+    <td id="rigStatB" style="background:#cfcfcf;"></td>
+</tr>
+
+<!-- ========================= -->
+<!-- TIME OUT -->
+<!-- ========================= -->
+
+<tr><td colspan="2">1° Time-out</td></tr>
+<tr>
+    <td id="toA1" style="background:#cfcfcf;height:10mm;"></td>
+    <td id="toB1" style="background:#cfcfcf;"></td>
+</tr>
+
+<tr><td colspan="2">2° Time-out</td></tr>
+<tr>
+    <td id="toA2" style="background:#cfcfcf;height:10mm;"></td>
+    <td id="toB2" style="background:#cfcfcf;"></td>
+</tr>
+
+<tr><td colspan="2">3° Time-out</td></tr>
+<tr>
+    <td id="toA3" style="background:#cfcfcf;height:10mm;"></td>
+    <td id="toB3" style="background:#cfcfcf;"></td>
+</tr>
+
+<!-- ========================= -->
+<!-- UFFICIALI DI GARA -->
+<!-- ========================= -->
+
+<tr>
+    <td colspan="2"
+        style="
+            background:#d9d9d9;
+            font-weight:bold;
+            text-align:left;
+            padding-left:2mm;
+            height:5mm;
+        ">
+        Arbitro 1
+    </td>
+</tr>
+
+<tr>
+    <td colspan="2"
+        id="arb1"
+        style="
+            height:7mm;
+            font-size:9pt;
+            vertical-align:middle;
+            padding-left:2mm;
+        ">
+    </td>
+</tr>
+
+<tr>
+    <td colspan="2"
+        style="
+            background:#d9d9d9;
+            font-weight:bold;
+            text-align:left;
+            padding-left:2mm;
+            height:5mm;
+        ">
+        Arbitro 2
+    </td>
+</tr>
+
+<tr>
+    <td colspan="2"
+        id="arb2"
+        style="
+            height:7mm;
+            font-size:9pt;
+            vertical-align:middle;
+            padding-left:2mm;
+        ">
+    </td>
+</tr>
+
+<tr>
+    <td colspan="2"
+        style="
+            background:#d9d9d9;
+            font-weight:bold;
+            text-align:left;
+            padding-left:2mm;
+            height:5mm;
+        ">
+        Delegato 1
+    </td>
+</tr>
+
+<tr>
+    <td colspan="2"
+        id="del1"
+        style="
+            height:7mm;
+            font-size:9pt;
+            vertical-align:middle;
+            padding-left:2mm;
+        ">
+    </td>
+</tr>
+
+<tr>
+    <td colspan="2"
+        style="
+            background:#d9d9d9;
+            font-weight:bold;
+            text-align:left;
+            padding-left:2mm;
+            height:5mm;
+        ">
+        Delegato 2
+    </td>
+</tr>
+
+<tr>
+    <td colspan="2"
+        id="del2"
+        style="
+            height:7mm;
+            font-size:9pt;
+            vertical-align:middle;
+            padding-left:2mm;
+        ">
+    </td>
+</tr>
+
+
+
+<!-- ========================= -->
+<!-- LOGO -->
+<!-- ========================= -->
+
+<tr>
+
+<td colspan="2"
+style="
+height:28mm;
+border:none;
+text-align:center;
+vertical-align:bottom;
+">
+
+<img src="FIGH.png"
+style="
+max-width:75%;
+max-height:24mm;
+opacity:.90;
+margin-top:6mm;
+">
+
+</td>
+
+</tr>
+
+</table>
+
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+//--------------------------------------
+// 1. LETTURA DATI DA LOCALSTORAGE
+//--------------------------------------
+// Legge i dati provando tutte le chiavi possibili salvate dall'applicazione
+const partita = JSON.parse(localStorage.getItem("RefertoFIGH")) 
+             || JSON.parse(localStorage.getItem("RegistroPostGara")) 
+             || JSON.parse(localStorage.getItem("RefertoPallamano"));
+
+//--------------------------------------
+// 2. CONTROLLO DATI GARA
+//--------------------------------------
+if (!partita) {
+    alert("Nessuna gara salvata da visualizzare.");
+    console.error("Nessun dato gara disponibile nel localStorage");
+    throw new Error("Nessun dato gara disponibile");
+}
+
+//--------------------------------------
+// 3. AVVIO AUTOMATICO AL CARICAMENTO (QUESTO È IL BLOCCO)
+//--------------------------------------
+window.onload = function() {
+    document.title = "Referto FIGH - " + (partita.teamA || "") + " vs " + (partita.teamB || "");
+    
+    console.clear();
+    console.log("=================================");
+    console.log("REFERTO FIGH");
+    console.log("=================================");
+    console.log("PARTITA", partita);
+
+    caricaReferto();
+    compilaReferto();
+};
+
+//--------------------------------------
+// TITOLO PAGINA
+//--------------------------------------
+
+document.title =
+    "Referto FIGH - " +
+    (partita.teamA || "") +
+    " vs " +
+    (partita.teamB || "");
+
+console.clear();
+
+console.log("=================================");
+console.log("REFERTO FIGH");
+console.log("=================================");
+
+console.log("PARTITA", partita);
+
+console.log("currentRosterA", partita.currentRosterA);
+console.log("players A", partita.currentRosterA?.players);
+console.log("officials A", partita.currentRosterA?.officials);
+
+console.log("currentRosterB", partita.currentRosterB);
+console.log("players B", partita.currentRosterB?.players);
+console.log("officials B", partita.currentRosterB?.officials);
+
+const referto = {
+    A: {},
+    B: {}
+};
+
+
+//=========================================
+// TIME OUT
+//=========================================
+
+const timeout = {
+    A: [],
+    B: []
+};
+
+//=========================================
+// RISULTATI PARZIALI
+//=========================================
+
+const risultati = {
+
+    primoTempo:{
+        A:"",
+        B:""
+    },
+
+    secondoTempo:{
+        A:"",
+        B:""
+    },
+
+    finale:{
+        A:"",
+        B:""
+    },
+
+    setteMetri:{
+        tiriA:0,
+        retiA:0,
+        tiriB:0,
+        retiB:0
+    },
+
+extra1:{
+    A:"",
+    B:""
+},
+
+extra2:{
+    A:"",
+    B:""
+},
+
+rigoriFinale:{
+    A:"",
+    B:""
+},
+
+};
+
+//=========================================
+// UFFICIALI DI GARA
+//=========================================
+
+const ufficiali = {
+
+    arbitro1:"",
+    arbitro2:"",
+    delegato1:"",
+    delegato2:""
+
+};
+
+
+
+//====================================================
+// CARICAMENTO DATI PARTITA
+//====================================================
+
+if(partita){
+
+console.clear();
+
+console.log("=================================");
+console.log("REFERTO FIGH");
+console.log("=================================");
+console.log(partita);
+
+    //------------------------------------------------
+    // TESTATA
+    //------------------------------------------------
+
+document.getElementById("campionato").textContent =
+    partita.league || partita.championship || "";
+
+document.getElementById("garaNumero").textContent =
+    partita.matchNumber || "";
+
+document.getElementById("ora").textContent =
+    partita.matchTime || partita.time || "";
+
+document.getElementById("stagione").textContent =
+    partita.season || "";
+
+document.getElementById("teamA").textContent =
+    partita.teamA || "";
+
+document.getElementById("teamB").textContent =
+    partita.teamB || "";
+
+document.getElementById("localita").textContent =
+    partita.city || "";
+
+document.getElementById("impianto").textContent =
+    partita.venue || "";
+
+//=========================================
+// DATA GARA (gg/mm/aaaa)
+//=========================================
+
+let dataFormattata = "";
+
+if (partita.matchDate) {
+
+    const d = new Date(partita.matchDate);
+
+    if (!isNaN(d)) {
+
+        const giorno = String(d.getDate()).padStart(2, "0");
+        const mese = String(d.getMonth() + 1).padStart(2, "0");
+        const anno = d.getFullYear();
+
+        dataFormattata = `${giorno}/${mese}/${anno}`;
+
+    } else {
+
+        // Se la data è già una stringa, la utilizza così com'è
+        dataFormattata = partita.matchDate;
+
+    }
+
+}
+
+document.getElementById("data").textContent = dataFormattata;
+ 
+ //------------------------------------------------
+// SQUADRA A
+//------------------------------------------------
+
+const bodyA = document.getElementById("bodyA");
+
+const giocatoriA =
+    partita.currentRosterA?.players ||
+    partita.giocatoriA ||
+    [];
+
+const dirigentiA =
+    partita.currentRosterA?.officials ||
+    partita.dirigentiA ||
+    [];
+
+console.log("GIOCATORI A =", giocatoriA);
+console.log("DIRIGENTI A =", dirigentiA);
+
+creaTabella(
+    bodyA,
+    giocatoriA,
+    dirigentiA,
+    "A"
+);
+
+//------------------------------------------------
+//------------------------------------------------
+// SQUADRA B
+//------------------------------------------------
+
+const bodyB = document.getElementById("bodyB");
+
+const giocatoriB =
+    partita.currentRosterB?.players ||
+    partita.giocatoriB ||
+    [];
+
+const dirigentiB =
+    partita.currentRosterB?.officials ||
+    partita.dirigentiB ||
+    [];
+
+console.log("GIOCATORI B =", giocatoriB);
+console.log("DIRIGENTI B =", dirigentiB);
+/* RETI GIOCATORI — compatibilità con gare salvate prima del campo "goals". */
+function integraRetiDaEventi(lista, squadra){
+
+    const eventi =
+        partita.eventi ||
+        partita.events ||
+        partita.logEvents ||
+        [];
+
+    const conteggio = {};
+
+    eventi.forEach(e => {
+        if(!e) return;
+
+        const team = String(
+            e.squadra ??
+            e.team ??
+            ""
+        ).trim().toUpperCase();
+
+        if(team !== squadra) return;
+
+        const tipo = String(
+            e.type ??
+            e.tipo ??
+            ""
+        ).trim().toUpperCase();
+
+        const testo = String(
+            e.text ??
+            e.event ??
+            e.evento ??
+            e.desc ??
+            ""
+        ).trim().toUpperCase();
+
+        const realizzato =
+            tipo === "GOAL" ||
+            tipo === "RETE" ||
+            (
+                tipo === "PENALTY" &&
+                testo.includes("REALIZZATO")
+            ) ||
+            (
+                testo.includes("RIGORE") &&
+                testo.includes("REALIZZATO")
+            );
+
+        if(!realizzato) return;
+
+        const num = String(
+            e.num ??
+            e.numero ??
+            ""
+        ).trim();
+
+        if(!num || num === "—") return;
+
+        conteggio[num] = (conteggio[num] || 0) + 1;
+    });
+
+    lista.forEach(player => {
+        if(!player) return;
+
+        const num = String(
+            player.num ??
+            player.number ??
+            ""
+        ).trim();
+
+        const salvato = Number(
+            player.goals ??
+            player.goal ??
+            player.reti ??
+            player.goalsScored ??
+            0
+        );
+
+        player.goals =
+            conteggio[num] ??
+            (Number.isFinite(salvato) ? salvato : 0);
+    });
+}
+
+integraRetiDaEventi(giocatoriA, "A");
+integraRetiDaEventi(giocatoriB, "B");
+
+
+
+creaTabella(
+    bodyB,
+    giocatoriB,
+    dirigentiB,
+    "B"
+);
+
+    //------------------------------------------------
+    // COMPILAZIONE REFERTO
+    //------------------------------------------------
+
+   caricaReferto();
+
+compilaReferto();
+
+}
+
+//====================================================
+// FORMATTA IL TEMPO (mm:ss)
+//====================================================
+
+function formattaTempo(t){
+
+    if(t===undefined || t===null || t==="")
+        return "";
+
+    if(typeof t==="string"){
+
+        if(t.includes(":"))
+            return t;
+
+        t=parseInt(t,10);
+
+    }
+
+    if(isNaN(t))
+        return "";
+
+    const m=Math.floor(t/60);
+    const s=t%60;
+
+    return String(m).padStart(2,"0")+":"+
+           String(s).padStart(2,"0");
+
+}
+
+//====================================================
+// CREA UNA CELLA
+//====================================================
+
+function creaCella(riga, classe, testo="", colspan=1){
+
+    const td = riga.insertCell();
+
+    td.className = classe;
+
+    td.textContent = testo;
+
+    if(colspan > 1){
+
+        td.colSpan = colspan;
+
+    }
+
+    return td;
+
+}
+
+
+//====================================================
+// CREA TABELLA (16 GIOCATORI + 5 DIRIGENTI)
+//====================================================
+
+function creaTabella(body, giocatori, dirigenti, squadra){
+
+console.log("Squadra:", squadra);
+console.log("Giocatori:", giocatori);
+console.log("Dirigenti:", dirigenti);
+
+
+
+    body.innerHTML = "";
+
+console.log("Squadra", squadra);
+console.log("Giocatori:", giocatori.length);
+console.log("Dirigenti:", dirigenti.length);
+
+
+    //------------------------------------------------
+    // GIOCATORI
+    //------------------------------------------------
+
+    giocatori.forEach(player=>{
+
+    const r = body.insertRow();
+
+    const numero = player.num ?? player.number ?? "";
+
+    const nome =
+    player.name ??
+    player.nome ??
+    player.cognomeNome ??
+    player.playerName ??
+    "";
+
+    r.dataset.team = squadra;
+    r.dataset.num = numero;
+    r.id = squadra + "_" + numero;
+
+
+const reti = Number(
+    player.goals ??
+    player.goal ??
+    player.reti ??
+    player.goalsScored ??
+    0
+);
+
+creaCella(r,"col-num",numero);
+creaCella(r,"col-name",nome);
+creaCella(r,"col-goals", reti > 0 ? reti : "");
+creaCella(r,"col-yellow");
+creaCella(r,"col2a");
+creaCella(r,"col2b");
+creaCella(r,"col2sq");
+creaCella(r,"col-red");
+creaCella(r,"col-san");
+});
+
+    //------------------------------------------------
+    // COMPLETA A 16 GIOCATORI
+    //------------------------------------------------
+
+    while(body.rows.length < 16){
+
+        const r = body.insertRow();
+
+ creaCella(r,"col-num");
+creaCella(r,"col-name");
+creaCella(r,"col-goals");
+creaCella(r,"col-yellow");
+creaCella(r,"col2a");
+creaCella(r,"col2b");
+creaCella(r,"col2sq");
+creaCella(r,"col-red");
+creaCella(r,"col-san");
+
+    }
+
+    //------------------------------------------------
+    // DIRIGENTI
+    //------------------------------------------------
+
+    dirigenti.forEach(dir=>{
+
+        const r = body.insertRow();
+
+        r.className = "dirigente-row";
+
+ creaCella(
+    r,
+    "col-num",
+    getRuoloDirigente(dir)
+);
+
+creaCella(
+    r,
+    "col-name",
+    getNomeDirigente(dir),
+    2
+);
+
+      creaCella(r,"col-yellow");
+creaCella(r,"col2a");
+creaCella(r,"col2b");
+creaCella(r,"col2sq");
+creaCella(r,"col-red");
+creaCella(r,"col-san");
+
+    });
+
+//------------------------------------------------
+// COMPLETA A 5 DIRIGENTI
+//------------------------------------------------
+
+const dirigentiPresenti = body.rows.length - 16;
+
+for(let i = dirigentiPresenti; i < 5; i++){
+
+    const r = body.insertRow();
+
+    r.className = "dirigente-row";
+
+  creaCella(r,"col-num");
+creaCella(r,"col-name","",2);
+creaCella(r,"col-yellow");
+creaCella(r,"col2a");
+creaCella(r,"col2b");
+creaCella(r,"col2sq");
+creaCella(r,"col-red");
+creaCella(r,"col-san");
+
+}
+}
+
+//====================================================
+// RESTITUISCE IL RUOLO DEL DIRIGENTE
+//====================================================
+
+function getRuoloDirigente(dir){
+
+    const ruolo = (
+        dir.role ??
+        dir.ruolo ??
+        dir.qualifica ??
+        ""
+    ).toString().toUpperCase();
+
+    if (ruolo.includes("ALLENATORE") && !ruolo.includes("ASSIST"))
+        return "A";
+
+    if (ruolo.includes("ASSIST"))
+        return "AC";
+
+    if (ruolo.includes("DIRIG"))
+        return "D";
+
+    if (ruolo.includes("MEDICO"))
+        return "M";
+
+    if (ruolo.includes("FISIO"))
+        return "F";
+
+    if (dir.lettera)
+        return dir.lettera;
+
+    if (dir.num)
+        return dir.num;
+
+    return "";
+
+}
+
+//====================================================
+// RESTITUISCE IL NOME DEL DIRIGENTE
+//====================================================
+
+function getNomeDirigente(dir){
+
+    return (
+        dir.name ??
+        dir.nome ??
+        dir.cognomeNome ??
+        ""
+    );
+
+}
+
+//====================================================
+// CARICA DATI GIÀ PREPARATI
+//====================================================
+
+function caricaReferto(){
+
+    if(!partita) return;
+
+    //------------------------------------------------
+    // RISULTATI
+    //------------------------------------------------
+
+    const phase = n => partita.phaseScores?.[String(n)] ?? partita.phaseScores?.[n] ?? "";
+    const phaseA = value => {
+        const parts = String(value || "").split("-");
+        return parts.length === 2 ? parts[0] : "";
+    };
+    const phaseB = value => {
+        const parts = String(value || "").split("-");
+        return parts.length === 2 ? parts[1] : "";
+    };
+
+    risultati.primoTempo.A =
+        partita.risultati?.primoTempo?.A ??
+        partita.firstHalfScoreA ??
+        phaseA(phase(1)) ??
+        0;
+
+    risultati.primoTempo.B =
+        partita.risultati?.primoTempo?.B ??
+        partita.firstHalfScoreB ??
+        phaseB(phase(1)) ??
+        0;
+
+    risultati.secondoTempo.A =
+        partita.risultati?.secondoTempo?.A ??
+        partita.secondHalfScoreA ??
+        phaseA(phase(2)) ??
+        0;
+
+    risultati.secondoTempo.B =
+        partita.risultati?.secondoTempo?.B ??
+        partita.secondHalfScoreB ??
+        phaseB(phase(2)) ??
+        0;
+
+    risultati.extra1.A =
+        partita.risultati?.primoSupplementare?.A ??
+        partita.overtime2ScoreA ??
+        phaseA(phase(3)) ??
+        0;
+
+    risultati.extra1.B =
+        partita.risultati?.primoSupplementare?.B ??
+        partita.overtime2ScoreB ??
+        phaseB(phase(3)) ??
+        0;
+
+    risultati.extra2.A =
+        partita.risultati?.secondoSupplementare?.A ??
+        partita.overtime4ScoreA ??
+        phaseA(phase(4)) ??
+        0;
+
+    risultati.extra2.B =
+        partita.risultati?.secondoSupplementare?.B ??
+        partita.overtime4ScoreB ??
+        phaseB(phase(4)) ??
+        0;
+
+    risultati.rigoriFinale.A =
+        partita.risultati?.rigoriFinali?.A ??
+        partita.penaltyShootout?.scoreA ??
+        0;
+
+    risultati.rigoriFinale.B =
+        partita.risultati?.rigoriFinali?.B ??
+        partita.penaltyShootout?.scoreB ??
+        0;
+
+    risultati.finale.A =
+        partita.finalScoreA ??
+        partita.risultati?.finale?.A ??
+        partita.scoreA ??
+        0;
+
+    risultati.finale.B =
+        partita.finalScoreB ??
+        partita.risultati?.finale?.B ??
+        partita.scoreB ??
+        0;
+
+    //------------------------------------------------
+    // 7 METRI
+    //------------------------------------------------
+
+risultati.setteMetri = {
+
+    tiriA : partita.penaltyTotalA ?? 0,
+    retiA : partita.penaltyScoredA ?? 0,
+
+    tiriB : partita.penaltyTotalB ?? 0,
+    retiB : partita.penaltyScoredB ?? 0
+
+};
+    //------------------------------------------------
+    // TIME OUT
+    //------------------------------------------------
+
+timeout.A = [
+    partita.timeoutsA?.firstTime,
+    partita.timeoutsA?.secondTime,
+    partita.timeoutsA?.thirdTime
+].filter(Boolean);
+
+timeout.B = [
+    partita.timeoutsB?.firstTime,
+    partita.timeoutsB?.secondTime,
+    partita.timeoutsB?.thirdTime
+].filter(Boolean);
+    //------------------------------------------------
+    // UFFICIALI
+    //------------------------------------------------
+
+    ufficiali.arbitro1 = partita.referee1 ?? "";
+    ufficiali.arbitro2 = partita.referee2 ?? "";
+
+    ufficiali.delegato1 = partita.delegate1 ?? "";
+    ufficiali.delegato2 = partita.delegate2 ?? "";
+
+//------------------------------------------------
+    // DIRIGENTI SQUALIFICATI (PROTETTO CONTRO GLI ERRORI)
+    //------------------------------------------------
+
+    (partita.currentRosterA?.officials || []).forEach(d => {
+        if (!d.red) return;
+        const riga = [...document.querySelectorAll("#bodyA tr")]
+            .find(r => r.cells.length > 1 && r.cells[0].textContent === String(d.num || ''));
+        
+        if (riga && riga.cells.length > 8) {
+            riga.cells[7].textContent = d.redTime || "";
+            riga.cells[8].textContent = d.sanction || "";
+        }
+    });
+
+    (partita.currentRosterB?.officials || []).forEach(d => {
+        if (!d.red) return;
+        const riga = [...document.querySelectorAll("#bodyB tr")]
+            .find(r => r.cells.length > 1 && r.cells[0].textContent === String(d.num || ''));
+        
+        if (riga && riga.cells.length > 8) {
+            riga.cells[7].textContent = d.redTime || "";
+            riga.cells[8].textContent = d.sanction || "";
+        }
+    });
+
+}
+
+//====================================================
+// SCRIVE UNA CELLA DEL REFERTO
+//====================================================
+
+function scriviCella(cella, valore, dimensione="6.5pt"){
+
+    if(!cella) return;
+
+    cella.textContent = valore || "";
+
+    Object.assign(cella.style,{
+
+        fontWeight:"bold",
+        fontSize:dimensione,
+        padding:"0",
+        textAlign:"center",
+        verticalAlign:"middle",
+        lineHeight:"6.25mm"
+
+    });
+
+}
+
+//====================================================
+// RESTITUISCE LA RIGA DEL REFERTO
+//====================================================
+
+function trovaRigaGiocatore(squadra, numero){
+
+    return document.getElementById(
+        squadra + "_" + numero
+    );
+
+}
+
+//====================================================
+// RICOSTRUISCE I GOAL DAL REGISTRO EVENTI
+//====================================================
+
+function ricostruisciGoalDaRegistro(){
+
+    const goal = {
+        A:{},
+        B:{}
+    };
+
+    // Il Tablet salva il registro gara nella proprietà "eventi".
+    // Manteniamo compatibilità con "events" e con vecchie gare "logEvents".
+    const eventi =
+        partita.eventi ||
+        partita.events ||
+        partita.logEvents ||
+        [];
+
+    eventi.forEach(ev => {
+
+        const squadra = String(
+            ev.squadra ??
+            ev.team ??
+            ""
+        ).trim().toUpperCase();
+
+        if(squadra !== "A" && squadra !== "B") return;
+
+        const numero = String(
+            ev.numero ??
+            ev.num ??
+            ""
+        ).trim();
+
+        if(!numero || numero === "—") return;
+
+        const tipo = String(
+            ev.type ??
+            ev.tipo ??
+            ""
+        ).trim().toUpperCase();
+
+        const testo = String(
+            ev.text ??
+            ev.event ??
+            ev.evento ??
+            ev.desc ??
+            ""
+        ).trim().toUpperCase();
+
+        const èRete =
+            tipo === "GOAL" ||
+            tipo === "RETE" ||
+            (
+                tipo === "PENALTY" &&
+                testo.includes("REALIZZATO")
+            ) ||
+            (
+                testo.includes("RIGORE") &&
+                testo.includes("REALIZZATO")
+            );
+
+        if(!èRete) return;
+
+        goal[squadra][numero] =
+            (goal[squadra][numero] || 0) + 1;
+    });
+
+    console.log("EVENTI LETTI DAL REFERTO =", eventi);
+    console.log("GOAL RICOSTRUITI =", goal);
+
+    return goal;
+}
+//====================================================
+// ADATTA IL NOME DELLA SQUADRA NELLA TESTATA DELLA TABELLA
+//====================================================
+function adattaNomeSquadra(id){
+    const el = document.getElementById(id);
+    if(!el) return;
+    const text = (el.textContent || "").trim();
+    if(text.length > 34) el.style.fontSize = "8pt";
+    else if(text.length > 25) el.style.fontSize = "9pt";
+    else el.style.fontSize = "10pt";
+}
+
+//====================================================
+// COMPILA IL REFERTO FIGH
+//====================================================
+
+function ricostruisciSanzioniGiocatore(squadra, numero){
+
+    const eventi =
+        partita.eventi ||
+        partita.events ||
+        partita.logEvents ||
+        [];
+
+    const num = String(numero ?? "").trim();
+
+    const sanzioni = {
+        ammonizioni: [],
+        dueMinuti: [],
+        trePerDue: "",
+        squalifica: "",
+        espulsione: ""
+    };
+
+    eventi.forEach(ev => {
+        if(!ev) return;
+
+        const team = String(ev.squadra ?? ev.team ?? "").trim().toUpperCase();
+        const player = String(ev.numero ?? ev.num ?? ev.number ?? "").trim();
+        if(team !== String(squadra).toUpperCase() || player !== num) return;
+
+        const tipo = String(ev.type ?? ev.tipo ?? "").trim().toUpperCase();
+        const testo = String(ev.text ?? ev.event ?? ev.evento ?? ev.desc ?? "").trim().toUpperCase();
+        const tempo = formattaTempo(ev.time ?? ev.Time ?? "");
+        if(!tempo) return;
+
+        if(tipo === "YELLOW"){
+            sanzioni.ammonizioni.push(tempo);
+            return;
+        }
+
+        if(tipo === "TWO"){
+            sanzioni.dueMinuti.push(tempo);
+            return;
+        }
+
+        if(tipo === "DISQUALIFICATION_3X2" || testo.includes("SQUALIFICA 3° X 2") || testo.includes("SQUALIFICA 3 X 2")){
+            // La squalifica automatica conseguente al 3° 2' è un evento separato
+            // e deve finire nella colonna SQ, con lo stesso tempo del 2' che la precede.
+            sanzioni.squalifica = tempo;
+            return;
+        }
+
+        if(tipo === "RED"){
+            if(testo.includes("3X2") || testo.includes("3 X 2") || testo.includes("3*2")){
+                sanzioni.trePerDue = tempo;
+            } else {
+                sanzioni.espulsione = tempo;
+            }
+        }
+    });
+
+    return sanzioni;
+}
+
+//====================================================
+// RICOSTRUISCE LE SANZIONI DEI DIRIGENTI / UFFICIALI DI PANCHINA
+//====================================================
+// Nel JSON del progetto Blazor il dirigente è identificato dalla lettera
+// (A, B, C, D, E), che coincide con EventRecord.Number.
+function ricostruisciSanzioniDirigente(squadra, lettera){
+
+    const eventi =
+        partita.eventi ||
+        partita.events ||
+        partita.logEvents ||
+        [];
+
+    const id = String(lettera ?? "").trim().toUpperCase();
+
+    const sanzioni = {
+        ammonizioni: [],
+        dueMinuti: [],
+        espulsione: ""
+    };
+
+    eventi.forEach(ev => {
+        if(!ev) return;
+
+        const team = String(ev.squadra ?? ev.team ?? "").trim().toUpperCase();
+        const numero = String(ev.numero ?? ev.num ?? ev.number ?? "").trim().toUpperCase();
+        if(team !== String(squadra).toUpperCase() || numero !== id) return;
+
+        const tipo = String(ev.type ?? ev.tipo ?? "").trim().toUpperCase();
+        const testo = String(ev.text ?? ev.event ?? ev.evento ?? ev.desc ?? "").trim().toUpperCase();
+        const tempo = formattaTempo(ev.time ?? ev.Time ?? "");
+        if(!tempo) return;
+
+        if(tipo === "YELLOW"){
+            sanzioni.ammonizioni.push(tempo);
+            return;
+        }
+
+        if(tipo === "TWO"){
+            sanzioni.dueMinuti.push(tempo);
+            return;
+        }
+
+        if(tipo === "RED"){
+            // Per i dirigenti la seconda esclusione da 2' viene trasformata
+            // dal motore in espulsione diretta.
+            sanzioni.espulsione = tempo;
+        }
+    });
+
+    return sanzioni;
+}
+
+//====================================================
+// COMPILA IL REFERTO FIGH
+//====================================================
+
+function compilaReferto(){
+
+    //------------------------------------------------
+    // GOAL RICOSTRUITI DAL REGISTRO EVENTI
+    //------------------------------------------------
+
+    const goalRegistro = ricostruisciGoalDaRegistro();
+
+    //------------------------------------------------
+    // FUNZIONE COMUNE PER LE RIGHE DEI GIOCATORI
+    //------------------------------------------------
+
+    function compilaRigaGiocatore(squadra, g){
+
+        const numero = String(g.num ?? g.number ?? "").trim();
+        const r = trovaRigaGiocatore(squadra, numero);
+        if(!r) return;
+
+        const goals =
+            goalRegistro[squadra]?.[numero] ??
+            Number(g.goals ?? g.goal ?? g.reti ?? g.goalsScored ?? 0);
+
+        const sanzioni = ricostruisciSanzioniGiocatore(squadra, numero);
+
+        // Colonne del referto:
+        // 0 N° | 1 Cognome e Nome | 2 Reti | 3 Amm. |
+        // 4 2' | 5 2' | 6 2'+D | 7 SQ | 8 San.Sq.
+        scriviCella(r.cells[2], goals > 0 ? goals : "", "9pt");
+
+        // Ammonizione: una o più occorrenze vengono riportate nella stessa cella.
+        scriviCella(
+            r.cells[3],
+            sanzioni.ammonizioni.join(" "),
+            "6.8pt"
+        );
+
+        // Prime due esclusioni da 2 minuti.
+        scriviCella(r.cells[4], sanzioni.dueMinuti[0] || "");
+        scriviCella(r.cells[5], sanzioni.dueMinuti[1] || "");
+
+        // Terza esclusione: 3 x 2' = squalifica automatica.
+        // Se il vecchio JSON contiene direttamente tre eventi TWO, la terza
+        // viene riportata qui; con il motore attuale arriva come RED "3x2".
+        scriviCella(r.cells[6], sanzioni.dueMinuti[2] || sanzioni.trePerDue || "");
+
+        // Squalifica automatica 3° x 2' oppure espulsione diretta: colonna SQ.
+        scriviCella(r.cells[7], sanzioni.squalifica || sanzioni.espulsione || "");
+
+        // San.Sq. resta riservata alle eventuali sanzioni di squadra già
+        // gestite separatamente dal progetto.
+        scriviCella(r.cells[8], "");
+    }
+
+    //------------------------------------------------
+    // SQUADRA A
+    //------------------------------------------------
+
+    (partita.currentRosterA?.players || []).forEach(g => {
+        compilaRigaGiocatore("A", g);
+    });
+
+    //------------------------------------------------
+    // SQUADRA B
+    //------------------------------------------------
+
+    (partita.currentRosterB?.players || []).forEach(g => {
+        compilaRigaGiocatore("B", g);
+    });
+
+    //------------------------------------------------
+    // SANZIONI DIRIGENTI / UFFICIALI DI PANCHINA
+    //------------------------------------------------
+    // Le righe dirigenti sono le ultime 5 righe di ciascuna tabella.
+    // L'identificativo della riga è la lettera A-E e viene confrontato
+    // direttamente con EventRecord.Number del registro gara.
+    function compilaSanzioniDirigenti(squadra, dirigenti){
+        const body = document.getElementById(squadra === "A" ? "bodyA" : "bodyB");
+        if(!body) return;
+
+        (dirigenti || []).forEach(dir => {
+            const lettera = String(dir.lettera ?? dir.letter ?? dir.num ?? "").trim().toUpperCase();
+            if(!lettera) return;
+
+            const r = [...body.rows].find(row =>
+                row.classList.contains("dirigente-row") &&
+                String(row.cells[0]?.textContent || "").trim().toUpperCase() === lettera
+            );
+            if(!r || r.cells.length < 8) return;
+
+            const sanzioni = ricostruisciSanzioniDirigente(squadra, lettera);
+
+            // 0 = ruolo/lettera, 1 = nome, 2 = Amm., 3 = 2',
+            // 4 = 2', 5 = 2'+D, 6 = SQ, 7 = San.Sq.
+            // (il nome occupa due colonne nel markup, quindi dopo il colspan
+            // le celle effettive partono dalla terza colonna della riga DOM.)
+            scriviCella(r.cells[2], sanzioni.ammonizioni.join(" "), "6.8pt");
+            scriviCella(r.cells[3], sanzioni.dueMinuti[0] || "");
+            scriviCella(r.cells[4], sanzioni.dueMinuti[1] || "");
+            scriviCella(r.cells[5], "");
+            scriviCella(r.cells[6], sanzioni.espulsione || "");
+            scriviCella(r.cells[7], "");
+        });
+    }
+
+    compilaSanzioniDirigenti("A", partita.currentRosterA?.officials || partita.dirigentiA || []);
+    compilaSanzioniDirigenti("B", partita.currentRosterB?.officials || partita.dirigentiB || []);
+
+    //------------------------------------------------
+    // RISULTATI PARZIALI
+    //------------------------------------------------
+
+    document.getElementById("fhA").textContent = risultati.primoTempo.A;
+    document.getElementById("fhB").textContent = risultati.primoTempo.B;
+
+    document.getElementById("shA").textContent = risultati.secondoTempo.A;
+    document.getElementById("shB").textContent = risultati.secondoTempo.B;
+
+    document.getElementById("et1A").textContent = risultati.extra1.A;
+    document.getElementById("et1B").textContent = risultati.extra1.B;
+
+    document.getElementById("et2A").textContent = risultati.extra2.A;
+    document.getElementById("et2B").textContent = risultati.extra2.B;
+
+    document.getElementById("rigA").textContent = risultati.rigoriFinale.A;
+    document.getElementById("rigB").textContent = risultati.rigoriFinale.B;
+
+    //------------------------------------------------
+    // RISULTATO FINALE UFFICIALE
+    //------------------------------------------------
+
+    let finaleA = Number(risultati.finale.A ?? 0);
+    let finaleB = Number(risultati.finale.B ?? 0);
+
+    // I tiri di rigore finali non vengono sommati alle reti dei giocatori;
+    // servono solo a rappresentare l'esito della gara ai rigori.
+    if(
+        Number(risultati.rigoriFinale.A ?? 0) > 0 ||
+        Number(risultati.rigoriFinale.B ?? 0) > 0
+    ){
+        finaleA += Number(risultati.rigoriFinale.A ?? 0);
+        finaleB += Number(risultati.rigoriFinale.B ?? 0);
+    }
+
+    document.getElementById("risultatoFinale").innerHTML = `
+    <div style="
+        display:flex;
+        justify-content:center;
+        align-items:center;
+        height:100%;
+        font-family:Arial;
+        font-weight:bold;
+        font-size:18pt;
+        white-space:nowrap;
+    ">
+        ${finaleA}&nbsp;-&nbsp;${finaleB}
+    </div>
+    `;
+
+    //------------------------------------------------
+    // 7 METRI
+    //------------------------------------------------
+
+    document.getElementById("rigStatA").textContent =
+        risultati.setteMetri.retiA + "/" + risultati.setteMetri.tiriA;
+
+    document.getElementById("rigStatB").textContent =
+        risultati.setteMetri.retiB + "/" + risultati.setteMetri.tiriB;
+
+    //------------------------------------------------
+    // TIME OUT
+    //------------------------------------------------
+
+    for(let i = 0; i < 3; i++){
+
+        const a = document.getElementById("toA" + (i + 1));
+        const b = document.getElementById("toB" + (i + 1));
+
+        if(a){
+            a.textContent = formattaTempo(timeout.A[i] ?? "");
+        }
+
+        if(b){
+            b.textContent = formattaTempo(timeout.B[i] ?? "");
+        }
+    }
+
+    //------------------------------------------------
+    // UFFICIALI DI GARA
+    //------------------------------------------------
+
+    document.getElementById("arb1").textContent = ufficiali.arbitro1;
+    document.getElementById("arb2").textContent = ufficiali.arbitro2;
+    document.getElementById("del1").textContent = ufficiali.delegato1;
+    document.getElementById("del2").textContent = ufficiali.delegato2;
+
+    //------------------------------------------------
+    // ADATTA IL NOME DELLE SQUADRE
+    //------------------------------------------------
+
+    adattaNomeSquadra("teamA");
+    adattaNomeSquadra("teamB");
+
+    //------------------------------------------------
+    // VERIFICA REFERTO
+    //------------------------------------------------
+
+    verificaRetiGiocatori();
+
+}
+
+
+//====================================================
+// VERIFICA COERENZA RETI GIOCATORI
+//====================================================
+
+function verificaRetiGiocatori(){
+
+    //--------------------------------------------
+    // RICOSTRUISCE I GOAL DAL REGISTRO
+    //--------------------------------------------
+
+    const goalRegistro = ricostruisciGoalDaRegistro();
+
+    let retiA = 0;
+    let retiB = 0;
+
+    //--------------------------------------------
+    // TOTALE RETI SQUADRA A
+    //--------------------------------------------
+
+    Object.values(goalRegistro.A || {}).forEach(g=>{
+
+        retiA += Number(g);
+
+    });
+
+    //--------------------------------------------
+    // TOTALE RETI SQUADRA B
+    //--------------------------------------------
+
+    Object.values(goalRegistro.B || {}).forEach(g=>{
+
+        retiB += Number(g);
+
+    });
+
+    //--------------------------------------------
+    // RISULTATO UFFICIALE
+    //--------------------------------------------
+
+    const finaleA = Number(risultati.finale.A ?? 0);
+    const finaleB = Number(risultati.finale.B ?? 0);
+
+    //--------------------------------------------
+    // VERIFICA
+    //--------------------------------------------
+
+    if(retiA !== finaleA || retiB !== finaleB){
+
+        let msg = "ATTENZIONE!\n\n";
+
+        if(retiA !== finaleA){
+
+            msg +=
+                "Squadra A\n" +
+                "Reti dal registro: " + retiA +
+                "\nRisultato ufficiale: " + finaleA + "\n\n";
+
+        }
+
+        if(retiB !== finaleB){
+
+            msg +=
+                "Squadra B\n" +
+                "Reti dal registro: " + retiB +
+                "\nRisultato ufficiale: " + finaleB;
+
+        }
+
+        alert(msg);
+
+        return false;
+
+    }
+
+    return true;
+
+}
+
+//====================================================
+// VERIFICA REFERTO PRIMA DELLA STAMPA
+//====================================================
+
+function verificaReferto(){
+
+    let errori = [];
+
+    //------------------------------------------------
+    // RETI GIOCATORI
+    //------------------------------------------------
+
+    let retiA = 0;
+    let retiB = 0;
+
+    (partita.currentRosterA?.players || []).forEach(g=>{
+
+        retiA += Number(g.goals ?? 0);
+
+    });
+
+    (partita.currentRosterB?.players || []).forEach(g=>{
+
+        retiB += Number(g.goals ?? 0);
+
+    });
+
+    if(retiA !== risultati.finale.A){
+
+        errori.push(
+            "Squadra A:\n" +
+            "- Reti giocatori = " + retiA +
+            "\n- Risultato finale = " + risultati.finale.A
+        );
+
+    }
+
+    if(retiB !== risultati.finale.B){
+
+        errori.push(
+            "Squadra B:\n" +
+            "- Reti giocatori = " + retiB +
+            "\n- Risultato finale = " + risultati.finale.B
+        );
+
+    }
+
+    //------------------------------------------------
+    // ESCLUSIONI
+    //------------------------------------------------
+
+    (partita.currentRosterA?.players || []).forEach(g=>{
+
+        if((g.suspensions ?? 0) > 3){
+
+            errori.push(
+                "Squadra A - n." + g.num +
+                ": più di 3 esclusioni."
+            );
+
+        }
+
+    });
+
+    (partita.currentRosterB?.players || []).forEach(g=>{
+
+        if((g.suspensions ?? 0) > 3){
+
+            errori.push(
+                "Squadra B - n." + g.num +
+                ": più di 3 esclusioni."
+            );
+
+        }
+
+    });
+
+    //------------------------------------------------
+    // TIME OUT
+    //------------------------------------------------
+
+    if(timeout.A.length > 3){
+
+        errori.push(
+            "Squadra A: più di 3 Time-Out."
+        );
+
+    }
+
+    if(timeout.B.length > 3){
+
+        errori.push(
+            "Squadra B: più di 3 Time-Out."
+        );
+
+    }
+
+    //------------------------------------------------
+    // NUMERI DUPLICATI
+    //------------------------------------------------
+
+    function controllaDuplicati(lista,squadra){
+
+        const usati = [];
+
+        lista.forEach(g=>{
+
+            if(!g.num) return;
+
+            if(usati.includes(g.num)){
+
+                errori.push(
+                    "Squadra " + squadra +
+                    ": numero " + g.num +
+                    " duplicato."
+                );
+
+            }
+
+            usati.push(g.num);
+
+        });
+
+    }
+
+    controllaDuplicati(
+        partita.currentRosterA?.players || [],
+        "A"
+    );
+
+    controllaDuplicati(
+        partita.currentRosterB?.players || [],
+        "B"
+    );
+
+    //------------------------------------------------
+    // RISULTATO
+    //------------------------------------------------
+
+    if(errori.length){
+
+        alert(
+
+            "ATTENZIONE!\n\n" +
+
+            "Sono stati trovati " +
+
+            errori.length +
+
+            " errori:\n\n" +
+
+            errori.join("\n\n")
+
+        );
+
+        return false;
+
+    }
+
+    return true;
+
+}
+
+//--------------------------------------------------
+
+// --------------------------------------------------
+// CONTROLLI REFERTO
+// --------------------------------------------------
+
+function apriPopupStampa(){
+    const popup = document.getElementById("popupStampa");
+    if(popup) popup.style.display = "flex";
+}
+
+function chiudiPopupStampa(){
+    const popup = document.getElementById("popupStampa");
+    if(popup) popup.style.display = "none";
+}
+
+function esciReferto(){
+
+    // CHIUDI è l'unico comando che esce da RefertoFIGH.
+    // Ordine di destinazione:
+    // 1) RegistroPostGara
+    // 2) Referto Pallamano
+    // 3) index
+
+    const destinazioni = [
+        "RegistroPostGara.html",
+        "Referto Pallamano.html",
+        "index.html"
+    ];
+
+    function provaDestinazione(indice){
+        if(indice >= destinazioni.length){
+            window.location.href = "https://www.google.it/";
+            return;
+        }
+
+        const url = destinazioni[indice];
+
+        // Verifica che il file esista prima di cambiare pagina.
+        fetch(url, {method:"HEAD", cache:"no-store"})
+            .then(response => {
+                if(response.ok){
+                    window.location.href = url;
+                }else{
+                    provaDestinazione(indice + 1);
+                }
+            })
+            .catch(() => {
+                provaDestinazione(indice + 1);
+            });
+    }
+
+    provaDestinazione(0);
+}
+
+function stampaEdEsci(){
+
+    // LA STAMPA DEVE AVVENIRE ANCHE SE IL CONTROLLO
+    // DEL REFERTO SEGNALA DEGLI ERRORI.
+    // Il controllo resta disponibile, ma NON blocca la stampa.
+
+    chiudiPopupStampa();
+
+    document.body.style.zoom = "92%";
+
+    window.onafterprint = function(){
+        document.body.style.zoom = "";
+        window.onafterprint = null;
+    };
+
+    window.print();
+}
+
+</script>
+
+</body>
+</html>
