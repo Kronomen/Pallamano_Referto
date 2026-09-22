@@ -1038,8 +1038,6 @@
 
     private async Task PrintReferto()
     {
-        // Il referto viene costruito dal modello HTML ufficiale FIGH presente in wwwroot/RefertoFIGH.html.
-        // Qui passiamo soltanto i dati già presenti nel progetto.
         await JS.InvokeVoidAsync("stampaReferto", new
         {
             matchNumber = Game.State.MatchNumber,
@@ -1048,96 +1046,22 @@
             championship = Game.State.Championship,
             city = Game.State.City,
             venue = Game.State.Venue,
-            season = Game.State.Season,
-            referee1 = Game.State.Referee1,
-            referee2 = Game.State.Referee2,
-            delegate1 = Game.State.Delegate1,
-            delegate2 = Game.State.Delegate2,
-            timekeeper = Game.State.Timekeeper,
-            secretary = Game.State.Secretary,
             casa = Game.State.Casa.Name,
             ospiti = Game.State.Ospiti.Name,
-            playersA = Game.State.Casa.Numbers.Select((n, i) => new
-            {
-                number = n,
-                label = GetNumberLabel("A", i),
-                name = Game.State.Casa.PlayerNames[i] ?? "",
-                active = Game.State.Casa.ActivePlayers[i],
-                originalIndex = i,
-                goals = Game.State.Events.Count(e => e.Team == "A" && e.Number == GetNumberLabel("A", i) && (e.Type == "GOAL" || e.Type == "PENALTY_GOAL"))
-            }).Where(p => p.active)
-              .OrderBy(p => NumberSortKey(p.label, p.number))
-              .ThenBy(p => p.originalIndex)
-              .ToArray(),
-            playersB = Game.State.Ospiti.Numbers.Select((n, i) => new
-            {
-                number = n,
-                label = GetNumberLabel("B", i),
-                name = Game.State.Ospiti.PlayerNames[i] ?? "",
-                active = Game.State.Ospiti.ActivePlayers[i],
-                originalIndex = i,
-                goals = Game.State.Events.Count(e => e.Team == "B" && e.Number == GetNumberLabel("B", i) && (e.Type == "GOAL" || e.Type == "PENALTY_GOAL"))
-            }).Where(p => p.active)
-              .OrderBy(p => NumberSortKey(p.label, p.number))
-              .ThenBy(p => p.originalIndex)
-              .ToArray(),
-            staffA = Game.State.Casa.StaffLetters.Select((l, i) => new
-            {
-                letter = l,
-                name = Game.State.Casa.StaffNames[i] ?? "",
-                active = Game.State.Casa.ActiveStaff[i]
-            }).Where(p => p.active).ToArray(),
-            staffB = Game.State.Ospiti.StaffLetters.Select((l, i) => new
-            {
-                letter = l,
-                name = Game.State.Ospiti.StaffNames[i] ?? "",
-                active = Game.State.Ospiti.ActiveStaff[i]
-            }).Where(p => p.active).ToArray(),
-            events = Game.State.Events.Select(e => new
-            {
-                e.Time,
-                e.Team,
-                e.Number,
-                e.Type,
-                e.Text,
-                e.Result
-            }).ToArray(),
-            phaseScores = Game.State.PhaseScores,
-            penaltyTotalA = Game.State.Events.Count(e => e.Team == "A" && (e.Type == "PENALTY_GOAL" || e.Type == "PENALTY_MISS")),
-            penaltyTotalB = Game.State.Events.Count(e => e.Team == "B" && (e.Type == "PENALTY_GOAL" || e.Type == "PENALTY_MISS")),
-            penaltyScoredA = Game.State.Events.Count(e => e.Team == "A" && e.Type == "PENALTY_GOAL"),
-            penaltyScoredB = Game.State.Events.Count(e => e.Team == "B" && e.Type == "PENALTY_GOAL"),
-            timeoutsA = new
-            {
-                firstTime = Game.State.Events.Where(e => e.Team == "A" && e.Type == "TIMEOUT").Select(e => e.Time).ElementAtOrDefault(0),
-                secondTime = Game.State.Events.Where(e => e.Team == "A" && e.Type == "TIMEOUT").Select(e => e.Time).ElementAtOrDefault(1),
-                thirdTime = Game.State.Events.Where(e => e.Team == "A" && e.Type == "TIMEOUT").Select(e => e.Time).ElementAtOrDefault(2)
-            },
-            timeoutsB = new
-            {
-                firstTime = Game.State.Events.Where(e => e.Team == "B" && e.Type == "TIMEOUT").Select(e => e.Time).ElementAtOrDefault(0),
-                secondTime = Game.State.Events.Where(e => e.Team == "B" && e.Type == "TIMEOUT").Select(e => e.Time).ElementAtOrDefault(1),
-                thirdTime = Game.State.Events.Where(e => e.Team == "B" && e.Type == "TIMEOUT").Select(e => e.Time).ElementAtOrDefault(2)
-            },
-            shootout = Game.State.Shootout.Select(x => new
-            {
-                x.Id,
-                x.Phase,
-                x.Round,
-                x.Team,
-                x.Number,
-                x.PlayerName,
-                x.Goal,
-                x.ScoreA,
-                x.ScoreB
-            }).ToArray(),
-            shootoutScoreA = Game.State.ShootoutScoreA,
-            shootoutScoreB = Game.State.ShootoutScoreB,
+            colorA = Game.State.Casa.Color,
+            colorB = Game.State.Ospiti.Color,
             scoreA = Game.State.ScoreA,
-            scoreB = Game.State.ScoreB
+            scoreB = Game.State.ScoreB,
+            playersA = Game.State.Casa.Numbers.Select((n,i) => new { number=n, label=GetNumberLabel("A", i), name=Game.State.Casa.PlayerNames[i] ?? "", active=Game.State.Casa.ActivePlayers[i], originalIndex=i }).Where(p => p.active).OrderBy(p => NumberSortKey(p.label, p.number)).ThenBy(p => p.originalIndex).ToArray(),
+            playersB = Game.State.Ospiti.Numbers.Select((n,i) => new { number=n, label=GetNumberLabel("B", i), name=Game.State.Ospiti.PlayerNames[i] ?? "", active=Game.State.Ospiti.ActivePlayers[i], originalIndex=i }).Where(p => p.active).OrderBy(p => NumberSortKey(p.label, p.number)).ThenBy(p => p.originalIndex).ToArray(),
+            staffA = Game.State.Casa.StaffLetters.Select((l,i) => new { letter=l, name=Game.State.Casa.StaffNames[i] ?? "", active=Game.State.Casa.ActiveStaff[i] }).Where(p => p.active),
+            staffB = Game.State.Ospiti.StaffLetters.Select((l,i) => new { letter=l, name=Game.State.Ospiti.StaffNames[i] ?? "", active=Game.State.Ospiti.ActiveStaff[i] }).Where(p => p.active),
+            events = Game.State.Events.Select(e => new { e.Time, e.Team, e.Number, e.Text, e.Result }),
+            shootout = Game.State.Shootout.Select(x => new { x.Id, x.Phase, x.Round, x.Team, x.Number, x.PlayerName, x.Goal, x.ScoreA, x.ScoreB }),
+            shootoutScoreA = Game.State.ShootoutScoreA,
+            shootoutScoreB = Game.State.ShootoutScoreB
         });
     }
-
     public async void Dispose()
     {
         Game.Changed -= OnChanged;

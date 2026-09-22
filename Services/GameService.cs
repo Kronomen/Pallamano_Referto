@@ -161,37 +161,13 @@ public sealed class GameService : IAsyncDisposable
                     !e.Text.Contains("3x2", StringComparison.OrdinalIgnoreCase));
                 if (previousTwos >= 2)
                 {
-                    // 3° 2' dello stesso giocatore: nel Registro Gara devono
-                    // comparire DUE eventi distinti, nello stesso identico secondo:
-                    // 1) ESCLUSIONE 2 MINUTI
-                    // 2) SQUALIFICA 3° X 2'
-                    // Il primo evento resta una normale esclusione 2' e genera
-                    // il countdown; il secondo è solo la squalifica automatica
-                    // e NON genera un secondo countdown.
-                    PendingEvent.Type = "TWO";
-                    PendingEvent.Text = "ESCLUSIONE 2 MINUTI";
+                    // 3° 2' dello stesso giocatore: UNA SOLA RIGA nel Registro Gara.
+                    // L'evento corrente viene trasformato nella sanzione definitiva,
+                    // senza aggiungere un secondo evento separato.
+                    PendingEvent.Type = "RED";
+                    PendingEvent.Text = "ESCLUSIONE PER 3x2'";
                     PendingEvent.SuspensionStartSeconds = State.TimerSeconds;
-                    PendingEvent.SuspensionEndSeconds = State.TimerSeconds + 120;
                     PendingEvent.Result = ScoreText();
-
-                    var disqualification = new EventRecord
-                    {
-                        Time = PendingEvent.Time,
-                        Team = team,
-                        Number = numberLabel,
-                        Type = "DISQUALIFICATION_3X2",
-                        Text = "SQUALIFICA 3° X 2'",
-                        Result = PendingEvent.Result
-                    };
-
-                    // Add subito dopo il TWO: stesso tempo e ordine obbligatorio.
-                    var pendingIndex = State.Events.IndexOf(PendingEvent);
-                    if (pendingIndex >= 0)
-                        State.Events.Insert(pendingIndex + 1, disqualification);
-                    else
-                        State.Events.Add(disqualification);
-
-                    StartSuspension(team, numberLabel);
                     StopClockForDisciplinary();
                     FinishPendingEvent();
                     return true;
@@ -256,7 +232,6 @@ public sealed class GameService : IAsyncDisposable
                 PendingEvent.Type = "RED";
                 PendingEvent.Text = "ESPULSIONE DIRETTA";
                 PendingEvent.SuspensionStartSeconds = State.TimerSeconds;
-                PendingEvent.SuspensionEndSeconds = State.TimerSeconds + 120;
                 StopClockForDisciplinary();
                 FinishPendingEvent();
                 return true;
@@ -346,7 +321,6 @@ public sealed class GameService : IAsyncDisposable
             ? "ESCLUSIONE PER 3x2'"
             : EventDescription(type);
         ev.SuspensionStartSeconds = ev.Type is "TWO" or "RED" ? parsedTime : null;
-        ev.SuspensionEndSeconds = ev.Type is "TWO" or "RED" ? parsedTime + 120 : null;
 
 
         // La modifica può cambiare completamente la natura dell'evento (es. GOAL ->
@@ -460,12 +434,10 @@ public sealed class GameService : IAsyncDisposable
             {
                 var t = ParseTime(ev.Time);
                 ev.SuspensionStartSeconds = t >= 0 ? t : null;
-                ev.SuspensionEndSeconds = t >= 0 ? t + 120 : null;
             }
             else
             {
                 ev.SuspensionStartSeconds = null;
-                ev.SuspensionEndSeconds = null;
             }
         }
 
@@ -653,11 +625,8 @@ public sealed class GameService : IAsyncDisposable
         State.MiniTimerSeconds = 0;
         State.MiniTimerRunning = false;
         State.MatchStarted = true;
-        // Il passaggio al periodo successivo NON avvia automaticamente il cronometro.
-        // Dopo la conferma del popup il nuovo periodo resta fermo a 00:00 (o al
-        // relativo minuto iniziale); l'ufficiale deve premere START per farlo partire.
         PeriodStartConfirmed = true;
-        StopClock();
+        StartNextPeriodAutomatically();
         Notify();
     }
 
@@ -670,6 +639,15 @@ public sealed class GameService : IAsyncDisposable
         ShowPeriodEnd = false;
         ShowShootoutStart = true;
         Notify();
+    }
+
+    private void StartNextPeriodAutomatically()
+    {
+        if (State.MatchFinished || State.ShootoutStarted) return;
+        State.MatchStarted = true;
+        State.Running = true;
+        State.MiniTimerRunning = true;
+        StartClock();
     }
 
     private void FinishMatch(bool draw)
@@ -971,30 +949,30 @@ public sealed class GameService : IAsyncDisposable
 
     public IEnumerable<(string Number, string Remaining)> GetSuspensions(string team, string? number = null)
     {
-        // Il termine della sospensione è memorizzato sul singolo evento come tempo
-        // assoluto della gara. In questo modo il countdown NON viene perso quando
-        // il popup di fine periodo porta al periodo successivo.
+        // Countdown personale: vale per ogni 2' ordinario, per l'espulsione diretta
+        // e per la 3a esclusione (3x2'). Segue il cronometro ufficiale della gara.
         foreach (var ev in State.Events.Where(e => e.Team == team && (e.Type == "TWO" || e.Type == "RED"))
                      .Where(e => number is null || e.Number == number)
-                     .Where(e => e.SuspensionEndSeconds.HasValue || e.SuspensionStartSeconds.HasValue))
+                     .Where(e => e.SuspensionStartSeconds.HasValue))
         {
-            var end = ev.SuspensionEndSeconds ?? (ev.SuspensionStartSeconds!.Value + 120);
-            var left = end - State.TimerSeconds;
-            if (left > 0 && left <= 120) yield return (ev.Number, FormatTime(left));
+            var start = ev.SuspensionStartSeconds!.Value;
+            var elapsed = Math.Max(0, State.TimerSeconds - start);
+            var left = 120 - elapsed;
+            if (left > 0) yield return (ev.Number, FormatTime(left));
         }
     }
 
     // Dettaglio grafico dei countdown giocatore: distingue i 2' ordinari
-    // (arancione) dalle espulsioni/3x2' (rosso). Il calcolo usa il termine
-    // assoluto della sospensione, quindi attraversa correttamente i periodi.
+    // (arancione) dalle espulsioni/3x2' (rosso).
     public IEnumerable<(string Remaining, bool IsRed)> GetPlayerSuspensionBadges(string team, string number)
     {
         foreach (var ev in State.Events.Where(e => e.Team == team && e.Number == number && (e.Type == "TWO" || e.Type == "RED"))
-                     .Where(e => e.SuspensionEndSeconds.HasValue || e.SuspensionStartSeconds.HasValue))
+                     .Where(e => e.SuspensionStartSeconds.HasValue))
         {
-            var end = ev.SuspensionEndSeconds ?? (ev.SuspensionStartSeconds!.Value + 120);
-            var left = end - State.TimerSeconds;
-            if (left > 0 && left <= 120) yield return (FormatTime(left), ev.Type == "RED");
+            var start = ev.SuspensionStartSeconds!.Value;
+            var elapsed = Math.Max(0, State.TimerSeconds - start);
+            var left = 120 - elapsed;
+            if (left > 0) yield return (FormatTime(left), ev.Type == "RED");
         }
     }
 
@@ -1115,7 +1093,6 @@ public sealed class GameService : IAsyncDisposable
         "PENALTY" => "TIRO DI 7 METRI",
         "YELLOW" => "AMMONIZIONE",
         "TWO" => "ESCLUSIONE 2 MINUTI",
-        "DISQUALIFICATION_3X2" => "SQUALIFICA 3° X 2'",
         "RED" => "ESPULSIONE DIRETTA",
         _ => type
     };
@@ -1124,11 +1101,7 @@ public sealed class GameService : IAsyncDisposable
     {
         if (PendingEvent is null) return;
         PendingEvent.Team = team; PendingEvent.Number = identifier; PendingEvent.Type = type; PendingEvent.Text = text; PendingEvent.Result = ScoreText();
-        if (type is "TWO" or "RED")
-        {
-            PendingEvent.SuspensionStartSeconds = State.TimerSeconds;
-            PendingEvent.SuspensionEndSeconds = State.TimerSeconds + 120;
-        }
+        if (type is "TWO" or "RED") PendingEvent.SuspensionStartSeconds = State.TimerSeconds;
         StartSuspension(team, identifier); StopClockForDisciplinary();
         // La stampa del cartellino verrà collegata al motore di stampa web nella fase UI.
         FinishPendingEvent();

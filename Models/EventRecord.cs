@@ -11,7 +11,4 @@ public sealed class EventRecord
     // Valore del cronometro gara al momento dell'inizio dell'esclusione di 2 minuti.
     // Il countdown segue quindi il cronometro della gara e non il semplice testo dell'evento.
     public int? SuspensionStartSeconds { get; set; }
-    // Istante assoluto di fine della sospensione sul cronometro ufficiale.
-    // Permette di mantenere i 2' attivi anche quando si passa al periodo successivo.
-    public int? SuspensionEndSeconds { get; set; }
 }
