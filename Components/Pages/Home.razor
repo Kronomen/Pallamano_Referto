@@ -22,8 +22,7 @@
                 <div class="shootout-team-name away">@Game.State.Ospiti.Name<span>OSPITI</span></div>
             </div>
             <div class="shootout-official-brand">
-                <div class="official-symbol">F.I.Cr.</div>
-                <div>FEDERAZIONE ITALIANA<br /><strong>CRONOMETRISTI</strong></div>
+                <img class="shootout-ficr-logo" src="images/FICR.png" alt="Federazione Italiana Cronometristi" />
             </div>
         </header>
 
@@ -357,7 +356,7 @@
             </div>
 
             <div class="config-bottom-actions">
-                <button type="button" class="config-back-action" @onclick="CloseConfigWithoutStarting">← TORNA AL REFERTO</button>
+                <button type="button" class="config-back-action" @onclick="LoadSavedGame">📂 CARICA GARA</button>
                 <button type="button" class="config-save-action" @onclick="SaveConfiguration">▣ REFERTO GARA</button>
                 <button type="button" class="config-load-action" @onclick="LoadMatchData">▤ CARICA CONFIGURAZIONE</button>
                 <button type="button" class="config-reset-action" @onclick="Game.Reset">↻ RESET</button>
@@ -962,6 +961,34 @@
     }
 
     private async Task SaveGame() => await JS.InvokeVoidAsync("refertoDownload", "RefertoPallamano.json", Game.ExportJson());
+
+    private async Task LoadSavedGame()
+    {
+        _selfRef ??= DotNetObjectReference.Create(this);
+        await JS.InvokeVoidAsync("apriCaricamentoGara", _selfRef);
+    }
+
+    [JSInvokable("ImportSavedGame")]
+    public async Task ImportSavedGame(string json)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(json))
+                throw new InvalidOperationException("Il file della gara è vuoto.");
+
+            Game.ImportJson(json);
+            _lastRecoveryJson = Game.ExportJson();
+            _recoveryReady = true;
+            _recoveryAvailable = true;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            Game.SetValidationMessage("CARICAMENTO GARA NON RIUSCITO: " + ex.Message);
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
     private async Task RestoreRecovery()
     {
         try

@@ -5087,6 +5087,13 @@ html,body,#app{overflow:hidden!important;width:100%;height:100%;}
   border-top:3px solid #dc2626!important;
   background:#fff!important;
 }
+.shootout-official-brand .shootout-ficr-logo{
+  width:180px!important;
+  height:58px!important;
+  object-fit:contain!important;
+  object-position:right center!important;
+  display:block!important;
+}
 .shootout-official-brand .official-symbol{
   width:46px!important;
   height:46px!important;
@@ -5112,7 +5119,7 @@ html,body,#app{overflow:hidden!important;width:100%;height:100%;}
   .shootout-federation{font-size:6px!important}
   .shootout-official-brand{font-size:6px!important;gap:3px!important}
   .shootout-official-brand strong{font-size:6px!important}
-  .shootout-official-brand .official-symbol{width:30px!important;height:30px!important;font-size:7px!important}
+  .shootout-official-brand .shootout-ficr-logo{width:82px!important;height:48px!important}
   .shootout-team-name{font-size:12px!important}.shootout-team-name span{font-size:8px!important}
   .shootout-main-score{height:42px!important;font-size:26px!important;border-width:2px!important}
   .shootout-main-score span{font-size:20px!important}
@@ -5370,8 +5377,9 @@ html,body,#app{overflow:hidden!important;width:100%;height:100%;}
   /* Popup scelta primo tiratore / esito: dimensioni adatte al touch iPad. */
   .shootout-dialog{width:min(480px,94vw)!important;padding:18px!important;}
   .shootout-dialog h2{font-size:20px!important;}
-  .shootout-first-team-grid,.shootout-result-grid{gap:8px!important;}
-  .shootout-first-team-grid button,.shootout-result-grid button{min-height:54px!important;font-size:11px!important;}
+  .shootout-first-team-grid,.shootout-result-grid{grid-template-columns:1fr 1fr!important;gap:8px!important;}
+  .shootout-first-team-grid button,.shootout-result-grid button{min-height:44px!important;height:44px!important;font-size:10px!important;padding:0 8px!important;}
+  .shootout-first-team-grid button:last-child,.shootout-result-grid button:last-child{grid-column:auto!important;}
   .shootout-result-dialog h2{font-size:22px!important;}
 }
 
@@ -6112,4 +6120,20 @@ html,body,#app{overflow:hidden!important;width:100%;height:100%;}
     padding-left: 2px !important;
     padding-right: 2px !important;
   }
+}
+
+/* v109 — Popup scelta prima squadra dei tiri di rigore: pulsanti affiancati anche su schermi stretti */
+.shootout-first-team-grid{
+  grid-template-columns:1fr 1fr !important;
+  gap:8px !important;
+  width:100%;
+}
+.shootout-first-team-grid button,
+.shootout-first-team-grid button:last-child{
+  grid-column:auto !important;
+  width:100% !important;
+  min-height:44px !important;
+  height:44px !important;
+  padding:0 10px !important;
+  font-size:11px !important;
 }

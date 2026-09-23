@@ -1114,7 +1114,31 @@ public sealed class GameService : IAsyncDisposable
     }
 
     public string ExportJson() => JsonSerializer.Serialize(State, new JsonSerializerOptions { WriteIndented = true });
-    public void ImportJson(string json) { StopClock(); State = JsonSerializer.Deserialize<GameState>(json) ?? throw new InvalidOperationException("JSON partita non valido."); EnsureRosterArrays(State.Casa); EnsureRosterArrays(State.Ospiti); State.Shootout ??= []; State.ShootoutTakenA ??= []; State.ShootoutTakenB ??= []; State.MiniTimerRunning = false; ClearPending(); PendingShootout = null; ShowShootoutStart = false; ShowShootoutFirstTeam = false; ShowShootoutWinner = false; ShowMatchEnd = false; _undoState = null; PeriodStartConfirmed = !State.MatchFinished && !State.ShootoutStarted; Notify(); }
+    public void ImportJson(string json)
+    {
+        StopClock();
+        State = JsonSerializer.Deserialize<GameState>(json) ?? throw new InvalidOperationException("JSON partita non valido.");
+        EnsureRosterArrays(State.Casa);
+        EnsureRosterArrays(State.Ospiti);
+        State.Shootout ??= [];
+        State.ShootoutTakenA ??= [];
+        State.ShootoutTakenB ??= [];
+        State.MiniTimerRunning = false;
+        ClearPending();
+        PendingShootout = null;
+        ShowShootoutStart = false;
+        ShowShootoutFirstTeam = false;
+        ShowShootoutWinner = false;
+        ShowMatchEnd = false;
+        ShowPeriodEnd = false;
+        _undoState = null;
+        PeriodStartConfirmed = !State.MatchFinished && !State.ShootoutStarted;
+        // Un file salvato prima dell'inizio gara riapre la configurazione;
+        // un file salvato durante/dopo la gara torna direttamente al referto.
+        ShowConfiguration = !State.MatchStarted;
+        ValidationError = null;
+        Notify();
+    }
     public string ScoreText() => $"{State.ScoreA}-{State.ScoreB}";
     public static string FormatTime(int seconds) => $"{Math.Max(0, seconds) / 60:00}:{Math.Max(0, seconds) % 60:00}";
     public static string PhaseName(int phase) => phase switch { 1 => "1° TEMPO", 2 => "2° TEMPO", 3 => "1° TEMPO SUPPLEMENTARE", 4 => "2° TEMPO SUPPLEMENTARE", 5 => "3° TEMPO SUPPLEMENTARE", 6 => "4° TEMPO SUPPLEMENTARE", _ => "RIGORI" };
