@@ -6137,3 +6137,9 @@ html,body,#app{overflow:hidden!important;width:100%;height:100%;}
   padding:0 10px !important;
   font-size:11px !important;
 }
+
+
+/* v9 — coda sospensioni: tutte le sanzioni restano visibili; una sola ha il countdown attivo. */
+.active-countdown.countdown-queued { opacity:.72; border-style:dashed; font-style:italic; }
+.countdown-red.countdown-queued { background:#fee2e2 !important; color:#991b1b !important; border-color:#ef4444 !important; }
+.countdown-two.countdown-queued { background:#fff7ed !important; color:#9a3412 !important; border-color:#fb923c !important; }

@@ -55,7 +55,7 @@
                             <span class="active-countdown-row">
                                 @foreach (var suspension in suspensions)
                                 {
-                                    <span class="active-countdown @(suspension.IsRed ? "countdown-red" : "countdown-two")">@(suspension.IsRed ? "E" : "2'") @suspension.Remaining</span>
+                                    <span class="active-countdown @(suspension.IsRed ? "countdown-red" : "countdown-two") @(suspension.IsQueued ? "countdown-queued" : "")">@(suspension.IsRed ? "E" : "2'") @suspension.Remaining</span>
                                 }
                             </span>
                         }
@@ -86,7 +86,7 @@
                             <span class="active-countdown-row">
                                 @foreach (var suspension in suspensions)
                                 {
-                                    <span class="active-countdown @(suspension.IsRed ? "countdown-red" : "countdown-two")">@(suspension.IsRed ? "E" : "2'") @suspension.Remaining</span>
+                                    <span class="active-countdown @(suspension.IsRed ? "countdown-red" : "countdown-two") @(suspension.IsQueued ? "countdown-queued" : "")">@(suspension.IsRed ? "E" : "2'") @suspension.Remaining</span>
                                 }
                             </span>
                         }
@@ -104,7 +104,7 @@
             var staff = GetStaff(staffIndex);
             var staffYellow = Game.StaffHasYellow(Team, staff.Letter);
             var staffRed = Game.StaffHasRed(Team, staff.Letter);
-            var staffSuspensions = Game.GetStaffSuspensions(Team, staff.Letter).ToList();
+            var staffSuspensions = Game.GetStaffSuspensionBadges(Team, staff.Letter).ToList();
             if (staff.Active && !string.IsNullOrWhiteSpace(staff.Letter))
             {
             <button type="button" disabled="@(!staff.Active || staffRed)" aria-label="Dirigente @staff.Letter @(string.IsNullOrWhiteSpace(staff.Name) ? "senza nome" : staff.Name)" class="staff-card @(!staff.Active ? "inactive-staff" : "") @(staffRed ? "has-red" : "") @(Game.PendingEvent is not null && staff.Active && !staffRed ? "touch-ready" : "")" style="background:@TeamColor;color:@TeamTextColor;border-color:@TeamColor" @onclick="() => SelectStaff(staffIndex)">
@@ -119,7 +119,7 @@
                             <span class="staff-active-countdown">
                                 @foreach (var s in staffSuspensions)
                                 {
-                                    <span class="active-countdown">2' @s</span>
+                                    <span class="active-countdown @(s.IsRed ? "countdown-red" : "countdown-two") @(s.IsQueued ? "countdown-queued" : "")">@(s.IsRed ? "E" : "2'") @s.Remaining</span>
                                 }
                             </span>
                         }

@@ -170,8 +170,9 @@ public sealed class GameService : IAsyncDisposable
                     // e NON genera un secondo countdown.
                     PendingEvent.Type = "TWO";
                     PendingEvent.Text = "ESCLUSIONE 2 MINUTI";
-                    PendingEvent.SuspensionStartSeconds = State.TimerSeconds;
-                    PendingEvent.SuspensionEndSeconds = State.TimerSeconds + 120;
+                    var suspensionStart = GetQueuedSuspensionStart(team, numberLabel, State.TimerSeconds, PendingEvent);
+                    PendingEvent.SuspensionStartSeconds = suspensionStart;
+                    PendingEvent.SuspensionEndSeconds = suspensionStart + 120;
                     PendingEvent.Result = ScoreText();
 
                     var disqualification = new EventRecord
@@ -255,8 +256,9 @@ public sealed class GameService : IAsyncDisposable
             {
                 PendingEvent.Type = "RED";
                 PendingEvent.Text = "ESPULSIONE DIRETTA";
-                PendingEvent.SuspensionStartSeconds = State.TimerSeconds;
-                PendingEvent.SuspensionEndSeconds = State.TimerSeconds + 120;
+                var suspensionStart = GetQueuedSuspensionStart(team, letter, State.TimerSeconds, PendingEvent);
+                PendingEvent.SuspensionStartSeconds = suspensionStart;
+                PendingEvent.SuspensionEndSeconds = suspensionStart + 120;
                 StopClockForDisciplinary();
                 FinishPendingEvent();
                 return true;
@@ -459,8 +461,24 @@ public sealed class GameService : IAsyncDisposable
             if (ev.Type is "TWO" or "RED")
             {
                 var t = ParseTime(ev.Time);
-                ev.SuspensionStartSeconds = t >= 0 ? t : null;
-                ev.SuspensionEndSeconds = t >= 0 ? t + 120 : null;
+                if (t >= 0)
+                {
+                    // Una sola esclusione da 2' può essere attiva alla volta per lo stesso
+                    // giocatore. Le successive vengono messe in coda: il loro countdown
+                    // parte solo quando termina quello precedente.
+                    // Sia le esclusioni da 2' sia le espulsioni dirette comportano
+                    // una sospensione di 2 minuti della squadra. Se per lo stesso
+                    // giocatore/dirigente c'è già una sospensione attiva o in coda,
+                    // la nuova sanzione parte solo al termine della precedente.
+                    var queuedStart = GetQueuedSuspensionStartFromOrdered(ordered, ev, t);
+                    ev.SuspensionStartSeconds = queuedStart;
+                    ev.SuspensionEndSeconds = queuedStart + 120;
+                }
+                else
+                {
+                    ev.SuspensionStartSeconds = null;
+                    ev.SuspensionEndSeconds = null;
+                }
             }
             else
             {
@@ -983,29 +1001,61 @@ public sealed class GameService : IAsyncDisposable
     public IEnumerable<(string Number, string Remaining)> GetSuspensions(string team, string? number = null)
     {
         // Il termine della sospensione è memorizzato sul singolo evento come tempo
-        // assoluto della gara. In questo modo il countdown NON viene perso quando
-        // il popup di fine periodo porta al periodo successivo.
-        foreach (var ev in State.Events.Where(e => e.Team == team && (e.Type == "TWO" || e.Type == "RED"))
+        // assoluto della gara. Per i 2' consecutivi, però, gli eventi successivi sono
+        // in coda: solo il primo 2' ancora attivo deve mostrare il countdown.
+        foreach (var group in State.Events
+                     .Where(e => e.Team == team && (e.Type == "TWO" || e.Type == "RED"))
                      .Where(e => number is null || e.Number == number)
-                     .Where(e => e.SuspensionEndSeconds.HasValue || e.SuspensionStartSeconds.HasValue))
+                     .Where(e => e.SuspensionEndSeconds.HasValue || e.SuspensionStartSeconds.HasValue)
+                     .GroupBy(e => e.Number))
         {
-            var end = ev.SuspensionEndSeconds ?? (ev.SuspensionStartSeconds!.Value + 120);
-            var left = end - State.TimerSeconds;
-            if (left > 0 && left <= 120) yield return (ev.Number, FormatTime(left));
+            var active = group
+                .OrderBy(e => e.SuspensionStartSeconds ?? int.MaxValue)
+                .FirstOrDefault(e =>
+                {
+                    var start = e.SuspensionStartSeconds ?? int.MaxValue;
+                    var end = e.SuspensionEndSeconds ?? (start + 120);
+                    return start <= State.TimerSeconds && State.TimerSeconds < end;
+                });
+
+            if (active is null) continue;
+            var endTime = active.SuspensionEndSeconds ?? ((active.SuspensionStartSeconds ?? State.TimerSeconds) + 120);
+            var left = endTime - State.TimerSeconds;
+            if (left > 0) yield return (active.Number, FormatTime(left));
         }
     }
 
     // Dettaglio grafico dei countdown giocatore: distingue i 2' ordinari
     // (arancione) dalle espulsioni/3x2' (rosso). Il calcolo usa il termine
     // assoluto della sospensione, quindi attraversa correttamente i periodi.
-    public IEnumerable<(string Remaining, bool IsRed)> GetPlayerSuspensionBadges(string team, string number)
+    public IEnumerable<(string Remaining, bool IsRed, bool IsQueued)> GetPlayerSuspensionBadges(string team, string number)
     {
-        foreach (var ev in State.Events.Where(e => e.Team == team && e.Number == number && (e.Type == "TWO" || e.Type == "RED"))
-                     .Where(e => e.SuspensionEndSeconds.HasValue || e.SuspensionStartSeconds.HasValue))
+        // Mostriamo SEMPRE tutte le sospensioni ancora rilevanti del giocatore.
+        // Una sola può essere attiva; le successive restano visibili come IN CODA
+        // e diventano countdown reali appena termina quella precedente.
+        var suspensions = State.Events
+            .Where(e => e.Team == team && e.Number == number && (e.Type == "TWO" || e.Type == "RED"))
+            .Where(e => e.SuspensionEndSeconds.HasValue || e.SuspensionStartSeconds.HasValue)
+            .OrderBy(e => e.SuspensionStartSeconds ?? int.MaxValue)
+            .ToList();
+
+        foreach (var suspension in suspensions)
         {
-            var end = ev.SuspensionEndSeconds ?? (ev.SuspensionStartSeconds!.Value + 120);
-            var left = end - State.TimerSeconds;
-            if (left > 0 && left <= 120) yield return (FormatTime(left), ev.Type == "RED");
+            var start = suspension.SuspensionStartSeconds ?? int.MaxValue;
+            var end = suspension.SuspensionEndSeconds ?? (start + 120);
+            if (State.TimerSeconds < start)
+            {
+                yield return ("IN CODA", suspension.Type == "RED", true);
+                continue;
+            }
+
+            if (State.TimerSeconds < end)
+            {
+                yield return (FormatTime(end - State.TimerSeconds), suspension.Type == "RED", false);
+                // Non mostriamo due countdown contemporaneamente: le successive
+                // restano comunque visibili come IN CODA.
+                continue;
+            }
         }
     }
 
@@ -1076,7 +1126,32 @@ public sealed class GameService : IAsyncDisposable
     public bool PlayerHasRed(string team, string number) => State.Events.Any(e => e.Team == team && e.Number == number && e.Type == "RED");
     public bool StaffHasYellow(string team, string letter) => State.Events.Any(e => e.Team == team && e.Number == letter && e.Type == "YELLOW");
     public bool StaffHasRed(string team, string letter) => State.Events.Any(e => e.Team == team && e.Number == letter && e.Type == "RED");
-    public IEnumerable<string> GetStaffSuspensions(string team, string letter) => GetSuspensions(team, letter).Select(x => x.Remaining);
+    public IEnumerable<(string Remaining, bool IsRed, bool IsQueued)> GetStaffSuspensionBadges(string team, string letter)
+    {
+        // Stessa gestione dei giocatori: una sola sospensione attiva, tutte le
+        // successive restano visibili come IN CODA e partono in sequenza.
+        var suspensions = State.Events
+            .Where(e => e.Team == team && e.Number == letter && (e.Type == "TWO" || e.Type == "RED"))
+            .Where(e => e.SuspensionEndSeconds.HasValue || e.SuspensionStartSeconds.HasValue)
+            .OrderBy(e => e.SuspensionStartSeconds ?? int.MaxValue)
+            .ToList();
+
+        foreach (var suspension in suspensions)
+        {
+            var start = suspension.SuspensionStartSeconds ?? int.MaxValue;
+            var end = suspension.SuspensionEndSeconds ?? (start + 120);
+            if (State.TimerSeconds < start)
+            {
+                yield return ("IN CODA", suspension.Type == "RED", true);
+                continue;
+            }
+            if (State.TimerSeconds < end)
+            {
+                yield return (FormatTime(end - State.TimerSeconds), suspension.Type == "RED", false);
+            }
+        }
+    }
+    public IEnumerable<string> GetStaffSuspensions(string team, string letter) => GetStaffSuspensionBadges(team, letter).Select(x => x.Remaining);
     public string GetSubjectName(string team, string identifier, bool isStaff)
     {
         var t = Team(team);
@@ -1120,6 +1195,10 @@ public sealed class GameService : IAsyncDisposable
         State = JsonSerializer.Deserialize<GameState>(json) ?? throw new InvalidOperationException("JSON partita non valido.");
         EnsureRosterArrays(State.Casa);
         EnsureRosterArrays(State.Ospiti);
+        // Normalizza anche i countdown dei 2' già presenti nel file: se il file è
+        // stato salvato con due esclusioni sovrapposte, il caricamento ricostruisce
+        // automaticamente la coda corretta.
+        RecalculateRegistry();
         State.Shootout ??= [];
         State.ShootoutTakenA ??= [];
         State.ShootoutTakenB ??= [];
@@ -1161,15 +1240,56 @@ public sealed class GameService : IAsyncDisposable
         PendingEvent.Team = team; PendingEvent.Number = identifier; PendingEvent.Type = type; PendingEvent.Text = text; PendingEvent.Result = ScoreText();
         if (type is "TWO" or "RED")
         {
-            PendingEvent.SuspensionStartSeconds = State.TimerSeconds;
-            PendingEvent.SuspensionEndSeconds = State.TimerSeconds + 120;
+            // Anche l'espulsione diretta ha il proprio countdown di 2 minuti
+            // e, se esiste una sospensione precedente, viene accodata.
+            var suspensionStart = GetQueuedSuspensionStart(team, identifier, State.TimerSeconds, PendingEvent);
+            PendingEvent.SuspensionStartSeconds = suspensionStart;
+            PendingEvent.SuspensionEndSeconds = suspensionStart + 120;
         }
         StartSuspension(team, identifier); StopClockForDisciplinary();
         // La stampa del cartellino verrà collegata al motore di stampa web nella fase UI.
         FinishPendingEvent();
     }
 
-    private void StartSuspension(string team, string identifier) { /* Il countdown viene calcolato da SuspensionStartSeconds e dal cronometro gara. */ }
+    private void StartSuspension(string team, string identifier) { /* Il countdown viene calcolato da SuspensionStartSeconds/SuspensionEndSeconds e dal cronometro gara. I 2' successivi sono già accodati al termine del precedente. */ }
+
+    private int GetQueuedSuspensionStart(string team, string identifier, int currentTime, EventRecord? excludeEvent = null)
+    {
+        var latestEnd = currentTime;
+        foreach (var ev in State.Events
+                     .Where(e => !ReferenceEquals(e, excludeEvent) && e.Team == team && e.Number == identifier && (e.Type == "TWO" || e.Type == "RED"))
+                     .OrderBy(e => e.SuspensionStartSeconds ?? ParseTime(e.Time)))
+        {
+            var end = ev.SuspensionEndSeconds;
+            if (end.HasValue && end.Value > latestEnd) latestEnd = end.Value;
+        }
+        return latestEnd;
+    }
+
+    private static int GetQueuedSuspensionStartFromOrdered(IEnumerable<EventRecord> ordered, EventRecord current, int currentTime)
+    {
+        var latestEnd = currentTime;
+        foreach (var ev in ordered)
+        {
+            if (ReferenceEquals(ev, current)) break;
+            if (ev.Team != current.Team || ev.Number != current.Number || (ev.Type != "TWO" && ev.Type != "RED")) continue;
+
+            // Ricostruzione deterministica della coda: non ci affidiamo ai valori
+            // precedenti di SuspensionStart/End, perché l'operatore può aver modificato
+            // l'orario dell'evento prima del ricalcolo.
+            var eventTime = ParseTimeStatic(ev.Time);
+            if (eventTime < 0) continue;
+            var start = Math.Max(eventTime, latestEnd);
+            latestEnd = start + 120;
+        }
+        return latestEnd;
+    }
+
+    private static int ParseTimeStatic(string value)
+    {
+        var p = value.Split(':');
+        return p.Length == 2 && int.TryParse(p[0], out var m) && int.TryParse(p[1], out var s) ? m * 60 + s : -1;
+    }
     private void StopClockForDisciplinary() { if (State.Running) StopClock(); }
     private bool StaffBenchAlreadyYellow(string team) => State.Events.Any(e => !ReferenceEquals(e, PendingEvent) && e.Team == team && IsStaffIdentifier(e.Number) && e.Type == "YELLOW");
     private bool PlayerAlreadyYellow(string team, string number) => State.Events.Any(e => !ReferenceEquals(e, PendingEvent) && e.Team == team && e.Number == number && e.Type == "YELLOW");
