@@ -555,6 +555,15 @@ public sealed class GameService : IAsyncDisposable
         Notify();
     }
 
+    public void ClosePeriodDialogOnly()
+    {
+        // Usato quando il Referto FIGH viene aperto dal popup di fine periodo.
+        // Chiudendo il referto si deve semplicemente tornare al progetto, senza
+        // avanzare automaticamente al periodo successivo.
+        ShowPeriodEnd = false;
+        Notify();
+    }
+
     // Sequenza gara allineata alle regole del precedente Referto HTML:
     // 1) fine 1° tempo -> SEMPRE 2° tempo;
     // 2) fine 2° tempo STANDARD -> gara terminata (vittoria o pareggio);

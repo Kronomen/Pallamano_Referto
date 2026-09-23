@@ -75,12 +75,22 @@ window.refertoDownload = (filename, text) => {
 </script>
 
 <script>
+window.avviaAscoltoChiusuraReferto = (dotnetRef) => {
+  if (window.__refertoFighCloseListener) return;
+  window.__refertoFighCloseListener = (event) => {
+    if (!event || !event.data || event.data.type !== 'refertoFighClosed') return;
+    try { dotnetRef.invokeMethodAsync('RefertoFighClosed'); } catch(e) { console.warn('Impossibile chiudere il popup del referto', e); }
+  };
+  window.addEventListener('message', window.__refertoFighCloseListener);
+};
+
 window.stampaReferto = (d) => {
   // Il progetto utilizza direttamente il referto HTML ufficiale fornito come modello.
   // I dati Blazor vengono convertiti nel formato atteso da RefertoFIGH.html e
   // salvati nel localStorage condiviso dalla stessa origine.
   try {
     const partita = {
+      returnContext: d.returnContext || 'main',
       league: d.championship || '',
       championship: d.championship || '',
       group: d.group || '',

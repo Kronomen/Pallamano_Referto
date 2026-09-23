@@ -2384,42 +2384,39 @@ function chiudiPopupStampa(){
 
 function esciReferto(){
 
-    // CHIUDI è l'unico comando che esce da RefertoFIGH.
-    // Ordine di destinazione:
-    // 1) RegistroPostGara
-    // 2) Referto Pallamano
-    // 3) index
-
-    const destinazioni = [
-        "RegistroPostGara.html",
-        "Referto Pallamano.html",
-        "index.html"
-    ];
-
-    function provaDestinazione(indice){
-        if(indice >= destinazioni.length){
-            window.location.href = "https://www.google.it/";
+    // Il Referto FIGH viene aperto dal progetto in una nuova scheda.
+    // CHIUDI deve quindi tornare al progetto e chiudere il popup che aveva
+    // aperto il referto, esattamente come il comando CHIUDI del popup finale.
+    try {
+        if (window.opener && !window.opener.closed) {
+            window.opener.postMessage({ type: "refertoFighClosed" }, window.location.origin);
+            window.opener.focus();
+            window.close();
             return;
         }
-
-        const url = destinazioni[indice];
-
-        // Verifica che il file esista prima di cambiare pagina.
-        fetch(url, {method:"HEAD", cache:"no-store"})
-            .then(response => {
-                if(response.ok){
-                    window.location.href = url;
-                }else{
-                    provaDestinazione(indice + 1);
-                }
-            })
-            .catch(() => {
-                provaDestinazione(indice + 1);
-            });
+    } catch(e) {
+        console.warn("Impossibile comunicare con la finestra principale", e);
     }
 
-    provaDestinazione(0);
+    // Fallback se il referto è stato aperto direttamente e non esiste un opener.
+    if (window.history.length > 1) {
+        window.history.back();
+    } else {
+        window.close();
+    }
 }
+
+
+let __refertoCloseNotified = false;
+window.addEventListener("beforeunload", function(){
+    if (__refertoCloseNotified) return;
+    try {
+        if (window.opener && !window.opener.closed) {
+            __refertoCloseNotified = true;
+            window.opener.postMessage({ type: "refertoFighClosed" }, window.location.origin);
+        }
+    } catch(e) {}
+});
 
 function stampaEdEsci(){
 

@@ -193,7 +193,7 @@
         </main>
 
         <footer class="bottom-bar">
-            <button @onclick="SaveGame">💾 SALVA GARA</button><button @onclick="RestoreRecovery">↩ RIPRISTINA</button><button @onclick="LoadMatchData">📥 CARICA DATI GARA</button><button @onclick="PrintReferto">📄 REFERTO</button><button @onclick="Game.OpenConfiguration" disabled="@Game.State.MatchStarted">⚙ CONFIGURAZIONE</button><button @onclick="Game.FinishCurrentPeriod" disabled="@(Game.State.MatchFinished || Game.State.ShootoutStarted)">FINE PERIODO</button><button @onclick="ProceedToNextPeriod" disabled="@(Game.PeriodStartConfirmed || Game.State.MatchFinished)">PROSSIMO PERIODO</button>        <div class="mini-timer-card mini-timer-toolbar">
+            <button @onclick="SaveGame" disabled="@(!CanUseSaveGame)">💾 SALVA GARA</button><button @onclick="RestoreRecovery" disabled="@Game.State.MatchStarted">↩ RIPRISTINA</button><button @onclick="LoadMatchData" disabled="@Game.State.MatchStarted">📥 CARICA DATI GARA</button><button @onclick="PrintReferto" disabled="@Game.State.MatchStarted">📄 REFERTO</button><button @onclick="Game.OpenConfiguration" disabled="@Game.State.MatchStarted">⚙ CONFIGURAZIONE</button><button @onclick="Game.FinishCurrentPeriod" disabled="@(Game.State.MatchFinished || Game.State.ShootoutStarted)">FINE PERIODO</button><button @onclick="ProceedToNextPeriod" disabled="@(Game.PeriodStartConfirmed || Game.State.MatchFinished)">PROSSIMO PERIODO</button>        <div class="mini-timer-card mini-timer-toolbar">
             <div class="mini-timer-label">CRONOMETRO</div>
             <div class="mini-timer-display">@GameService.FormatTime(Game.GetMiniTimerSeconds())</div>
         </div>
@@ -408,7 +408,10 @@
                     <p>Confermare la fine del periodo</p>
                 }
                 <div class="period-end-actions-top">
-                    <button type="button" class="period-end-referto" @onclick="PrintReferto">▣&nbsp; APRI REFERTO FIGH</button>
+                    @if (Game.State.Phase is 2 or 4 or 6)
+                    {
+                        <button type="button" class="period-end-referto" @onclick="PrintReferto">▣&nbsp; APRI REFERTO FIGH</button>
+                    }
                     @if (Game.State.Phase > 1)
                     {
                         <button type="button" class="period-end-exit" @onclick="ExitApplication">⇱&nbsp; ESCI DAL PROGETTO</button>
@@ -760,6 +763,7 @@
             // cronometro.
             _selfRef ??= DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("avviaAutoRecovery", _selfRef);
+            await JS.InvokeVoidAsync("avviaAscoltoChiusuraReferto", _selfRef);
         }
     }
 
@@ -778,6 +782,11 @@
         catch (JSDisconnectedException) { }
         catch (InvalidOperationException) { }
     }
+
+    // Durante una gara già avviata i comandi di caricamento/ripristino e il referto
+    // restano bloccati. SALVA GARA torna disponibile quando il cronometro è fermo,
+    // così l'operatore può salvare in sicurezza lo stato corrente della partita.
+    private bool CanUseSaveGame => !Game.State.MatchStarted || !Game.State.Running;
 
     private bool _timerEditorOpen;
     private string _timerEditValue = "00:00";
@@ -998,6 +1007,22 @@
         await SaveRecoveryIfReady();
     }
 
+    [JSInvokable("RefertoFighClosed")]
+    public void RefertoFighClosed()
+    {
+        // Chiudere il Referto FIGH aperto dal popup deve avere lo stesso effetto
+        // della chiusura del popup finale: si torna al progetto senza riaprire
+        // automaticamente il periodo successivo.
+        if (Game.ShowMatchEnd)
+        {
+            Game.CloseMatchEnd();
+        }
+        else if (Game.ShowPeriodEnd)
+        {
+            Game.ClosePeriodDialogOnly();
+        }
+    }
+
     [JSInvokable("ImportMatchData")]
     public void ImportMatchData(ImportedMatchData d)
     {
@@ -1073,6 +1098,7 @@
         // Qui passiamo soltanto i dati già presenti nel progetto.
         await JS.InvokeVoidAsync("stampaReferto", new
         {
+            returnContext = Game.ShowMatchEnd ? "matchEnd" : Game.ShowPeriodEnd ? "periodEnd" : "main",
             matchNumber = Game.State.MatchNumber,
             date = Game.State.MatchDate,
             time = Game.State.MatchTime,
