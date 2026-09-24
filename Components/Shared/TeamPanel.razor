@@ -70,7 +70,7 @@
                         <span class="player-name" title="@(string.IsNullOrWhiteSpace(name) ? "GIOCATORE" : name)">@(string.IsNullOrWhiteSpace(name) ? "GIOCATORE" : name)</span>
                         <span class="player-indicators">
                             <span class="stat-item goal-indicator">G @Game.PlayerGoals(Team, number)</span>
-                            <span class="stat-item penalty-indicator">7m @Game.PlayerPenaltyGoals(Team, number)</span>
+                            <span class="stat-item penalty-indicator">7m @Game.PlayerPenaltyAttempts(Team, number)/@Game.PlayerPenaltyGoals(Team, number)</span>
                             <span class="stat-item amm-indicator @(yellow ? "active" : "")">A</span>
                             @if (red)
                             {

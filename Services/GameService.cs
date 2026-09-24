@@ -1121,6 +1121,7 @@ public sealed class GameService : IAsyncDisposable
             e.Type == "RED" && !e.Text.Contains("3x2", StringComparison.OrdinalIgnoreCase));
 
     public int PlayerGoals(string team, string number) => State.Events.Count(e => e.Team == team && e.Number == number && e.Type == "GOAL");
+    public int PlayerPenaltyAttempts(string team, string number) => State.Events.Count(e => e.Team == team && e.Number == number && (e.Type == "PENALTY_GOAL" || e.Type == "PENALTY_MISS"));
     public int PlayerPenaltyGoals(string team, string number) => State.Events.Count(e => e.Team == team && e.Number == number && e.Type == "PENALTY_GOAL");
     public bool PlayerHasYellow(string team, string number) => State.Events.Any(e => e.Team == team && e.Number == number && e.Type == "YELLOW");
     public bool PlayerHasRed(string team, string number) => State.Events.Any(e => e.Team == team && e.Number == number && e.Type == "RED");
