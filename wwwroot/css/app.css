@@ -6143,3 +6143,76 @@ html,body,#app{overflow:hidden!important;width:100%;height:100%;}
 .active-countdown.countdown-queued { opacity:.72; border-style:dashed; font-style:italic; }
 .countdown-red.countdown-queued { background:#fee2e2 !important; color:#991b1b !important; border-color:#ef4444 !important; }
 .countdown-two.countdown-queued { background:#fff7ed !important; color:#9a3412 !important; border-color:#fb923c !important; }
+
+
+/* v115 — TOUCHSCREEN iPad: risposta più rapida e superfici di tocco affidabili */
+@media screen and (pointer: coarse) {
+  html, body, #app {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Elimina selezioni accidentali durante i tocchi sui comandi */
+  button,
+  input,
+  select,
+  textarea,
+  label,
+  .player-card,
+  .staff-card,
+  .event-button,
+  .event-row-button,
+  .shootout-shoot-button,
+  .shootout-actions button,
+  .clock-actions button,
+  .bottom-bar button,
+  .dialog-card button {
+    -webkit-user-select: none !important;
+    user-select: none !important;
+    -webkit-touch-callout: none !important;
+    touch-action: manipulation !important;
+  }
+
+  /* Feedback immediato al tocco */
+  button:not(:disabled),
+  .player-card:not(:disabled),
+  .staff-card:not(:disabled),
+  .event-row-button:not(:disabled) {
+    cursor: pointer !important;
+    -webkit-tap-highlight-color: transparent !important;
+  }
+
+  button:not(:disabled):active,
+  .player-card:not(:disabled):active,
+  .staff-card:not(:disabled):active,
+  .event-row-button:not(:disabled):active {
+    transition: transform 0s !important;
+  }
+
+  /* Le card principali hanno una superficie touch più facile da colpire. */
+  .player-card:not(:disabled),
+  .staff-card:not(:disabled) {
+    min-height: 44px !important;
+  }
+
+  /* I comandi piccoli restano compatti, ma hanno una superficie touch reale. */
+  .event-toolbar .event-button,
+  .event-toolbar .selected-event,
+  .clock-actions button {
+    min-height: 40px !important;
+  }
+
+  /* Evita che elementi interni catturino o rendano ambiguo il tocco. */
+  .player-card *,
+  .staff-card *,
+  .event-row-button *,
+  .event-button * {
+    pointer-events: none;
+  }
+
+  /* Eccezione: elementi che devono continuare a ricevere input */
+  .player-card input,
+  .staff-card input,
+  .event-row-button input {
+    pointer-events: auto;
+  }
+}
