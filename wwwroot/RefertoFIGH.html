@@ -1208,18 +1208,15 @@ function integraRetiDaEventi(lista, squadra){
             ""
         ).trim().toUpperCase();
 
+        // Nel conteggio delle reti personali entrano ESCLUSIVAMENTE
+        // le reti realizzate durante la gara:
+        //   GOAL          = rete su azione
+        //   PENALTY_GOAL  = 7 metri realizzato durante la gara
+        // I rigori finali hanno tipo SHOOTOUT_GOAL e NON devono mai
+        // essere conteggiati nelle reti personali.
         const realizzato =
             tipo === "GOAL" ||
-            tipo === "RETE" ||
-            tipo === "PENALTY_GOAL" ||
-            (
-                tipo === "PENALTY" &&
-                testo.includes("REALIZZATO")
-            ) ||
-            (
-                testo.includes("RIGORE") &&
-                testo.includes("REALIZZATO")
-            );
+            tipo === "PENALTY_GOAL";
 
         if(!realizzato) return;
 
@@ -1243,17 +1240,11 @@ function integraRetiDaEventi(lista, squadra){
             ""
         ).trim();
 
-        const salvato = Number(
-            player.goals ??
-            player.goal ??
-            player.reti ??
-            player.goalsScored ??
-            0
-        );
-
-        player.goals =
-            conteggio[num] ??
-            (Number.isFinite(salvato) ? salvato : 0);
+        // Il valore personale viene ricostruito dal registro della gara.
+        // Non usiamo il valore salvato come fallback, perché nelle gare
+        // create con versioni precedenti potrebbe contenere anche i rigori
+        // finali. I rigori finali NON sono reti personali.
+        player.goals = conteggio[num] || 0;
     });
 }
 
@@ -1764,18 +1755,12 @@ function ricostruisciGoalDaRegistro(){
             ""
         ).trim().toUpperCase();
 
+        // Per le reti dei giocatori consideriamo solo le reti di gioco:
+        // GOAL e 7m realizzati durante la gara.
+        // SHOOTOUT_GOAL (rigore finale) è volutamente escluso.
         const èRete =
             tipo === "GOAL" ||
-            tipo === "RETE" ||
-            tipo === "PENALTY_GOAL" ||
-            (
-                tipo === "PENALTY" &&
-                testo.includes("REALIZZATO")
-            ) ||
-            (
-                testo.includes("RIGORE") &&
-                testo.includes("REALIZZATO")
-            );
+            tipo === "PENALTY_GOAL";
 
         if(!èRete) return;
 
@@ -1938,9 +1923,10 @@ function compilaReferto(){
         const r = trovaRigaGiocatore(squadra, numero);
         if(!r) return;
 
-        const goals =
-            goalRegistro[squadra]?.[numero] ??
-            Number(g.goals ?? g.goal ?? g.reti ?? g.goalsScored ?? 0);
+        // Le reti stampate sono sempre quelle ricostruite dagli eventi
+        // di gioco. Nessun valore salvato nel giocatore può aggiungere
+        // i rigori finali alla colonna "Reti".
+        const goals = goalRegistro[squadra]?.[numero] || 0;
 
         const sanzioni = ricostruisciSanzioniGiocatore(squadra, numero);
 
