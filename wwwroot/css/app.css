@@ -6216,3 +6216,27 @@ html,body,#app{overflow:hidden!important;width:100%;height:100%;}
     pointer-events: auto;
   }
 }
+
+/* v125 — iPad 11" landscape: riga statistiche giocatore spostata a sinistra.
+   La card ha spazio libero nella zona sinistra; sfruttiamo quello spazio per
+   mostrare per intero G / 7m / A / 2' senza far uscire l'ultimo dato dalla card. */
+@media (orientation: landscape) and (min-width: 900px) and (max-width: 1300px) {
+  .team-panel .player-grid .player-card > .player-info {
+    overflow: visible !important;
+  }
+
+  .team-panel .player-grid .player-card .player-indicators {
+    margin-left: -12px !important;
+    width: calc(100% + 12px) !important;
+    max-width: none !important;
+    gap: 1px !important;
+    overflow: visible !important;
+    white-space: nowrap !important;
+  }
+
+  .team-panel .player-grid .player-card .player-indicators .stat-item {
+    padding-left: 1px !important;
+    padding-right: 1px !important;
+    font-size: 6px !important;
+  }
+}
