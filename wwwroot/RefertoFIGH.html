@@ -1189,6 +1189,7 @@ function integraRetiDaEventi(lista, squadra){
         const team = String(
             e.squadra ??
             e.team ??
+            e.Team ??
             ""
         ).trim().toUpperCase();
 
@@ -1196,6 +1197,7 @@ function integraRetiDaEventi(lista, squadra){
 
         const tipo = String(
             e.type ??
+            e.Type ??
             e.tipo ??
             ""
         ).trim().toUpperCase();
@@ -1208,21 +1210,35 @@ function integraRetiDaEventi(lista, squadra){
             ""
         ).trim().toUpperCase();
 
-        // Nel conteggio delle reti personali entrano ESCLUSIVAMENTE
-        // le reti realizzate durante la gara:
-        //   GOAL          = rete su azione
-        //   PENALTY_GOAL  = 7 metri realizzato durante la gara
-        // I rigori finali hanno tipo SHOOTOUT_GOAL e NON devono mai
-        // essere conteggiati nelle reti personali.
-        const realizzato =
+        // Nel referto finale contano le reti della gara, comprese quelle su 7m.
+        // I tiri della serie finale (SHOOTOUT_GOAL/SHOOTOUT_MISS) restano esclusi.
+        const isShootout =
+            tipo === "SHOOTOUT_GOAL" ||
+            tipo === "SHOOTOUT_MISS" ||
+            tipo === "RIGORE_FINALE" ||
+            testo.includes("SERIE FINALE");
+
+        const realizzato = !isShootout && (
             tipo === "GOAL" ||
-            tipo === "PENALTY_GOAL";
+            tipo === "RETE" ||
+            tipo === "PENALTY_GOAL" ||
+            (
+                tipo === "PENALTY" &&
+                testo.includes("REALIZZATO")
+            ) ||
+            (
+                (tipo === "PENALTY_GOAL" || tipo === "PENALTY" || tipo === "7M" || tipo === "RIGORE") &&
+                (testo.includes("GOAL") || testo.includes("REALIZZATO"))
+            )
+        );
 
         if(!realizzato) return;
 
         const num = String(
             e.num ??
             e.numero ??
+            e.number ??
+            e.Number ??
             ""
         ).trim();
 
@@ -1240,11 +1256,17 @@ function integraRetiDaEventi(lista, squadra){
             ""
         ).trim();
 
-        // Il valore personale viene ricostruito dal registro della gara.
-        // Non usiamo il valore salvato come fallback, perché nelle gare
-        // create con versioni precedenti potrebbe contenere anche i rigori
-        // finali. I rigori finali NON sono reti personali.
-        player.goals = conteggio[num] || 0;
+        const salvato = Number(
+            player.goals ??
+            player.goal ??
+            player.reti ??
+            player.goalsScored ??
+            0
+        );
+
+        player.goals =
+            conteggio[num] ??
+            (Number.isFinite(salvato) ? salvato : 0);
     });
 }
 
@@ -1524,6 +1546,46 @@ function caricaReferto(){
     //------------------------------------------------
 
     const phase = n => partita.phaseScores?.[String(n)] ?? partita.phaseScores?.[n] ?? "";
+    // Fallback: ricostruisce il punteggio cumulativo alla fine di ogni periodo
+    // dagli eventi registrati, quando PhaseScores non è stato salvato nel JSON.
+    const parseScore = value => {
+        const m = String(value ?? "").match(/(\d+)\s*[-–:]\s*(\d+)/);
+        return m ? { A: Number(m[1]), B: Number(m[2]) } : null;
+    };
+    const toSeconds = value => {
+        const m = String(value ?? "").match(/(\d+):(\d{2})/);
+        return m ? Number(m[1]) * 60 + Number(m[2]) : -1;
+    };
+    const halfSeconds = Number(partita.halfDurationMinutes ?? 30) * 60;
+    const scoreAtEndOf = endSeconds => {
+        const events = Array.isArray(partita.events) ? partita.events :
+                       Array.isArray(partita.Events) ? partita.Events : [];
+        let best = null;
+        let bestTime = -1;
+        for (const ev of events) {
+            const time = toSeconds(ev.time ?? ev.Time);
+            const score = parseScore(ev.result ?? ev.Result);
+            if (time >= 0 && time <= endSeconds && time >= bestTime && score) {
+                best = score;
+                bestTime = time;
+            }
+        }
+        return best;
+    };
+    const phaseFallback = {
+        1: scoreAtEndOf(halfSeconds),
+        2: scoreAtEndOf(halfSeconds * 2),
+        3: scoreAtEndOf(halfSeconds * 2 + 300),
+        4: scoreAtEndOf(halfSeconds * 2 + 600),
+        5: scoreAtEndOf(halfSeconds * 2 + 900),
+        6: scoreAtEndOf(halfSeconds * 2 + 1200)
+    };
+    const phaseValue = n => {
+        const stored = phase(n);
+        if (stored !== "" && stored !== null && stored !== undefined) return stored;
+        const fallback = phaseFallback[n];
+        return fallback ? `${fallback.A}-${fallback.B}` : "";
+    };
     const phaseA = value => {
         const parts = String(value || "").split("-");
         return parts.length === 2 ? parts[0] : "";
@@ -1533,53 +1595,63 @@ function caricaReferto(){
         return parts.length === 2 ? parts[1] : "";
     };
 
-    risultati.primoTempo.A =
-        partita.risultati?.primoTempo?.A ??
-        partita.firstHalfScoreA ??
-        phaseA(phase(1)) ??
-        0;
+    // Alcune versioni esportano firstHalfScore*/secondHalfScore* a 0 anche
+    // quando i risultati sono presenti in phaseScores. Preferiamo quindi i
+    // valori di fase validi e non lasciamo che gli zero predefiniti li oscurino.
+    const numVal = v => v === null || v === undefined || v === "" ? null : Number(v);
+    const getPhaseSide = (n, side, candidates) => {
+        for (const v of candidates) {
+            const x = numVal(v);
+            if (x !== null && Number.isFinite(x) && x > 0) return x;
+        }
+        const parsed = numVal(phaseA(phaseValue(n)) && side === "A" ? phaseA(phaseValue(n)) :
+                              phaseB(phaseValue(n)) && side === "B" ? phaseB(phaseValue(n)) : null);
+        if (parsed !== null && Number.isFinite(parsed)) return parsed;
+        return 0;
+    };
 
-    risultati.primoTempo.B =
-        partita.risultati?.primoTempo?.B ??
-        partita.firstHalfScoreB ??
-        phaseB(phase(1)) ??
-        0;
+    risultati.primoTempo.A = getPhaseSide(1, "A", [partita.risultati?.primoTempo?.A, partita.firstHalfScoreA]);
+    risultati.primoTempo.B = getPhaseSide(1, "B", [partita.risultati?.primoTempo?.B, partita.firstHalfScoreB]);
+    risultati.secondoTempo.A = getPhaseSide(2, "A", [partita.risultati?.secondoTempo?.A, partita.secondHalfScoreA]);
+    risultati.secondoTempo.B = getPhaseSide(2, "B", [partita.risultati?.secondoTempo?.B, partita.secondHalfScoreB]);
+    risultati.extra1.A = getPhaseSide(3, "A", [partita.risultati?.primoSupplementare?.A, partita.overtime2ScoreA]);
+    risultati.extra1.B = getPhaseSide(3, "B", [partita.risultati?.primoSupplementare?.B, partita.overtime2ScoreB]);
+    risultati.extra2.A = getPhaseSide(4, "A", [partita.risultati?.secondoSupplementare?.A, partita.overtime4ScoreA]);
+    risultati.extra2.B = getPhaseSide(4, "B", [partita.risultati?.secondoSupplementare?.B, partita.overtime4ScoreB]);
 
-    risultati.secondoTempo.A =
-        partita.risultati?.secondoTempo?.A ??
-        partita.secondHalfScoreA ??
-        phaseA(phase(2)) ??
-        0;
+    // I campi dei supplementari si compilano soltanto se quel periodo è stato
+    // effettivamente disputato. I punteggi sono cumulativi: un periodo giocato
+    // deve avere più reti complessive del periodo precedente. Evita di copiare
+    // il risultato del 2° tempo nelle caselle dei supplementari non disputati.
+    const totale = r => (Number(r?.A) || 0) + (Number(r?.B) || 0);
+    const scoreExtra1 = { A: risultati.extra1.A, B: risultati.extra1.B };
+    const scoreExtra2 = { A: risultati.extra2.A, B: risultati.extra2.B };
+    const scoreSecondoTempo = { A: risultati.secondoTempo.A, B: risultati.secondoTempo.B };
 
-    risultati.secondoTempo.B =
-        partita.risultati?.secondoTempo?.B ??
-        partita.secondHalfScoreB ??
-        phaseB(phase(2)) ??
-        0;
+    const extra1Esplicito = parseScore(phase(3)) ||
+        parseScore(partita.phaseScores?.["3"] ?? partita.phaseScores?.[3]) ||
+        null;
+    const extra2Esplicito = parseScore(phase(4)) ||
+        parseScore(partita.phaseScores?.["4"] ?? partita.phaseScores?.[4]) ||
+        null;
 
-    risultati.extra1.A =
-        partita.risultati?.primoSupplementare?.A ??
-        partita.overtime2ScoreA ??
-        phaseA(phase(3)) ??
-        0;
-
-    risultati.extra1.B =
-        partita.risultati?.primoSupplementare?.B ??
-        partita.overtime2ScoreB ??
-        phaseB(phase(3)) ??
-        0;
-
-    risultati.extra2.A =
-        partita.risultati?.secondoSupplementare?.A ??
-        partita.overtime4ScoreA ??
-        phaseA(phase(4)) ??
-        0;
-
-    risultati.extra2.B =
-        partita.risultati?.secondoSupplementare?.B ??
-        partita.overtime4ScoreB ??
-        phaseB(phase(4)) ??
-        0;
+    const extra1Disputato = extra1Esplicito
+        ? totale(extra1Esplicito) > totale(scoreSecondoTempo)
+        : totale(scoreExtra1) > totale(scoreSecondoTempo);
+    if (!extra1Disputato) {
+        risultati.extra1.A = "";
+        risultati.extra1.B = "";
+        risultati.extra2.A = "";
+        risultati.extra2.B = "";
+    } else {
+        const extra2Disputato = extra2Esplicito
+            ? totale(extra2Esplicito) > totale(scoreExtra1)
+            : totale(scoreExtra2) > totale(scoreExtra1);
+        if (!extra2Disputato) {
+            risultati.extra2.A = "";
+            risultati.extra2.B = "";
+        }
+    }
 
     risultati.rigoriFinale.A =
         partita.risultati?.rigoriFinali?.A ??
@@ -1728,6 +1800,7 @@ function ricostruisciGoalDaRegistro(){
         const squadra = String(
             ev.squadra ??
             ev.team ??
+            ev.Team ??
             ""
         ).trim().toUpperCase();
 
@@ -1736,6 +1809,8 @@ function ricostruisciGoalDaRegistro(){
         const numero = String(
             ev.numero ??
             ev.num ??
+            ev.number ??
+            ev.Number ??
             ""
         ).trim();
 
@@ -1743,6 +1818,7 @@ function ricostruisciGoalDaRegistro(){
 
         const tipo = String(
             ev.type ??
+            ev.Type ??
             ev.tipo ??
             ""
         ).trim().toUpperCase();
@@ -1755,12 +1831,31 @@ function ricostruisciGoalDaRegistro(){
             ""
         ).trim().toUpperCase();
 
-        // Per le reti dei giocatori consideriamo solo le reti di gioco:
-        // GOAL e 7m realizzati durante la gara.
-        // SHOOTOUT_GOAL (rigore finale) è volutamente escluso.
-        const èRete =
+        // Conta le reti segnate durante la gara: azione + 7m realizzati.
+        // I tiri della serie finale non sono reti individuali della gara.
+        const serieFinale =
+            tipo === "SHOOTOUT_GOAL" ||
+            tipo === "SHOOTOUT_MISS" ||
+            tipo === "RIGORE_FINALE" ||
+            testo.includes("SERIE FINALE");
+
+        const èRete = !serieFinale && (
             tipo === "GOAL" ||
-            tipo === "PENALTY_GOAL";
+            tipo === "RETE" ||
+            tipo === "PENALTY_GOAL" ||
+            (
+                tipo === "PENALTY" &&
+                (testo.includes("REALIZZATO") || testo.includes("GOAL"))
+            ) ||
+            (
+                (tipo === "7M" || tipo === "RIGORE") &&
+                (testo.includes("REALIZZATO") || testo.includes("GOAL") || testo.includes("SEGNATO"))
+            ) ||
+            (
+                testo.includes("RIGORE") &&
+                (testo.includes("REALIZZATO") || testo.includes("SEGNATO"))
+            )
+        );
 
         if(!èRete) return;
 
@@ -1923,10 +2018,9 @@ function compilaReferto(){
         const r = trovaRigaGiocatore(squadra, numero);
         if(!r) return;
 
-        // Le reti stampate sono sempre quelle ricostruite dagli eventi
-        // di gioco. Nessun valore salvato nel giocatore può aggiungere
-        // i rigori finali alla colonna "Reti".
-        const goals = goalRegistro[squadra]?.[numero] || 0;
+        const goals =
+            goalRegistro[squadra]?.[numero] ??
+            Number(g.goals ?? g.goal ?? g.reti ?? g.goalsScored ?? 0);
 
         const sanzioni = ricostruisciSanzioniGiocatore(squadra, numero);
 
@@ -2039,9 +2133,45 @@ function compilaReferto(){
     let finaleA = Number(risultati.finale.A ?? 0);
     let finaleB = Number(risultati.finale.B ?? 0);
 
-    // I tiri di rigore finali NON fanno parte del punteggio di gara
-    // e non sono reti attribuite ai giocatori. Sono riportati separatamente
-    // nella riga "Rigori finali".
+    // Se c'è stata una serie finale, ricava il punteggio di gioco dall'ultimo
+    // periodo effettivamente registrato (PhaseScores è cumulativo) e aggiunge
+    // i gol della serie UNA sola volta. State.ScoreA/ScoreB possono già includere
+    // i gol dei rigori, quindi non vanno usati da soli come base in questo caso.
+    const phaseMap = partita.phaseScores ?? partita.PhaseScores ?? {};
+    const phaseKeys = Object.keys(phaseMap)
+        .map(k => Number(k))
+        .filter(k => Number.isInteger(k) && k >= 1 && k <= 6 && parseScore(phaseMap[String(k)] ?? phaseMap[k]))
+        .sort((a, b) => b - a);
+    const ultimoParziale = phaseKeys.length
+        ? parseScore(phaseMap[String(phaseKeys[0])] ?? phaseMap[phaseKeys[0]])
+        : null;
+
+    const shootoutAttempts = partita.shootout ?? partita.Shootout ?? [];
+    const shootoutGoalsA = Array.isArray(shootoutAttempts)
+        ? shootoutAttempts.filter(t => (t.team ?? t.Team) === "A" && (t.goal ?? t.Goal) === true).length
+        : 0;
+    const shootoutGoalsB = Array.isArray(shootoutAttempts)
+        ? shootoutAttempts.filter(t => (t.team ?? t.Team) === "B" && (t.goal ?? t.Goal) === true).length
+        : 0;
+    const shootoutA = Number(partita.shootoutScoreA ?? partita.ShootoutScoreA ?? partita.penaltyShootout?.scoreA ?? risultati.rigoriFinale.A ?? 0);
+    const shootoutB = Number(partita.shootoutScoreB ?? partita.ShootoutScoreB ?? partita.penaltyShootout?.scoreB ?? risultati.rigoriFinale.B ?? 0);
+    const serieRigoriDisputata = Boolean(
+        partita.shootoutStarted ?? partita.ShootoutStarted ??
+        (Array.isArray(shootoutAttempts) && shootoutAttempts.length > 0)
+    );
+
+    if (serieRigoriDisputata) {
+        const retiSerieA = shootoutGoalsA || shootoutA;
+        const retiSerieB = shootoutGoalsB || shootoutB;
+        if (ultimoParziale) {
+            finaleA = ultimoParziale.A + retiSerieA;
+            finaleB = ultimoParziale.B + retiSerieB;
+        } else {
+            // Fallback: il punteggio totale della partita include già la serie.
+            finaleA = Number(partita.scoreA ?? partita.ScoreA ?? finaleA);
+            finaleB = Number(partita.scoreB ?? partita.ScoreB ?? finaleB);
+        }
+    }
 
     document.getElementById("risultatoFinale").innerHTML = `
     <div style="
@@ -2370,39 +2500,42 @@ function chiudiPopupStampa(){
 
 function esciReferto(){
 
-    // Il Referto FIGH viene aperto dal progetto in una nuova scheda.
-    // CHIUDI deve quindi tornare al progetto e chiudere il popup che aveva
-    // aperto il referto, esattamente come il comando CHIUDI del popup finale.
-    try {
-        if (window.opener && !window.opener.closed) {
-            window.opener.postMessage({ type: "refertoFighClosed" }, window.location.origin);
-            window.opener.focus();
-            window.close();
+    // CHIUDI è l'unico comando che esce da RefertoFIGH.
+    // Ordine di destinazione:
+    // 1) RegistroPostGara
+    // 2) Referto Pallamano
+    // 3) index
+
+    const destinazioni = [
+        "RegistroPostGara.html",
+        "Referto Pallamano.html",
+        "index.html"
+    ];
+
+    function provaDestinazione(indice){
+        if(indice >= destinazioni.length){
+            window.location.href = "https://www.google.it/";
             return;
         }
-    } catch(e) {
-        console.warn("Impossibile comunicare con la finestra principale", e);
+
+        const url = destinazioni[indice];
+
+        // Verifica che il file esista prima di cambiare pagina.
+        fetch(url, {method:"HEAD", cache:"no-store"})
+            .then(response => {
+                if(response.ok){
+                    window.location.href = url;
+                }else{
+                    provaDestinazione(indice + 1);
+                }
+            })
+            .catch(() => {
+                provaDestinazione(indice + 1);
+            });
     }
 
-    // Fallback se il referto è stato aperto direttamente e non esiste un opener.
-    if (window.history.length > 1) {
-        window.history.back();
-    } else {
-        window.close();
-    }
+    provaDestinazione(0);
 }
-
-
-let __refertoCloseNotified = false;
-window.addEventListener("beforeunload", function(){
-    if (__refertoCloseNotified) return;
-    try {
-        if (window.opener && !window.opener.closed) {
-            __refertoCloseNotified = true;
-            window.opener.postMessage({ type: "refertoFighClosed" }, window.location.origin);
-        }
-    } catch(e) {}
-});
 
 function stampaEdEsci(){
 

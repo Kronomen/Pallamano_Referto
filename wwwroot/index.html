@@ -72,48 +72,15 @@ window.refertoDownload = (filename, text) => {
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 };
-
-window.apriCaricamentoGara = (dotnetRef) => {
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = '.json,application/json';
-  input.style.display = 'none';
-  input.onchange = async () => {
-    const file = input.files && input.files[0];
-    if (!file) return;
-    try {
-      const json = await file.text();
-      if (!json || !json.trim()) throw new Error('Il file selezionato è vuoto.');
-      await dotnetRef.invokeMethodAsync('ImportSavedGame', json);
-    } catch (e) {
-      console.error('Errore caricamento gara', e);
-      alert('Impossibile caricare la gara dal file selezionato.');
-    } finally {
-      input.remove();
-    }
-  };
-  document.body.appendChild(input);
-  input.click();
-};
 </script>
 
 <script>
-window.avviaAscoltoChiusuraReferto = (dotnetRef) => {
-  if (window.__refertoFighCloseListener) return;
-  window.__refertoFighCloseListener = (event) => {
-    if (!event || !event.data || event.data.type !== 'refertoFighClosed') return;
-    try { dotnetRef.invokeMethodAsync('RefertoFighClosed'); } catch(e) { console.warn('Impossibile chiudere il popup del referto', e); }
-  };
-  window.addEventListener('message', window.__refertoFighCloseListener);
-};
-
 window.stampaReferto = (d) => {
   // Il progetto utilizza direttamente il referto HTML ufficiale fornito come modello.
   // I dati Blazor vengono convertiti nel formato atteso da RefertoFIGH.html e
   // salvati nel localStorage condiviso dalla stessa origine.
   try {
     const partita = {
-      returnContext: d.returnContext || 'main',
       league: d.championship || '',
       championship: d.championship || '',
       group: d.group || '',

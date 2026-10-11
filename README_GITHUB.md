@@ -1,28 +1,30 @@
-# Referto Pallamano — v123
+# Referto Pallamano — GitHub Pages
 
-Versione Blazor WebAssembly in C# ottimizzata per iPad 11" in orizzontale e GitHub Pages.
+Progetto Blazor WebAssembly in C#, predisposto per la pubblicazione su GitHub Pages.
 
-## Stato attuale
+## Caricamento nel repository
 
-- Configurazione gara ottimizzata per iPad 11".
-- Controlli superiori separati: durata, cronometro palazzetto, stampa cartellino.
-- Impianto e Campionato nello stesso rigo.
-- Arbitro 1 e Arbitro 2 nello stesso rigo e più larghi.
-- Colori Casa/Ospiti sotto le rispettive squadre.
-- Tre pannelli principali dimensionati sul contenuto, senza altezza fissa artificiale.
-- Pulsanti inferiori compatti e visibili nella schermata iPad.
-- Pulsante `REFERTO GARA`.
-- Pulsante `ESCI`.
-- Registro Gara modificabile a cronometro fermo tramite popup.
-- Modifica/eliminazione evento con ricalcolo di punteggio, reti, 7m, ammonizioni, esclusioni 2' ed espulsioni.
-- 3x2' gestito come esclusione definitiva.
-- GitHub Actions configurata per GitHub Pages con base path `/Referto_Pallamano/`.
+1. Apri il repository GitHub `Referto_Pallamano` dell'account `kronomen` (oppure crea un repository con questo nome).
+2. Estrai questo ZIP sul computer.
+3. Carica **tutti i file e le cartelle contenuti nello ZIP nella radice del repository**. Non caricare lo ZIP come singolo file e non caricare la cartella contenitore. La cartella `.github/workflows` deve essere presente nella radice.
+4. Salva/committa i file sul branch `main`.
+5. In GitHub apri **Settings → Pages** e seleziona **GitHub Actions** come origine della pubblicazione.
+6. Apri **Actions** e attendi il completamento di `Deploy Referto Pallamano`.
 
-## Pubblicazione
+Se il repository è `kronomen/Referto_Pallamano`, l'indirizzo previsto è:
 
-Caricare il contenuto della cartella del progetto nel repository GitHub e fare push sul branch `main`.
-L'azione `.github/workflows/deploy.yml` esegue la pubblicazione Blazor e il deploy su GitHub Pages.
+`https://kronomen.github.io/Referto_Pallamano/`
+
+## Esecuzione locale
+
+Richiede il .NET 10 SDK. Dalla cartella che contiene `RefertoPallamano_Blazor.csproj`, esegui:
+
+```bash
+dotnet restore
+dotnet build
+dotnet run
+```
 
 ## Nota
 
-La compilazione deve essere verificata in Visual Studio/.NET sul computer locale, perché l'ambiente di lavoro usato per preparare il pacchetto non dispone del comando `dotnet`.
+Il workflow usa .NET 10 e pubblica automaticamente a ogni push sul branch `main`. Prima dell'uso ufficiale, testare l'applicazione e la stampa con una gara di prova.

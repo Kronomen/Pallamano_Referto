@@ -22,7 +22,8 @@
                 <div class="shootout-team-name away">@Game.State.Ospiti.Name<span>OSPITI</span></div>
             </div>
             <div class="shootout-official-brand">
-                <img class="shootout-ficr-logo" src="images/FICR.png" alt="Federazione Italiana Cronometristi" />
+                <div class="official-symbol">F.I.Cr.</div>
+                <div>FEDERAZIONE ITALIANA<br /><strong>CRONOMETRISTI</strong></div>
             </div>
         </header>
 
@@ -192,7 +193,7 @@
         </main>
 
         <footer class="bottom-bar">
-            <button @onclick="SaveGame" disabled="@(!CanUseSaveGame)">💾 SALVA GARA</button><button @onclick="RestoreRecovery" disabled="@Game.State.MatchStarted">↩ RIPRISTINA</button><button @onclick="LoadMatchData" disabled="@Game.State.MatchStarted">📥 CARICA DATI GARA</button><button @onclick="PrintReferto" disabled="@Game.State.MatchStarted">📄 REFERTO</button><button @onclick="Game.OpenConfiguration" disabled="@Game.State.MatchStarted">⚙ CONFIGURAZIONE</button><button @onclick="Game.FinishCurrentPeriod" disabled="@(Game.State.MatchFinished || Game.State.ShootoutStarted)">FINE PERIODO</button><button @onclick="ProceedToNextPeriod" disabled="@(Game.PeriodStartConfirmed || Game.State.MatchFinished)">PROSSIMO PERIODO</button>        <div class="mini-timer-card mini-timer-toolbar">
+            <button @onclick="SaveGame">💾 SALVA GARA</button><button @onclick="RestoreRecovery">↩ RIPRISTINA</button><button @onclick="LoadMatchData">📥 CARICA DATI GARA</button><button @onclick="PrintReferto">📄 REFERTO</button><button @onclick="Game.OpenConfiguration" disabled="@Game.State.MatchStarted">⚙ CONFIGURAZIONE</button><button @onclick="Game.FinishCurrentPeriod" disabled="@(Game.State.MatchFinished || Game.State.ShootoutStarted)">FINE PERIODO</button><button @onclick="ProceedToNextPeriod" disabled="@(Game.PeriodStartConfirmed || Game.State.MatchFinished)">PROSSIMO PERIODO</button>        <div class="mini-timer-card mini-timer-toolbar">
             <div class="mini-timer-label">CRONOMETRO</div>
             <div class="mini-timer-display">@GameService.FormatTime(Game.GetMiniTimerSeconds())</div>
         </div>
@@ -356,7 +357,7 @@
             </div>
 
             <div class="config-bottom-actions">
-                <button type="button" class="config-back-action" @onclick="LoadSavedGame">📂 CARICA GARA</button>
+                <button type="button" class="config-back-action" @onclick="CloseConfigWithoutStarting">← TORNA AL REFERTO</button>
                 <button type="button" class="config-save-action" @onclick="SaveConfiguration">▣ REFERTO GARA</button>
                 <button type="button" class="config-load-action" @onclick="LoadMatchData">▤ CARICA CONFIGURAZIONE</button>
                 <button type="button" class="config-reset-action" @onclick="Game.Reset">↻ RESET</button>
@@ -386,49 +387,15 @@
                     <span>—</span>
                     <strong>@Game.State.ScoreB</strong>
                 </div>
-                @if (Game.State.Phase == 2 && Game.State.ScoreA == Game.State.ScoreB && Game.State.MatchMode == "SUPPLEMENTARI")
-                {
-                    <p><strong>La gara è ancora in parità.</strong><br />Iniziano i tempi supplementari: <strong>2 tempi da 5 minuti ciascuno</strong>.</p>
-                }
-                else if (Game.State.Phase == 4 && Game.State.ScoreA == Game.State.ScoreB && Game.State.MatchMode == "SUPPLEMENTARI")
-                {
-                    <p><strong>La gara è ancora in parità.</strong><br />Iniziano il <strong>3° e 4° tempo supplementare</strong>: <strong>5 minuti ciascuno</strong>.</p>
-                }
-                else if (Game.State.Phase == 3)
-                {
-                    <p>Confermare il passaggio al <strong>2° tempo supplementare</strong> (5 minuti).</p>
-                }
-                else if (Game.State.Phase == 5)
-                {
-                    <p>Confermare il passaggio al <strong>4° tempo supplementare</strong> (5 minuti).</p>
-                }
-                else
-                {
-                    <p>Confermare la fine del periodo</p>
-                }
+                <p>Confermare la fine del periodo</p>
                 <div class="period-end-actions-top">
-                    @if (Game.State.Phase is 2 or 4 or 6)
-                    {
-                        <button type="button" class="period-end-referto" @onclick="PrintReferto">▣&nbsp; APRI REFERTO FIGH</button>
-                    }
+                    <button type="button" class="period-end-referto" @onclick="PrintReferto">▣&nbsp; APRI REFERTO FIGH</button>
                     @if (Game.State.Phase > 1)
                     {
                         <button type="button" class="period-end-exit" @onclick="ExitApplication">⇱&nbsp; ESCI DAL PROGETTO</button>
                     }
                 </div>
-                <button type="button" class="period-end-close" @onclick="Game.ClosePeriodDialog">
-                    @(Game.State.Phase == 1
-                        ? "INIZIA 2° TEMPO"
-                        : Game.State.Phase == 2 && Game.State.ScoreA == Game.State.ScoreB && Game.State.MatchMode == "SUPPLEMENTARI"
-                            ? "INIZIA SUPPLEMENTARI"
-                            : Game.State.Phase == 3
-                                ? "INIZIA 2° SUPPLEMENTARE"
-                                : Game.State.Phase == 4 && Game.State.ScoreA == Game.State.ScoreB && Game.State.MatchMode == "SUPPLEMENTARI"
-                                    ? "INIZIA 3° E 4° SUPPLEMENTARE"
-                                    : Game.State.Phase == 5
-                                        ? "INIZIA 4° SUPPLEMENTARE"
-                                        : "CONFERMA")
-                </button>
+                <button type="button" class="period-end-close" @onclick="Game.ClosePeriodDialog">@(Game.State.Phase == 1 ? "INIZIA 2° TEMPO" : "CONFERMA")</button>
             </div>
         </div>
     </div>
@@ -762,7 +729,6 @@
             // cronometro.
             _selfRef ??= DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("avviaAutoRecovery", _selfRef);
-            await JS.InvokeVoidAsync("avviaAscoltoChiusuraReferto", _selfRef);
         }
     }
 
@@ -781,11 +747,6 @@
         catch (JSDisconnectedException) { }
         catch (InvalidOperationException) { }
     }
-
-    // Durante una gara già avviata i comandi di caricamento/ripristino e il referto
-    // restano bloccati. SALVA GARA torna disponibile quando il cronometro è fermo,
-    // così l'operatore può salvare in sicurezza lo stato corrente della partita.
-    private bool CanUseSaveGame => !Game.State.MatchStarted || !Game.State.Running;
 
     private bool _timerEditorOpen;
     private string _timerEditValue = "00:00";
@@ -961,34 +922,6 @@
     }
 
     private async Task SaveGame() => await JS.InvokeVoidAsync("refertoDownload", "RefertoPallamano.json", Game.ExportJson());
-
-    private async Task LoadSavedGame()
-    {
-        _selfRef ??= DotNetObjectReference.Create(this);
-        await JS.InvokeVoidAsync("apriCaricamentoGara", _selfRef);
-    }
-
-    [JSInvokable("ImportSavedGame")]
-    public async Task ImportSavedGame(string json)
-    {
-        try
-        {
-            if (string.IsNullOrWhiteSpace(json))
-                throw new InvalidOperationException("Il file della gara è vuoto.");
-
-            Game.ImportJson(json);
-            _lastRecoveryJson = Game.ExportJson();
-            _recoveryReady = true;
-            _recoveryAvailable = true;
-            await InvokeAsync(StateHasChanged);
-        }
-        catch (Exception ex)
-        {
-            Game.SetValidationMessage("CARICAMENTO GARA NON RIUSCITO: " + ex.Message);
-            await InvokeAsync(StateHasChanged);
-        }
-    }
-
     private async Task RestoreRecovery()
     {
         try
@@ -1032,22 +965,6 @@
     public async Task AutoSaveRecovery()
     {
         await SaveRecoveryIfReady();
-    }
-
-    [JSInvokable("RefertoFighClosed")]
-    public void RefertoFighClosed()
-    {
-        // Chiudere il Referto FIGH aperto dal popup deve avere lo stesso effetto
-        // della chiusura del popup finale: si torna al progetto senza riaprire
-        // automaticamente il periodo successivo.
-        if (Game.ShowMatchEnd)
-        {
-            Game.CloseMatchEnd();
-        }
-        else if (Game.ShowPeriodEnd)
-        {
-            Game.ClosePeriodDialogOnly();
-        }
     }
 
     [JSInvokable("ImportMatchData")]
@@ -1125,7 +1042,6 @@
         // Qui passiamo soltanto i dati già presenti nel progetto.
         await JS.InvokeVoidAsync("stampaReferto", new
         {
-            returnContext = Game.ShowMatchEnd ? "matchEnd" : Game.ShowPeriodEnd ? "periodEnd" : "main",
             matchNumber = Game.State.MatchNumber,
             date = Game.State.MatchDate,
             time = Game.State.MatchTime,
