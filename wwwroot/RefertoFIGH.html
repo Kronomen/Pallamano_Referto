@@ -1371,14 +1371,25 @@ console.log("Dirigenti:", dirigenti.length);
 
     const r = body.insertRow();
 
-    const numero = player.num ?? player.number ?? "";
+    // Usa il primo valore non vuoto: il null-coalescing da solo non basta
+    // quando il campo esiste ma contiene una stringa vuota.
+    const primoValoreNonVuoto = (...valori) => {
+        for (const valore of valori) {
+            if (valore !== undefined && valore !== null && String(valore).trim() !== "")
+                return String(valore).trim();
+        }
+        return "";
+    };
 
-    const nome =
-    player.name ??
-    player.nome ??
-    player.cognomeNome ??
-    player.playerName ??
-    "";
+    const numero = primoValoreNonVuoto(player.num, player.number, player.label, player.lettera);
+
+    let nome = primoValoreNonVuoto(
+        player.name,
+        player.nome,
+        player.cognomeNome,
+        player.playerName
+    );
+    if (!nome && numero) nome = `Atleta ${numero}`;
 
     r.dataset.team = squadra;
     r.dataset.num = numero;
@@ -1508,11 +1519,11 @@ function getRuoloDirigente(dir){
     if (ruolo.includes("FISIO"))
         return "F";
 
-    if (dir.lettera)
-        return dir.lettera;
+    if (dir.lettera ?? dir.letter)
+        return String(dir.lettera ?? dir.letter).trim();
 
-    if (dir.num)
-        return dir.num;
+    if (dir.num ?? dir.number)
+        return String(dir.num ?? dir.number).trim();
 
     return "";
 
@@ -1523,14 +1534,13 @@ function getRuoloDirigente(dir){
 //====================================================
 
 function getNomeDirigente(dir){
+    const nome = [dir.name, dir.nome, dir.cognomeNome]
+        .find(valore => valore !== undefined && valore !== null && String(valore).trim() !== "");
 
-    return (
-        dir.name ??
-        dir.nome ??
-        dir.cognomeNome ??
-        ""
-    );
+    if (nome !== undefined) return String(nome).trim();
 
+    const lettera = String(getRuoloDirigente(dir) ?? "").trim();
+    return lettera ? `Dirigente ${lettera}` : "";
 }
 
 //====================================================
@@ -2536,6 +2546,9 @@ function stampaEdEsci(){
 </script>
 
 
+<!-- Dipendenze PDF esplicite: il codice usa direttamente html2canvas e jsPDF. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script>
 window.addEventListener('load', () => {
@@ -2583,8 +2596,34 @@ window.addEventListener('load', () => {
         const element = document.getElementById('page');
         if (!element) throw new Error('Non trovo il referto da convertire in PDF.');
         preparedName = ('Referto_FIGH_' + (partita.matchNumber || 'gara') + '_' + (partita.teamA || 'Casa') + '_' + (partita.teamB || 'Ospiti')).replace(/[^a-z0-9_-]/gi, '_') + '.pdf';
-        const options = { margin: [4, 4, 4, 4], image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', scrollY: 0 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }, pagebreak: { mode: ['css', 'legacy'] } };
-        preparedBlob = await html2pdf().set(options).from(element).toPdf().output('blob');
+        // Genera sempre una sola pagina A4: il referto viene rasterizzato e
+        // ridimensionato proporzionalmente entro l'area stampabile, senza creare
+        // una seconda pagina anche se il contenuto supera l'altezza disponibile.
+        const canvas = await html2canvas(element, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          scrollX: 0,
+          scrollY: 0,
+          windowWidth: Math.max(document.documentElement.clientWidth, element.scrollWidth),
+          windowHeight: Math.max(document.documentElement.clientHeight, element.scrollHeight)
+        });
+        const JsPDF = window.jspdf && window.jspdf.jsPDF;
+        if (!JsPDF) throw new Error('Libreria PDF non disponibile. Ricarica la pagina e riprova.');
+        const pdf = new JsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true });
+        const pageWidth = 210;
+        const pageHeight = 297;
+        const margin = 4;
+        const availableWidth = pageWidth - margin * 2;
+        const availableHeight = pageHeight - margin * 2;
+        const scale = Math.min(availableWidth / canvas.width, availableHeight / canvas.height);
+        const imageWidth = canvas.width * scale;
+        const imageHeight = canvas.height * scale;
+        const x = (pageWidth - imageWidth) / 2;
+        const y = (pageHeight - imageHeight) / 2;
+        const imageData = canvas.toDataURL('image/jpeg', 0.96);
+        pdf.addImage(imageData, 'JPEG', x, y, imageWidth, imageHeight, undefined, 'FAST');
+        preparedBlob = pdf.output('blob');
         preparedFile = new File([preparedBlob], preparedName, { type: 'application/pdf' });
         shareButton.disabled = false;
         shareButton.textContent = '2. CONDIVIDI PDF';
