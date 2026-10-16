@@ -25,3 +25,8 @@ Il workflow imposta automaticamente il percorso corretto in base al nome del rep
 ## Importante
 
 Il pacchetto è predisposto per la pubblicazione su GitHub Pages. La pubblicazione deve essere completata sul tuo account GitHub e la prova effettiva su iPad deve essere eseguita sul dispositivo: da questo ambiente non posso accedere al tuo account né controllare fisicamente il comportamento di Safari/WhatsApp sul tuo iPad.
+
+
+## Nuova funzione: Configurazione Manuale
+
+Nella schermata di configurazione è disponibile il pulsante **CONFIGURAZIONE MANUALE**, accanto a **CARICA CONFIGURAZIONE**. Permette di inserire direttamente i dati della gara, entrambe le squadre, fino a 16 giocatori per squadra e fino a 5 dirigenti per squadra. I dati sono riportati nello stesso stato gara usato dal referto e restano modificabili nella schermata di configurazione.

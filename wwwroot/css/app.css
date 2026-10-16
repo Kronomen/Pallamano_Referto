@@ -6115,3 +6115,229 @@ html,body,#app{overflow:hidden!important;width:100%;height:100%;}
 }
 
 .whatsapp-referto-button{background:#25d366!important;color:#073b20!important;border:0!important;font-weight:800!important}
+
+/* v124 — ALLINEAMENTO UNIFORME DEI PULSANTI IN TUTTI I POPUP
+   Regole aggiunte in fondo al foglio per prevalere sugli stili precedenti. */
+.period-end-actions-top{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  align-items:stretch!important;
+  justify-items:stretch!important;
+  gap:9px!important;
+  width:100%!important;
+}
+.period-end-actions-top button{width:100%!important;min-width:0!important;margin:0!important;}
+.period-end-actions-top button:only-child{grid-column:1/-1!important;}
+.period-end-close{
+  display:block!important;
+  width:100%!important;
+  max-width:none!important;
+  min-width:0!important;
+  margin:0!important;
+  box-sizing:border-box!important;
+}
+.period-end-body p{margin-bottom:16px!important;}
+
+/* Le righe di azioni dei popup usano colonne uguali e pulsanti della stessa altezza. */
+.match-end-actions,
+.shootout-winner-actions,
+.event-editor-actions{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  align-items:stretch!important;
+  justify-items:stretch!important;
+  gap:9px!important;
+  width:100%!important;
+}
+.match-end-actions button,
+.shootout-winner-actions button,
+.event-editor-actions button{
+  width:100%!important;
+  min-width:0!important;
+  min-height:48px!important;
+  height:auto!important;
+  margin:0!important;
+  box-sizing:border-box!important;
+  white-space:normal!important;
+  overflow-wrap:anywhere!important;
+}
+.decision-actions,
+.dialog-grid,
+.shootout-first-team-grid,
+.shootout-result-grid{
+  align-items:stretch!important;
+  justify-items:stretch!important;
+  gap:9px!important;
+  width:100%!important;
+}
+.decision-actions button,
+.dialog-grid button,
+.shootout-first-team-grid button,
+.shootout-result-grid button{
+  width:100%!important;
+  min-width:0!important;
+  min-height:46px!important;
+  height:auto!important;
+  margin:0!important;
+  box-sizing:border-box!important;
+  white-space:normal!important;
+  overflow-wrap:anywhere!important;
+}
+.dialog-card{box-sizing:border-box!important;}
+
+@media(max-width:900px){
+  .period-end-actions-top,
+  .match-end-actions,
+  .shootout-winner-actions,
+  .event-editor-actions{
+    grid-template-columns:minmax(0,1fr)!important;
+  }
+  .period-end-actions-top button:only-child{grid-column:1!important;}
+  .period-end-body{padding-left:20px!important;padding-right:20px!important;}
+  .match-end-actions button,
+  .shootout-winner-actions button,
+  .event-editor-actions button{min-height:46px!important;font-size:12px!important;}
+}
+
+
+/* v125 FIX REALE: allineamento popup e invalidazione cache CSS */
+.period-end-dialog,
+.dialog-card,
+.shootout-winner-dialog,
+.match-end-dialog,
+.event-editor-dialog { box-sizing:border-box!important; }
+.period-end-actions-top {
+  display:flex!important;
+  flex-wrap:wrap!important;
+  align-items:stretch!important;
+  justify-content:stretch!important;
+  gap:10px!important;
+  width:100%!important;
+  margin:0 0 10px!important;
+}
+.period-end-actions-top > button {
+  flex:1 1 calc(50% - 5px)!important;
+  width:auto!important;
+  min-width:0!important;
+  max-width:none!important;
+  margin:0!important;
+  box-sizing:border-box!important;
+}
+.period-end-actions-top > button:only-child {
+  flex:1 1 100%!important;
+  width:100%!important;
+}
+.period-end-body > .period-end-close {
+  display:block!important;
+  width:100%!important;
+  max-width:none!important;
+  min-width:0!important;
+  margin:0!important;
+  box-sizing:border-box!important;
+}
+/* Altri popup: azioni su righe regolari, senza larghezze dipendenti dal testo. */
+.match-end-actions,
+.shootout-winner-actions,
+.event-editor-actions {
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  align-items:stretch!important;
+  justify-items:stretch!important;
+  gap:10px!important;
+  width:100%!important;
+}
+.match-end-actions > button,
+.shootout-winner-actions > button,
+.event-editor-actions > button {
+  width:100%!important;
+  min-width:0!important;
+  max-width:none!important;
+  min-height:46px!important;
+  height:auto!important;
+  margin:0!important;
+  box-sizing:border-box!important;
+  white-space:normal!important;
+  overflow-wrap:anywhere!important;
+}
+.dialog-grid,
+.decision-actions,
+.shootout-first-team-grid,
+.shootout-result-grid {
+  align-items:stretch!important;
+  justify-items:stretch!important;
+  gap:10px!important;
+  width:100%!important;
+}
+.dialog-grid > button,
+.decision-actions > button,
+.shootout-first-team-grid > button,
+.shootout-result-grid > button {
+  width:100%!important;
+  min-width:0!important;
+  max-width:none!important;
+  min-height:46px!important;
+  height:auto!important;
+  margin:0!important;
+  box-sizing:border-box!important;
+  white-space:normal!important;
+  overflow-wrap:anywhere!important;
+}
+@media(max-width:900px) {
+  .period-end-body {padding-left:20px!important;padding-right:20px!important;}
+  .match-end-actions,
+  .shootout-winner-actions,
+  .event-editor-actions {grid-template-columns:minmax(0,1fr)!important;}
+  .match-end-actions > button,
+  .shootout-winner-actions > button,
+  .event-editor-actions > button {font-size:12px!important;}
+}
+
+/* Configurazione manuale: interfaccia professionale a scheda, ispirata alla distinta gara. */
+.config-bottom-actions{grid-template-columns:1.05fr 1.35fr 1.45fr 1.55fr .65fr .65fr!important;}
+.config-manual-action{background:#123b67;color:#fff;border:1px solid #123b67!important;}
+.config-bottom-actions button{min-width:0;white-space:normal!important;line-height:1.15;padding:5px 8px;}
+.manual-config-overlay{z-index:1200!important;align-items:center!important;justify-content:center!important;padding:14px!important;background:rgba(10,25,47,.72)!important;backdrop-filter:blur(5px);}
+.manual-config-dialog{width:min(1320px,98vw);max-height:96dvh;display:flex;flex-direction:column;background:#f4f7fb;border:1px solid #cbd5e1;border-radius:18px;box-shadow:0 24px 80px rgba(0,0,0,.32);overflow:hidden;color:#14243a;}
+.manual-config-header{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;padding:18px 22px;background:linear-gradient(120deg,#102e50,#174c7c);color:#fff;}
+.manual-config-eyebrow{display:block;font-size:10px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:#b8d9f8;margin-bottom:5px;}
+.manual-config-header h2{font-size:clamp(20px,2.2vw,28px);line-height:1.15;margin:0;font-weight:900;}
+.manual-config-header p{font-size:12px;margin:7px 0 0;color:#dce9f6;}
+.manual-config-close{flex:0 0 38px;width:38px;height:38px;border:1px solid rgba(255,255,255,.35);border-radius:10px;background:rgba(255,255,255,.12);color:#fff;font-size:28px;line-height:1;cursor:pointer;}
+.manual-config-content{overflow:auto;padding:16px;display:flex;flex-direction:column;gap:14px;min-height:0;}
+.manual-data-card,.manual-team-card{background:#fff;border:1px solid #d7e0eb;border-radius:13px;box-shadow:0 3px 10px rgba(16,46,80,.045);padding:14px;min-width:0;}
+.manual-data-card h3{display:flex;align-items:center;gap:9px;font-size:15px;margin:0 0 12px;font-weight:900;color:#173a60;}
+.manual-data-card h3 span{display:grid;place-items:center;width:27px;height:27px;border-radius:8px;background:#e6f0fb;color:#1d5a92;font-size:12px;}
+.manual-data-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;}
+.manual-data-grid label,.manual-team-name{display:flex;flex-direction:column;gap:5px;min-width:0;font-size:11px;font-weight:850;color:#42536a;}
+.manual-data-grid input,.manual-team-name input{width:100%;height:36px;min-width:0;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:8px;padding:7px 9px;background:#fbfdff;color:#172b45;font:500 13px system-ui,sans-serif;outline:none;}
+.manual-data-grid input:focus,.manual-team-name input:focus,.manual-roster-table input:focus{border-color:#3483ce;box-shadow:0 0 0 3px rgba(52,131,206,.13);background:#fff;}
+.manual-teams-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start;}
+.manual-team-card>header{display:flex;align-items:center;gap:10px;margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid #e6edf5;}
+.manual-team-card>header h3{margin:0;color:#163b62;font-size:16px;font-weight:900;}
+.manual-team-card>header p{margin:3px 0 0;color:#738197;font-size:11px;}
+.manual-team-dot{width:12px;height:34px;border-radius:5px;background:#2563eb;flex:0 0 12px;}
+.manual-team-away .manual-team-dot{background:#0f9f6e;}
+.manual-team-name{margin-bottom:11px;}
+.manual-table-wrap{max-height:330px;overflow:auto;border:1px solid #e0e7ef;border-radius:8px;}
+.manual-roster-table{border-collapse:separate;border-spacing:0;width:100%;table-layout:fixed;font-size:12px;}
+.manual-roster-table th{position:sticky;top:0;z-index:1;background:#eaf1f8;color:#314b67;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.04em;padding:8px;border-bottom:1px solid #d5e0ec;}
+.manual-roster-table th:first-child,.manual-roster-table td:first-child{width:68px;text-align:center;}
+.manual-roster-table td{padding:3px 5px;border-bottom:1px solid #edf1f5;background:#fff;}
+.manual-roster-table tr:last-child td{border-bottom:0;}
+.manual-roster-table input{display:block;width:100%;height:29px;min-width:0;box-sizing:border-box;border:1px solid transparent;border-radius:5px;padding:4px 6px;background:transparent;color:#172b45;font:500 12px system-ui,sans-serif;outline:none;}
+.manual-roster-table .manual-jersey{width:48px;margin:auto;text-align:center;font-weight:900;color:#1d4e80;background:#f5f8fc;border-color:#e2e8f0;}
+.manual-roster-table .manual-name-input{padding-left:8px;}
+.manual-team-card h4{margin:13px 0 7px;color:#3d5068;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;}
+.manual-staff-table th:first-child,.manual-staff-table td:first-child{width:68px;}
+.manual-config-footer{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 16px;border-top:1px solid #dbe4ee;background:#fff;}
+.manual-config-footer>span{color:#6b7a8e;font-size:10px;line-height:1.4;}
+.manual-config-footer>div{display:flex;gap:8px;flex:0 0 auto;}
+.manual-config-footer button{min-height:42px;padding:9px 16px;border-radius:9px;font-size:11px;font-weight:900;cursor:pointer;}
+.manual-cancel-button{background:#fff;color:#334155;border:1px solid #cbd5e1;}
+.manual-save-button{background:#087f5b;color:#fff;border:1px solid #087f5b;}
+@media(max-width:900px){.manual-config-dialog{max-height:98dvh;width:99vw;border-radius:12px}.manual-config-header{padding:13px 14px}.manual-config-content{padding:10px}.manual-data-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.manual-teams-grid{grid-template-columns:1fr}.manual-table-wrap{max-height:270px}.manual-config-footer{align-items:stretch;flex-direction:column}.manual-config-footer>div{width:100%}.manual-config-footer button{flex:1}.config-bottom-actions{grid-template-columns:repeat(3,minmax(0,1fr))!important;height:auto!important;flex-basis:auto!important}.config-bottom-actions button{min-height:40px!important;height:auto!important;font-size:10px!important}}
+@media(max-width:480px){.manual-data-grid{grid-template-columns:1fr 1fr;gap:8px}.manual-config-header h2{font-size:18px}.manual-config-header p{font-size:10px}.manual-config-content{gap:9px}.manual-data-card,.manual-team-card{padding:10px}.manual-roster-table th:first-child,.manual-roster-table td:first-child{width:56px}.manual-config-footer button{padding:8px 9px;font-size:10px}}
+/* Override finale per la barra con il nuovo sesto pulsante. */
+.ipad11-config-card .config-bottom-actions{grid-template-columns:minmax(0,1fr) minmax(0,1.2fr) minmax(0,1.15fr) minmax(0,1.35fr) minmax(70px,.65fr) minmax(70px,.65fr)!important;gap:6px!important;}
+.ipad11-config-card .config-bottom-actions button{min-width:0!important;max-width:none!important;padding:4px 6px!important;white-space:normal!important;overflow-wrap:anywhere!important;line-height:1.1!important;font-size:10px!important;}
+@media(max-width:900px){.ipad11-config-card .config-bottom-actions{grid-template-columns:repeat(3,minmax(0,1fr))!important;flex-basis:auto!important;height:auto!important}.ipad11-config-card .config-bottom-actions button{height:auto!important;min-height:40px!important;font-size:10px!important}}

@@ -360,11 +360,84 @@
                 <button type="button" class="config-back-action" @onclick="CloseConfigWithoutStarting">← TORNA AL REFERTO</button>
                 <button type="button" class="config-save-action" @onclick="SaveConfiguration">▣ REFERTO GARA</button>
                 <button type="button" class="config-load-action" @onclick="LoadMatchData">▤ CARICA CONFIGURAZIONE</button>
+                <button type="button" class="config-manual-action" @onclick="OpenManualConfiguration">✎ CONFIGURAZIONE MANUALE</button>
                 <button type="button" class="config-reset-action" @onclick="Game.Reset">↻ RESET</button>
                 <button type="button" class="config-exit-action" @onclick="ExitApplication">⇱ ESCI</button>
             </div>
             <div class="config-footnote"><span>ⓘ</span> I giocatori e i dirigenti senza numero/lettera (campo vuoto) non saranno inclusi nel referto di gara e non potranno essere selezionati durante la partita.</div>
         </div>
+    </div>
+}
+
+@if (ShowManualConfiguration)
+{
+    <div class="overlay manual-config-overlay">
+        <section class="manual-config-dialog" role="dialog" aria-modal="true" aria-labelledby="manual-config-title">
+            <header class="manual-config-header">
+                <div>
+                    <span class="manual-config-eyebrow">REFerto Pallamano · F.I.G.H.</span>
+                    <h2 id="manual-config-title">Configurazione manuale della gara</h2>
+                    <p>Inserisci i dati della partita, le rose e i dirigenti. I dati saranno utilizzati dal referto.</p>
+                </div>
+                <button type="button" class="manual-config-close" aria-label="Chiudi configurazione manuale" @onclick="CloseManualConfiguration">×</button>
+            </header>
+            <div class="manual-config-content">
+                <section class="manual-data-card">
+                    <h3><span>01</span> Dati della gara</h3>
+                    <div class="manual-data-grid">
+                        <label>Numero gara<input @bind="Game.State.MatchNumber" @bind:event="oninput" placeholder="Es. 447" /></label>
+                        <label>Data<input type="date" value="@Game.State.MatchDate" @oninput="OnMatchDateInput" /></label>
+                        <label>Ora<input type="time" value="@Game.State.MatchTime" @oninput="OnMatchTimeInput" /></label>
+                        <label>Campionato<input @bind="Game.State.Championship" @bind:event="oninput" placeholder="Es. Serie A2 Femminile" /></label>
+                        <label>Località<input @bind="Game.State.City" @bind:event="oninput" placeholder="Città" /></label>
+                        <label>Impianto<input @bind="Game.State.Venue" @bind:event="oninput" placeholder="Nome impianto" /></label>
+                        <label>Stagione sportiva<input @bind="Game.State.Season" @bind:event="oninput" placeholder="Es. 2026/2027" /></label>
+                        <label>Arbitro 1<input @bind="Game.State.Referee1" @bind:event="oninput" /></label>
+                        <label>Arbitro 2<input @bind="Game.State.Referee2" @bind:event="oninput" /></label>
+                        <label>Delegato 1<input @bind="Game.State.Delegate1" @bind:event="oninput" /></label>
+                        <label>Delegato 2<input @bind="Game.State.Delegate2" @bind:event="oninput" /></label>
+                        <label>Cronometrista<input @bind="Game.State.Timekeeper" @bind:event="oninput" /></label>
+                        <label>Segretario<input @bind="Game.State.Secretary" @bind:event="oninput" /></label>
+                    </div>
+                </section>
+                <div class="manual-teams-grid">
+                    <section class="manual-team-card manual-team-home">
+                        <header><span class="manual-team-dot"></span><div><h3>Squadra di casa</h3><p>Inserisci numero di maglia e nome dei giocatori.</p></div></header>
+                        <label class="manual-team-name">Nome squadra<input @bind="Game.State.Casa.Name" @bind:event="oninput" placeholder="Squadra di casa" /></label>
+                        <div class="manual-table-wrap"><table class="manual-roster-table"><thead><tr><th>N°</th><th>Nome e cognome</th></tr></thead><tbody>
+                        @for (var i = 0; i < 16; i++) { var ix = i;
+                            <tr><td><input class="manual-jersey" type="text" inputmode="numeric" maxlength="2" value='@GetNumberLabel("A", ix)' @oninput='e => SetNumberLabel("A", ix, e.Value?.ToString())' aria-label="Numero giocatore casa @(ix + 1)" /></td><td><input class="manual-name-input" @bind="Game.State.Casa.PlayerNames[ix]" @bind:event="oninput" placeholder="Giocatore @(ix + 1)" /></td></tr>
+                        }
+                        </tbody></table></div>
+                        <h4>Dirigenti</h4>
+                        <div class="manual-table-wrap"><table class="manual-roster-table manual-staff-table"><thead><tr><th>Lettera</th><th>Nome e cognome</th></tr></thead><tbody>
+                        @for (var i = 0; i < 5; i++) { var ix = i;
+                            <tr><td><input class="manual-jersey" maxlength="1" value='@(Game.State.Casa.StaffLetters[ix] ?? "")' @oninput='e => SetStaffLetter("A", ix, e.Value?.ToString())' aria-label="Lettera dirigente casa @(ix + 1)" /></td><td><input class="manual-name-input" @bind="Game.State.Casa.StaffNames[ix]" @bind:event="oninput" placeholder="Dirigente @(ix + 1)" /></td></tr>
+                        }
+                        </tbody></table></div>
+                    </section>
+                    <section class="manual-team-card manual-team-away">
+                        <header><span class="manual-team-dot"></span><div><h3>Squadra ospite</h3><p>Inserisci numero di maglia e nome dei giocatori.</p></div></header>
+                        <label class="manual-team-name">Nome squadra<input @bind="Game.State.Ospiti.Name" @bind:event="oninput" placeholder="Squadra ospite" /></label>
+                        <div class="manual-table-wrap"><table class="manual-roster-table"><thead><tr><th>N°</th><th>Nome e cognome</th></tr></thead><tbody>
+                        @for (var i = 0; i < 16; i++) { var ix = i;
+                            <tr><td><input class="manual-jersey" type="text" inputmode="numeric" maxlength="2" value='@GetNumberLabel("B", ix)' @oninput='e => SetNumberLabel("B", ix, e.Value?.ToString())' aria-label="Numero giocatore ospite @(ix + 1)" /></td><td><input class="manual-name-input" @bind="Game.State.Ospiti.PlayerNames[ix]" @bind:event="oninput" placeholder="Giocatore @(ix + 1)" /></td></tr>
+                        }
+                        </tbody></table></div>
+                        <h4>Dirigenti</h4>
+                        <div class="manual-table-wrap"><table class="manual-roster-table manual-staff-table"><thead><tr><th>Lettera</th><th>Nome e cognome</th></tr></thead><tbody>
+                        @for (var i = 0; i < 5; i++) { var ix = i;
+                            <tr><td><input class="manual-jersey" maxlength="1" value='@(Game.State.Ospiti.StaffLetters[ix] ?? "")' @oninput='e => SetStaffLetter("B", ix, e.Value?.ToString())' aria-label="Lettera dirigente ospite @(ix + 1)" /></td><td><input class="manual-name-input" @bind="Game.State.Ospiti.StaffNames[ix]" @bind:event="oninput" placeholder="Dirigente @(ix + 1)" /></td></tr>
+                        }
+                        </tbody></table></div>
+                    </section>
+                </div>
+            </div>
+            <footer class="manual-config-footer">
+                <span>Puoi lasciare vuote le righe non utilizzate. I dati vengono riportati nella configurazione della gara.</span>
+                <div><button type="button" class="manual-cancel-button" @onclick="CloseManualConfiguration">ANNULLA</button><button type="button" class="manual-save-button" @onclick="SaveManualConfiguration">✓ SALVA DATI MANUALI</button></div>
+            </footer>
+        </section>
     </div>
 }
 
@@ -607,6 +680,16 @@
 @code {
     private bool ShowWhatsAppDialog { get; set; }
     private string WhatsAppPhone { get; set; } = "";
+    private bool ShowManualConfiguration { get; set; }
+
+    private void OpenManualConfiguration() => ShowManualConfiguration = true;
+    private void CloseManualConfiguration() => ShowManualConfiguration = false;
+    private async Task SaveManualConfiguration()
+    {
+        ShowManualConfiguration = false;
+        await SaveRecoveryIfReady();
+        StateHasChanged();
+    }
 
     private void OpenWhatsAppDialog() { WhatsAppPhone = ""; ShowWhatsAppDialog = true; }
     private void CloseWhatsAppDialog() => ShowWhatsAppDialog = false;
@@ -978,6 +1061,11 @@
     private void OnMatchDateInput(ChangeEventArgs e)
     {
         Game.State.MatchDate = e.Value?.ToString() ?? "";
+    }
+
+    private void OnMatchTimeInput(ChangeEventArgs e)
+    {
+        Game.State.MatchTime = e.Value?.ToString() ?? "";
     }
 
     private async Task SaveRecovery()
