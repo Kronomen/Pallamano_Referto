@@ -6391,3 +6391,333 @@ html,body,#app{overflow:hidden!important;width:100%;height:100%;}
 .manual-player-two-column td{padding:0 2px;}
 .manual-player-two-column .manual-jersey{width:30px;font-size:10px;padding:1px 2px;}
 .manual-player-two-column .manual-name-input{padding-left:3px;font-size:10px;}
+
+/* Configurazione manuale: schede individuali per giocatori e dirigenti, stile compatto. */
+.manual-section-label{display:flex;align-items:baseline;gap:5px;margin:8px 0 5px!important;color:#34465d!important;font-size:10px!important;font-weight:900!important;letter-spacing:.04em;}
+.manual-section-label span{font-size:9px;color:#7b8798;font-weight:700;letter-spacing:0;}
+.manual-player-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;}
+.manual-player-card,.manual-staff-card{min-width:0;padding:3px;border:1px solid #c6d6ee;border-radius:8px;background:#f7faff;box-shadow:0 1px 2px rgba(16,46,80,.04);}
+.manual-player-card-top{display:flex;align-items:center;gap:3px;min-width:0;}
+.manual-player-number{display:block;flex:1;min-width:0;width:0;height:25px;box-sizing:border-box;border:1px solid #2563eb;border-radius:5px;padding:2px 6px;background:#2864e8;color:#fff;font:900 14px/1 system-ui,sans-serif;outline:none;}
+.manual-card-clear{flex:0 0 23px;width:23px;height:25px;display:grid;place-items:center;padding:0;border:1px solid #d1dbe8;border-radius:5px;background:#e8eef7;color:#26384d;font-size:19px;font-weight:900;line-height:1;cursor:pointer;}
+.manual-card-clear:hover{background:#fee2e2;border-color:#fca5a5;color:#b91c1c;}
+.manual-player-name{display:block;width:100%;min-width:0;height:22px;box-sizing:border-box;margin-top:3px;border:1px solid #cbd5e1;border-radius:5px;padding:2px 6px;background:#fff;color:#172b45;font:500 10px/1.2 system-ui,sans-serif;outline:none;}
+.manual-player-name:focus,.manual-player-number:focus{box-shadow:0 0 0 2px rgba(37,99,235,.16);}
+.manual-team-away .manual-player-number{background:#0f9f6e;border-color:#0f9f6e;}
+.manual-team-away .manual-player-card,.manual-team-away .manual-staff-card{border-color:#b8dfd0;background:#f5fcf8;}
+.manual-staff-cards{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;}
+.manual-staff-letter{background:#2864e8;color:#fff;text-align:center;padding:2px;}
+.manual-team-away .manual-staff-letter{background:#0f9f6e;border-color:#0f9f6e;}
+.manual-staff-card .manual-player-number{height:24px;font-size:12px;}
+.manual-staff-card .manual-card-clear{flex-basis:19px;width:19px;height:24px;font-size:16px;}
+.manual-staff-card .manual-player-name{height:21px;padding:2px 4px;font-size:9px;}
+@media(max-width:480px){.manual-player-cards{gap:3px}.manual-player-card,.manual-staff-card{padding:2px}.manual-player-number{height:24px;font-size:13px;padding-left:4px}.manual-card-clear{flex-basis:21px;width:21px;height:24px}.manual-player-name{height:21px;padding:2px 4px;font-size:9px}.manual-staff-cards{gap:3px}}
+
+/* Palette colori nella configurazione manuale, sotto i dirigenti di ciascuna squadra */
+.manual-color-box{margin-top:10px;padding:9px 10px;border:1px solid #d9e2ee;border-radius:9px;background:#f8fafc;}
+.manual-color-box>strong{display:block;margin-bottom:7px;color:#34465d;font-size:10px;font-weight:900;letter-spacing:.04em;}
+.manual-color-palette{display:flex;flex-wrap:wrap;align-items:center;gap:7px;}
+.manual-color-swatch{width:32px;height:32px;min-width:32px;border:2px solid #fff;border-radius:8px;box-shadow:0 0 0 1px #aab9cc;cursor:pointer;padding:0;transition:transform .12s ease,box-shadow .12s ease;}
+.manual-color-swatch:hover{transform:translateY(-1px);}
+.manual-color-swatch.selected{box-shadow:0 0 0 2px #1d4ed8,0 2px 5px rgba(15,23,42,.2);}
+.manual-color-swatch:focus-visible{outline:2px solid #1d4ed8;outline-offset:3px;}
+@media(max-width:480px){.manual-color-box{padding:7px 8px}.manual-color-swatch{width:28px;height:28px;min-width:28px;}}
+
+
+/* Colori dinamici delle squadre nella configurazione manuale: la palette aggiorna subito le schede. */
+.manual-team-card .manual-team-dot{background:var(--manual-team-color,#2563eb)!important;}
+.manual-team-card .manual-player-number,
+.manual-team-card .manual-staff-letter{background:var(--manual-team-color,#2563eb)!important;border-color:var(--manual-team-color,#2563eb)!important;color:var(--manual-team-text,#fff)!important;}
+.manual-team-card .manual-player-card,
+.manual-team-card .manual-staff-card{border-color:color-mix(in srgb,var(--manual-team-color,#2563eb) 32%,#ffffff)!important;background:color-mix(in srgb,var(--manual-team-color,#2563eb) 5%,#ffffff)!important;}
+.manual-team-card .manual-player-name{border-color:color-mix(in srgb,var(--manual-team-color,#2563eb) 24%,#cbd5e1)!important;}
+
+
+/* Configurazione gara: le rose sono gestite esclusivamente nella configurazione manuale delle squadre. */
+.config-main-columns {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+.config-main-columns > .config-center-team {
+  grid-column: 1 / -1 !important;
+  width: 100% !important;
+  max-width: none !important;
+}
+.ipad11-config-card .config-main-columns {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+.ipad11-config-card .config-main-columns > .config-center-team {
+  grid-column: 1 / -1 !important;
+  width: 100% !important;
+  max-width: none !important;
+}
+
+/* Configurazione manuale squadre: il campo numero occupa solo lo spazio per circa tre cifre. */
+.manual-player-card .manual-player-number {
+  flex: 0 0 3.4em;
+  width: 3.4em;
+  min-width: 3.4em;
+}
+@media (max-width: 480px) {
+  .manual-player-card .manual-player-number {
+    flex-basis: 3.4em;
+    width: 3.4em;
+    min-width: 3.4em;
+  }
+}
+
+/* v109 — Configurazioni più compatte: meno spazi verticali e scrollbar nascosta nella configurazione squadre. */
+.manual-config-dialog{max-height:calc(100dvh - 10px)!important;width:min(1380px,99vw)!important;border-radius:12px!important;}
+.manual-config-header{padding:8px 14px!important;gap:10px!important;align-items:center!important;}
+.manual-config-eyebrow{font-size:8px!important;margin-bottom:2px!important;letter-spacing:.1em!important;}
+.manual-config-header h2{font-size:clamp(16px,1.7vw,22px)!important;line-height:1.05!important;}
+.manual-config-header p{font-size:10px!important;margin:3px 0 0!important;line-height:1.1!important;}
+.manual-config-close{width:30px!important;height:30px!important;flex-basis:30px!important;font-size:23px!important;border-radius:7px!important;}
+.manual-config-content{padding:6px!important;gap:5px!important;overflow-y:auto!important;scrollbar-width:none!important;-ms-overflow-style:none!important;}
+.manual-config-content::-webkit-scrollbar{display:none!important;width:0!important;height:0!important;}
+.manual-teams-grid{gap:7px!important;align-items:stretch!important;}
+.manual-team-card{padding:6px!important;border-radius:9px!important;box-shadow:none!important;}
+.manual-team-card>header{gap:6px!important;margin:0 0 4px!important;padding-bottom:4px!important;}
+.manual-team-dot{width:7px!important;flex-basis:7px!important;height:24px!important;border-radius:3px!important;}
+.manual-team-card>header h3{font-size:12px!important;line-height:1.05!important;}
+.manual-team-card>header p{font-size:8px!important;line-height:1.1!important;margin-top:2px!important;}
+.manual-team-name{gap:2px!important;margin-bottom:4px!important;font-size:9px!important;line-height:1.05!important;}
+.manual-team-name input{height:25px!important;padding:3px 6px!important;font-size:11px!important;border-radius:6px!important;}
+.manual-section-label{font-size:9px!important;margin:4px 0 3px!important;line-height:1!important;}
+.manual-section-label span{font-size:8px!important;}
+.manual-player-cards{gap:3px!important;}
+.manual-player-card,.manual-staff-card{padding:2px!important;border-radius:6px!important;box-shadow:none!important;}
+.manual-player-card-top{gap:2px!important;}
+.manual-player-number{height:21px!important;min-height:21px!important;font-size:12px!important;padding:1px 4px!important;border-radius:4px!important;}
+.manual-card-clear{height:21px!important;min-height:21px!important;width:19px!important;flex-basis:19px!important;font-size:15px!important;border-radius:4px!important;}
+.manual-player-name{height:18px!important;min-height:18px!important;margin-top:2px!important;padding:1px 4px!important;font-size:9px!important;border-radius:4px!important;line-height:1!important;}
+.manual-staff-cards{gap:3px!important;}
+.manual-staff-card .manual-player-number{height:20px!important;min-height:20px!important;font-size:10px!important;}
+.manual-staff-card .manual-card-clear{height:20px!important;min-height:20px!important;width:16px!important;flex-basis:16px!important;font-size:13px!important;}
+.manual-staff-card .manual-player-name{height:17px!important;min-height:17px!important;font-size:8px!important;}
+.manual-color-box{margin-top:5px!important;padding:5px 6px!important;border-radius:6px!important;}
+.manual-color-box>strong{font-size:8px!important;margin-bottom:4px!important;}
+.manual-color-palette{gap:5px!important;}
+.manual-color-swatch{width:25px!important;height:25px!important;min-width:25px!important;border-radius:6px!important;}
+.manual-config-footer{padding:5px 8px!important;gap:6px!important;min-height:0!important;}
+.manual-config-footer>span{font-size:8px!important;line-height:1.15!important;}
+.manual-config-footer button{min-height:30px!important;padding:5px 9px!important;font-size:9px!important;border-radius:6px!important;}
+
+/* Anche la configurazione gara usa meno margini e altezze più contenute. */
+.config-card{padding:7px!important;gap:4px!important;}
+.config-card h2{margin:0 0 4px!important;}
+.config-main-columns{gap:5px!important;margin:0!important;padding:0!important;}
+.config-center-team{padding:5px 7px!important;gap:2px!important;}
+.config-center-heading{margin:0 0 2px!important;padding:0!important;min-height:20px!important;font-size:12px!important;line-height:1.1!important;}
+.config-details-grid{gap:4px 7px!important;padding:3px 0!important;}
+.config-details-grid label{gap:2px!important;font-size:8px!important;line-height:1.05!important;}
+.config-details-grid input{height:27px!important;min-height:27px!important;padding:3px 6px!important;font-size:11px!important;border-radius:5px!important;}
+.config-mode-heading{flex-basis:15px!important;padding-top:3px!important;font-size:9px!important;line-height:1!important;}
+.config-mode-grid{gap:4px!important;}
+.config-mode-card{height:62px!important;padding:4px!important;gap:2px!important;border-radius:6px!important;}
+.config-mode-checkbox{top:4px!important;left:4px!important;width:14px!important;height:14px!important;font-size:10px!important;border-width:1px!important;}
+.config-mode-card strong{font-size:9px!important;line-height:1.05!important;}
+.config-mode-card small{font-size:7px!important;line-height:1.05!important;}
+.config-overtime-box{margin-top:4px!important;padding:4px 6px!important;border-radius:6px!important;}
+.config-overtime-box>strong{font-size:8px!important;}
+.config-overtime-box input{width:43px!important;height:24px!important;font-size:12px!important;}
+.config-overtime-box small{font-size:7px!important;}
+.config-bottom-actions{gap:4px!important;flex-basis:34px!important;}
+.config-bottom-actions button{padding:3px 5px!important;font-size:9px!important;line-height:1.05!important;border-radius:5px!important;}
+.config-footnote{min-height:18px!important;flex-basis:18px!important;padding:2px 5px!important;font-size:7px!important;line-height:1.05!important;}
+@media(max-width:900px){
+ .manual-config-overlay{padding:3px!important;}
+ .manual-config-dialog{width:99vw!important;max-height:calc(100dvh - 6px)!important;}
+ .manual-config-header{padding:7px 9px!important;}
+ .manual-config-content{padding:5px!important;gap:5px!important;}
+ .manual-team-card{padding:5px!important;}
+ .manual-teams-grid{gap:5px!important;}
+ .manual-config-footer{padding:4px 6px!important;}
+ .manual-config-footer>span{max-width:48%;}
+ .manual-config-footer>div{gap:4px!important;}
+ .manual-config-footer button{padding:4px 6px!important;font-size:8px!important;}
+ .config-center-team{padding:4px 5px!important;}
+ .config-details-grid{gap:3px 5px!important;}
+ .config-details-grid input{height:25px!important;min-height:25px!important;}
+ .config-mode-card{height:56px!important;}
+ .config-bottom-actions{grid-template-columns:repeat(3,minmax(0,1fr))!important;flex-basis:auto!important;}
+ .config-bottom-actions button{min-height:30px!important;font-size:8px!important;}
+}
+@media(max-width:480px){
+ .manual-team-card>header p{display:none!important;}
+ .manual-config-header h2{font-size:15px!important;}
+ .manual-color-swatch{width:22px!important;height:22px!important;min-width:22px!important;}
+ .manual-config-footer>span{display:none!important;}
+ .manual-config-footer{justify-content:flex-end!important;}
+ .manual-config-footer>div{width:100%!important;}
+ .manual-config-footer button{flex:1!important;}
+}
+
+
+/* v115 — impostazioni gara compatte: durata supplementari in alto e due delegati affiancati. */
+.ipad11-config-card .config-topbar{
+  flex:0 0 48px!important;
+  grid-template-columns:minmax(190px,1.05fr) minmax(190px,1.05fr) minmax(260px,1.35fr) minmax(170px,.9fr)!important;
+  gap:5px!important;
+}
+.ipad11-config-card .config-topbar .config-duration-top,
+.ipad11-config-card .config-topbar .config-checks-top{
+  min-height:0!important;height:48px!important;padding:3px 6px!important;gap:5px!important;border-radius:7px!important;
+}
+.ipad11-config-card .config-topbar .config-duration-top strong{font-size:9px!important;white-space:normal!important;line-height:1.05!important;}
+.ipad11-config-card .config-topbar .config-duration-top .duration-input{width:42px!important;height:28px!important;min-height:28px!important;font-size:15px!important;border-width:1px!important;border-radius:5px!important;}
+.ipad11-config-card .config-topbar .config-duration-top>span{font-size:8px!important;}
+.ipad11-config-card .config-topbar .config-check-option{gap:5px!important;font-size:8px!important;white-space:normal!important;line-height:1.05!important;}
+.ipad11-config-card .config-topbar .config-check-option input{width:16px!important;height:16px!important;}
+.ipad11-config-card .config-details-grid{gap:3px 5px!important;padding:2px 0!important;}
+.ipad11-config-card .config-details-grid .delegate-field{grid-column:span 1!important;min-width:0!important;}
+.ipad11-config-card .config-details-grid .delegate-field input{width:100%!important;}
+@media(max-width:900px){
+  .ipad11-config-card .config-topbar{grid-template-columns:repeat(2,minmax(0,1fr))!important;flex-basis:98px!important;gap:3px!important;}
+  .ipad11-config-card .config-topbar .config-duration-top,
+  .ipad11-config-card .config-topbar .config-checks-top{height:46px!important;}
+}
+
+/* v116 — configurazione gara senza spazio verticale inutilizzato e quattro incarichi sulla stessa riga. */
+.ipad11-config-card {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: calc(100dvh - 10px) !important;
+  overflow: hidden !important;
+  gap: 5px !important;
+}
+.ipad11-config-card .config-main-columns {
+  flex: 0 0 auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  align-items: start !important;
+}
+.ipad11-config-card .config-center-team {
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 5px 7px !important;
+  gap: 2px !important;
+  overflow: visible !important;
+}
+.ipad11-config-card .config-details-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 3px 5px !important;
+  padding: 3px 0 !important;
+  align-items: end !important;
+}
+.ipad11-config-card .config-details-grid .championship-field {
+  grid-column: 1 / span 2 !important;
+  grid-row: 2 !important;
+}
+.ipad11-config-card .config-details-grid label:nth-child(6) {
+  grid-column: 1 !important;
+  grid-row: 3 !important;
+}
+.ipad11-config-card .config-details-grid label:nth-child(7) {
+  grid-column: 2 !important;
+  grid-row: 3 !important;
+}
+.ipad11-config-card .config-details-grid label:nth-child(8) {
+  grid-column: 3 !important;
+  grid-row: 3 !important;
+}
+.ipad11-config-card .config-details-grid label:nth-child(9) {
+  grid-column: 4 !important;
+  grid-row: 3 !important;
+}
+.ipad11-config-card .config-details-grid label {
+  min-width: 0 !important;
+  font-size: 8px !important;
+  line-height: 1.05 !important;
+  gap: 2px !important;
+}
+.ipad11-config-card .config-details-grid input {
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 27px !important;
+  min-height: 27px !important;
+  padding: 3px 5px !important;
+  font-size: 10px !important;
+}
+.ipad11-config-card .config-mode-heading {
+  flex: 0 0 auto !important;
+  height: auto !important;
+  min-height: 15px !important;
+  margin-top: 1px !important;
+  padding-top: 3px !important;
+}
+.ipad11-config-card .config-mode-grid {
+  flex: 0 0 auto !important;
+  margin-bottom: 0 !important;
+}
+.ipad11-config-card .config-bottom-actions {
+  flex: 0 0 34px !important;
+  margin-top: 0 !important;
+}
+@media (max-width: 900px) {
+  .ipad11-config-card .config-details-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+  .ipad11-config-card .config-details-grid .championship-field {
+    grid-column: 1 / span 2 !important;
+    grid-row: 2 !important;
+  }
+}
+
+
+/* v117 — campi della configurazione gara leggermente più ampi e pannello senza altezza vuota. */
+.config-overlay { align-items: flex-start !important; padding: 5px !important; overflow: auto !important; }
+.ipad11-config-card {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: calc(100dvh - 10px) !important;
+  flex: 0 0 auto !important;
+  align-self: flex-start !important;
+  gap: 6px !important;
+  padding: 9px 10px !important;
+  overflow: visible !important;
+}
+.ipad11-config-card .config-center-team {
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 8px 10px !important;
+  gap: 4px !important;
+}
+.ipad11-config-card .config-details-grid {
+  padding: 5px 0 !important;
+  gap: 4px 6px !important;
+}
+.ipad11-config-card .config-details-grid input {
+  height: 30px !important;
+  min-height: 30px !important;
+  padding: 4px 7px !important;
+  font-size: 11px !important;
+}
+.ipad11-config-card .config-mode-heading {
+  margin-top: 3px !important;
+  padding-top: 4px !important;
+}
+.ipad11-config-card .config-mode-grid { margin-bottom: 0 !important; }
+.ipad11-config-card .config-bottom-actions { margin-top: 0 !important; }
+@media (max-width: 900px) {
+  .ipad11-config-card { padding: 7px !important; gap: 5px !important; }
+  .ipad11-config-card .config-center-team { padding: 7px !important; }
+  .ipad11-config-card .config-details-grid input { height: 29px !important; min-height: 29px !important; }
+}
+
+
+/* v116 — schede giocatori in riga: numero, nome e rimozione affiancati. Dirigenti D ed E sulla seconda riga. */
+.manual-player-cards .manual-player-card{padding:3px!important;min-width:0!important;}
+.manual-player-card .manual-player-inline-row{display:flex!important;flex-direction:row!important;align-items:center!important;gap:4px!important;min-width:0!important;}
+.manual-player-card .manual-player-number{flex:0 0 3.4em!important;width:3.4em!important;min-width:3.4em!important;height:23px!important;min-height:23px!important;}
+.manual-player-card .manual-player-name-inline{flex:1 1 auto!important;width:0!important;min-width:0!important;height:23px!important;min-height:23px!important;margin:0!important;padding:2px 5px!important;font-size:9px!important;line-height:1!important;}
+.manual-player-card .manual-card-clear{flex:0 0 18px!important;width:18px!important;height:23px!important;min-height:23px!important;font-size:14px!important;padding:0!important;}
+.manual-staff-cards{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:4px!important;}
+.manual-staff-card{min-width:0!important;}
+@media(max-width:480px){
+ .manual-player-card .manual-player-inline-row{gap:3px!important;}
+ .manual-player-card .manual-player-number{flex-basis:3.1em!important;width:3.1em!important;min-width:3.1em!important;}
+ .manual-player-card .manual-player-name-inline{font-size:8px!important;padding:2px 3px!important;}
+ .manual-staff-cards{grid-template-columns:repeat(3,minmax(0,1fr))!important;}
+}

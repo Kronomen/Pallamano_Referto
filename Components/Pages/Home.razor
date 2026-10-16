@@ -219,6 +219,11 @@
                     <input class="duration-input" type="number" min="1" max="60" @bind="Game.State.HalfDurationMinutes" />
                     <span>MINUTI</span>
                 </div>
+                <div class="config-duration-top config-overtime-top">
+                    <strong>DURATA SUPPLEMENTARI</strong>
+                    <input class="duration-input" type="number" min="1" max="15" @bind="Game.State.OvertimeDurationMinutes" />
+                    <span>MINUTI</span>
+                </div>
                 <div class="config-checks-top">
                     <label class="config-check-option"><input type="checkbox" @bind="Game.State.CronometroContinuativo" /><span>CRONOMETRO PALAZZETTO CONTINUATIVO</span></label>
                 </div>
@@ -228,51 +233,7 @@
             </div>
 
             <div class="config-main-columns">
-                <section class="config-side-team config-side-home" style="--config-team-color:@Game.State.Casa.Color;--config-team-text:@GetContrastTextColor(Game.State.Casa.Color)">
-                    <div class="config-team-heading">SQUADRA DI CASA</div>
-                    <label class="config-team-name-field">NOME SQUADRA<input @bind="Game.State.Casa.Name" @bind:event="oninput" /></label>
-                    <div class="config-roster-title">GIOCATORI <small>(max 16)</small></div>
-                    <div class="config-player-grid">
-                        @for (var i = 0; i < 16; i++)
-                        {
-                            var ix = i;
-                            var label = GetNumberLabel("A", ix);
-                            var active = IsPlayerConfigured("A", ix);
-                            <div class="config-player-card @(active ? "configured" : "unconfigured")">
-                                <div class="config-number-line">
-                                    <input class="config-number-input" type="text" inputmode="numeric" maxlength="2" value="@label" placeholder="" aria-label="Numero giocatore @(ix + 1)" @oninput='e => SetNumberLabel("A", ix, e.Value?.ToString())' />
-                                    <button type="button" class="config-clear-button" title="Cancella giocatore" aria-label="Cancella giocatore @(ix + 1)" @onclick='() => ClearPlayer("A", ix)'>×</button>
-                                </div>
-                                <input class="config-player-name" type="text" placeholder="Nome" @bind="Game.State.Casa.PlayerNames[ix]" @bind:event="oninput" />
-                            </div>
-                        }
-                    </div>
-                    <div class="config-roster-title staff-title">DIRIGENTI</div>
-                    <div class="config-staff-grid">
-                        @for (var i = 0; i < 5; i++)
-                        {
-                            var ix = i;
-                            var letter = Game.State.Casa.StaffLetters[ix] ?? "";
-                            var active = IsStaffConfigured("A", ix);
-                            <div class="config-staff-card @(active ? "configured" : "unconfigured")">
-                                <div class="config-number-line">
-                                    <input class="config-staff-letter" type="text" maxlength="1" value="@letter" placeholder="" aria-label="Identificativo dirigente @(ix + 1)" @oninput='e => SetStaffLetter("A", ix, e.Value?.ToString())' />
-                                    <button type="button" class="config-clear-button" title="Cancella dirigente" aria-label="Cancella dirigente @(ix + 1)" @onclick='() => ClearStaff("A", ix)'>×</button>
-                                </div>
-                                <input class="config-player-name" type="text" placeholder="Nome" @bind="Game.State.Casa.StaffNames[ix]" @bind:event="oninput" />
-                            </div>
-                        }
-                    </div>
-                    <div class="config-side-color-box">
-                        <strong>COLORE CASA</strong>
-                        <div class="team-color-palette">
-                            @foreach (var c in TeamColors)
-                            {
-                                <button type="button" title="@c.Name" aria-label="Colore CASA @c.Name" class="team-color-swatch @(Game.State.Casa.Color == c.Hex ? "selected" : "")" style="background:@c.Hex" @onclick='() => SetTeamColor("A", c.Hex)'></button>
-                            }
-                        </div>
-                    </div>
-                </section>
+                
 
                 <section class="config-center-team">
                     <div class="config-center-heading"><span>⚙</span> CONFIGURAZIONE GARA</div>
@@ -284,7 +245,8 @@
                         <label class="championship-field">CAMPIONATO<input @bind="Game.State.Championship" @bind:event="oninput" /></label>
                         <label class="referee-field">ARBITRO 1<input @bind="Game.State.Referee1" @bind:event="oninput" /></label>
                         <label class="referee-field">ARBITRO 2<input @bind="Game.State.Referee2" @bind:event="oninput" /></label>
-                        <label class="wide-field">DELEGATO F.I.G.H.<input @bind="Game.State.Delegate1" @bind:event="oninput" /></label>
+                        <label class="delegate-field">DELEGATO F.I.G.H. 1<input @bind="Game.State.Delegate1" @bind:event="oninput" /></label>
+                        <label class="delegate-field">DELEGATO F.I.G.H. 2<input @bind="Game.State.Delegate2" @bind:event="oninput" /></label>
                     </div>
                     <div class="config-mode-heading">TIPO DI GARA</div>
                     <div class="config-mode-grid">
@@ -301,66 +263,17 @@
                             <strong>CON<br />TIRI DI RIGORE</strong><small>DOPO IL 2° TEMPO</small>
                         </button>
                     </div>
-                    <div class="config-overtime-box @(Game.State.MatchMode == "STANDARD" ? "disabled" : "")">
-                        <strong>DURATA SUPPLEMENTARI</strong>
-                        <div><input type="number" min="1" max="15" value="5" disabled /> <span>MINUTI</span></div>
-                        <small>(ogni tempo supplementare)</small>
-                    </div>
                     @if (!string.IsNullOrWhiteSpace(Game.ValidationError)) { <div class="validation-error config-validation">@Game.ValidationError</div> }
                 </section>
 
-                <section class="config-side-team config-side-away" style="--config-team-color:@Game.State.Ospiti.Color;--config-team-text:@GetContrastTextColor(Game.State.Ospiti.Color)">
-                    <div class="config-team-heading">SQUADRA OSPITE</div>
-                    <label class="config-team-name-field">NOME SQUADRA<input @bind="Game.State.Ospiti.Name" @bind:event="oninput" /></label>
-                    <div class="config-roster-title">GIOCATORI <small>(max 16)</small></div>
-                    <div class="config-player-grid">
-                        @for (var i = 0; i < 16; i++)
-                        {
-                            var ix = i;
-                            var label = GetNumberLabel("B", ix);
-                            var active = IsPlayerConfigured("B", ix);
-                            <div class="config-player-card @(active ? "configured" : "unconfigured")">
-                                <div class="config-number-line">
-                                    <input class="config-number-input" type="text" inputmode="numeric" maxlength="2" value="@label" placeholder="" aria-label="Numero giocatore @(ix + 1)" @oninput='e => SetNumberLabel("B", ix, e.Value?.ToString())' />
-                                    <button type="button" class="config-clear-button" title="Cancella giocatore" aria-label="Cancella giocatore @(ix + 1)" @onclick='() => ClearPlayer("B", ix)'>×</button>
-                                </div>
-                                <input class="config-player-name" type="text" placeholder="Nome" @bind="Game.State.Ospiti.PlayerNames[ix]" @bind:event="oninput" />
-                            </div>
-                        }
-                    </div>
-                    <div class="config-roster-title staff-title">DIRIGENTI</div>
-                    <div class="config-staff-grid">
-                        @for (var i = 0; i < 5; i++)
-                        {
-                            var ix = i;
-                            var letter = Game.State.Ospiti.StaffLetters[ix] ?? "";
-                            var active = IsStaffConfigured("B", ix);
-                            <div class="config-staff-card @(active ? "configured" : "unconfigured")">
-                                <div class="config-number-line">
-                                    <input class="config-staff-letter" type="text" maxlength="1" value="@letter" placeholder="" aria-label="Identificativo dirigente @(ix + 1)" @oninput='e => SetStaffLetter("B", ix, e.Value?.ToString())' />
-                                    <button type="button" class="config-clear-button" title="Cancella dirigente" aria-label="Cancella dirigente @(ix + 1)" @onclick='() => ClearStaff("B", ix)'>×</button>
-                                </div>
-                                <input class="config-player-name" type="text" placeholder="Nome" @bind="Game.State.Ospiti.StaffNames[ix]" @bind:event="oninput" />
-                            </div>
-                        }
-                    </div>
-                    <div class="config-side-color-box">
-                        <strong>COLORE OSPITI</strong>
-                        <div class="team-color-palette">
-                            @foreach (var c in TeamColors)
-                            {
-                                <button type="button" title="@c.Name" aria-label="Colore OSPITI @c.Name" class="team-color-swatch @(Game.State.Ospiti.Color == c.Hex ? "selected" : "")" style="background:@c.Hex" @onclick='() => SetTeamColor("B", c.Hex)'></button>
-                            }
-                        </div>
-                    </div>
-                </section>
+                
             </div>
 
             <div class="config-bottom-actions">
                 <button type="button" class="config-back-action" @onclick="CloseConfigWithoutStarting">← TORNA AL REFERTO</button>
                 <button type="button" class="config-save-action" @onclick="SaveConfiguration">▣ REFERTO GARA</button>
                 <button type="button" class="config-load-action" @onclick="LoadMatchData">▤ CARICA CONFIGURAZIONE</button>
-                <button type="button" class="config-manual-action" @onclick="OpenManualConfiguration">✎ CONFIGURAZIONE MANUALE</button>
+                <button type="button" class="config-manual-action" @onclick="OpenManualConfiguration">✎ CONFIGURAZIONE MANUALE DELLE SQUADRE</button>
                 <button type="button" class="config-reset-action" @onclick="Game.Reset">↻ RESET</button>
                 <button type="button" class="config-exit-action" @onclick="ExitApplication">⇱ ESCI</button>
             </div>
@@ -376,64 +289,80 @@
             <header class="manual-config-header">
                 <div>
                     <span class="manual-config-eyebrow">REFerto Pallamano · F.I.G.H.</span>
-                    <h2 id="manual-config-title">Configurazione manuale della gara</h2>
-                    <p>Inserisci i dati della partita, le rose e i dirigenti. I dati saranno utilizzati dal referto.</p>
+                    <h2 id="manual-config-title">Configurazione manuale delle squadre</h2>
+                    <p>Inserisci le rose e i dirigenti delle due squadre.</p>
                 </div>
-                <button type="button" class="manual-config-close" aria-label="Chiudi configurazione manuale" @onclick="CloseManualConfiguration">×</button>
+                <button type="button" class="manual-config-close" aria-label="Chiudi configurazione manuale delle squadre" @onclick="CloseManualConfiguration">×</button>
             </header>
             <div class="manual-config-content">
-                <section class="manual-data-card">
-                    <h3><span>01</span> Dati della gara</h3>
-                    <div class="manual-data-grid">
-                        <label>Numero gara<input @bind="Game.State.MatchNumber" @bind:event="oninput" placeholder="Es. 447" /></label>
-                        <label class="manual-date-field">Data<input type="date" value="@Game.State.MatchDate" @oninput="OnMatchDateInput" /></label>
-                        <label class="manual-time-field">Ora<input type="time" value="@Game.State.MatchTime" @oninput="OnMatchTimeInput" /></label>
-                        <label>Campionato<input @bind="Game.State.Championship" @bind:event="oninput" placeholder="Es. Serie A2 Femminile" /></label>
-                        <label>Località<input @bind="Game.State.City" @bind:event="oninput" placeholder="Città" /></label>
-                        <label>Impianto<input @bind="Game.State.Venue" @bind:event="oninput" placeholder="Nome impianto" /></label>
-                        <label>Stagione sportiva<input @bind="Game.State.Season" @bind:event="oninput" placeholder="Es. 2026/2027" /></label>
-                        <label>Arbitro 1<input @bind="Game.State.Referee1" @bind:event="oninput" /></label>
-                        <label>Arbitro 2<input @bind="Game.State.Referee2" @bind:event="oninput" /></label>
-                        <label>Delegato 1<input @bind="Game.State.Delegate1" @bind:event="oninput" /></label>
-                        <label>Delegato 2<input @bind="Game.State.Delegate2" @bind:event="oninput" /></label>
-                    </div>
-                </section>
                 <div class="manual-teams-grid">
-                    <section class="manual-team-card manual-team-home">
+                    <section class="manual-team-card manual-team-home" style="--manual-team-color:@Game.State.Casa.Color;--manual-team-text:@GetContrastTextColor(Game.State.Casa.Color)">
                         <header><span class="manual-team-dot"></span><div><h3>Squadra di casa</h3><p>Inserisci numero di maglia e nome dei giocatori.</p></div></header>
                         <label class="manual-team-name">Nome squadra<input @bind="Game.State.Casa.Name" @bind:event="oninput" placeholder="Squadra di casa" /></label>
-                        <div class="manual-table-wrap"><table class="manual-roster-table manual-player-two-column"><thead><tr><th>N°</th><th>Nome e cognome</th><th>N°</th><th>Nome e cognome</th></tr></thead><tbody>
-                        @for (var i = 0; i < 8; i++) { var ix = i; var jx = i + 8;
-                            <tr>
-                                <td><input class="manual-jersey" type="text" inputmode="numeric" maxlength="2" value='@GetNumberLabel("A", ix)' @oninput='e => SetNumberLabel("A", ix, e.Value?.ToString())' aria-label="Numero giocatore casa @(ix + 1)" /></td><td><input class="manual-name-input" @bind="Game.State.Casa.PlayerNames[ix]" @bind:event="oninput" placeholder="Giocatore @(ix + 1)" /></td>
-                                <td><input class="manual-jersey" type="text" inputmode="numeric" maxlength="2" value='@GetNumberLabel("A", jx)' @oninput='e => SetNumberLabel("A", jx, e.Value?.ToString())' aria-label="Numero giocatore casa @(jx + 1)" /></td><td><input class="manual-name-input" @bind="Game.State.Casa.PlayerNames[jx]" @bind:event="oninput" placeholder="Giocatore @(jx + 1)" /></td>
-                            </tr>
+                        <h4 class="manual-section-label">Giocatori <span>(max 16)</span></h4>
+                        <div class="manual-player-cards">
+                        @for (var i = 0; i < 16; i++) { var ix = i;
+                            <article class="manual-player-card">
+                                <div class="manual-player-card-top manual-player-inline-row">
+                                    <input class="manual-player-number" type="text" inputmode="numeric" maxlength="2" value='@GetNumberLabel("A", ix)' @oninput='e => SetNumberLabel("A", ix, e.Value?.ToString())' aria-label="Numero giocatore casa @(ix + 1)" />
+                                    <input class="manual-player-name manual-player-name-inline" @bind="Game.State.Casa.PlayerNames[ix]" @bind:event="oninput" placeholder="Nome giocatore" aria-label="Nome giocatore casa @(ix + 1)" />
+                                    <button type="button" class="manual-card-clear" title="Svuota giocatore @(ix + 1)" aria-label="Svuota giocatore casa @(ix + 1)" @onclick='() => ClearPlayer("A", ix)'>×</button>
+                                </div>
+                            </article>
                         }
-                        </tbody></table></div>
-                        <h4>Dirigenti</h4>
-                        <div class="manual-table-wrap"><table class="manual-roster-table manual-staff-table"><thead><tr><th>Lettera</th><th>Nome e cognome</th></tr></thead><tbody>
+                        </div>
+                        <h4 class="manual-section-label">Dirigenti</h4>
+                        <div class="manual-staff-cards">
                         @for (var i = 0; i < 5; i++) { var ix = i;
-                            <tr><td><input class="manual-jersey" maxlength="1" value='@(Game.State.Casa.StaffLetters[ix] ?? "")' @oninput='e => SetStaffLetter("A", ix, e.Value?.ToString())' aria-label="Lettera dirigente casa @(ix + 1)" /></td><td><input class="manual-name-input" @bind="Game.State.Casa.StaffNames[ix]" @bind:event="oninput" placeholder="Dirigente @(ix + 1)" /></td></tr>
+                            <article class="manual-staff-card">
+                                <div class="manual-player-card-top"><input class="manual-player-number manual-staff-letter" maxlength="1" value='@(Game.State.Casa.StaffLetters[ix] ?? "")' @oninput='e => SetStaffLetter("A", ix, e.Value?.ToString())' aria-label="Lettera dirigente casa @(ix + 1)" /><button type="button" class="manual-card-clear" title="Svuota dirigente @(ix + 1)" aria-label="Svuota dirigente casa @(ix + 1)" @onclick='() => ClearStaff("A", ix)'>×</button></div>
+                                <input class="manual-player-name" @bind="Game.State.Casa.StaffNames[ix]" @bind:event="oninput" placeholder="Nome" aria-label="Nome dirigente casa @(ix + 1)" />
+                            </article>
                         }
-                        </tbody></table></div>
+                        </div>
+                        <div class="manual-color-box">
+                            <strong>COLORE CASA</strong>
+                            <div class="manual-color-palette">
+                                @foreach (var c in TeamColors)
+                                {
+                                    <button type="button" title="@c.Name" aria-label="Colore squadra di casa @c.Name" class="manual-color-swatch @(Game.State.Casa.Color == c.Hex ? "selected" : "")" style="background:@c.Hex" @onclick='() => SetTeamColor("A", c.Hex)'></button>
+                                }
+                            </div>
+                        </div>
                     </section>
-                    <section class="manual-team-card manual-team-away">
+                    <section class="manual-team-card manual-team-away" style="--manual-team-color:@Game.State.Ospiti.Color;--manual-team-text:@GetContrastTextColor(Game.State.Ospiti.Color)">
                         <header><span class="manual-team-dot"></span><div><h3>Squadra ospite</h3><p>Inserisci numero di maglia e nome dei giocatori.</p></div></header>
                         <label class="manual-team-name">Nome squadra<input @bind="Game.State.Ospiti.Name" @bind:event="oninput" placeholder="Squadra ospite" /></label>
-                        <div class="manual-table-wrap"><table class="manual-roster-table manual-player-two-column"><thead><tr><th>N°</th><th>Nome e cognome</th><th>N°</th><th>Nome e cognome</th></tr></thead><tbody>
-                        @for (var i = 0; i < 8; i++) { var ix = i; var jx = i + 8;
-                            <tr>
-                                <td><input class="manual-jersey" type="text" inputmode="numeric" maxlength="2" value='@GetNumberLabel("B", ix)' @oninput='e => SetNumberLabel("B", ix, e.Value?.ToString())' aria-label="Numero giocatore ospite @(ix + 1)" /></td><td><input class="manual-name-input" @bind="Game.State.Ospiti.PlayerNames[ix]" @bind:event="oninput" placeholder="Giocatore @(ix + 1)" /></td>
-                                <td><input class="manual-jersey" type="text" inputmode="numeric" maxlength="2" value='@GetNumberLabel("B", jx)' @oninput='e => SetNumberLabel("B", jx, e.Value?.ToString())' aria-label="Numero giocatore ospite @(jx + 1)" /></td><td><input class="manual-name-input" @bind="Game.State.Ospiti.PlayerNames[jx]" @bind:event="oninput" placeholder="Giocatore @(jx + 1)" /></td>
-                            </tr>
+                        <h4 class="manual-section-label">Giocatori <span>(max 16)</span></h4>
+                        <div class="manual-player-cards">
+                        @for (var i = 0; i < 16; i++) { var ix = i;
+                            <article class="manual-player-card">
+                                <div class="manual-player-card-top manual-player-inline-row">
+                                    <input class="manual-player-number" type="text" inputmode="numeric" maxlength="2" value='@GetNumberLabel("B", ix)' @oninput='e => SetNumberLabel("B", ix, e.Value?.ToString())' aria-label="Numero giocatore ospite @(ix + 1)" />
+                                    <input class="manual-player-name manual-player-name-inline" @bind="Game.State.Ospiti.PlayerNames[ix]" @bind:event="oninput" placeholder="Nome giocatore" aria-label="Nome giocatore ospite @(ix + 1)" />
+                                    <button type="button" class="manual-card-clear" title="Svuota giocatore @(ix + 1)" aria-label="Svuota giocatore ospite @(ix + 1)" @onclick='() => ClearPlayer("B", ix)'>×</button>
+                                </div>
+                            </article>
                         }
-                        </tbody></table></div>
-                        <h4>Dirigenti</h4>
-                        <div class="manual-table-wrap"><table class="manual-roster-table manual-staff-table"><thead><tr><th>Lettera</th><th>Nome e cognome</th></tr></thead><tbody>
+                        </div>
+                        <h4 class="manual-section-label">Dirigenti</h4>
+                        <div class="manual-staff-cards">
                         @for (var i = 0; i < 5; i++) { var ix = i;
-                            <tr><td><input class="manual-jersey" maxlength="1" value='@(Game.State.Ospiti.StaffLetters[ix] ?? "")' @oninput='e => SetStaffLetter("B", ix, e.Value?.ToString())' aria-label="Lettera dirigente ospite @(ix + 1)" /></td><td><input class="manual-name-input" @bind="Game.State.Ospiti.StaffNames[ix]" @bind:event="oninput" placeholder="Dirigente @(ix + 1)" /></td></tr>
+                            <article class="manual-staff-card">
+                                <div class="manual-player-card-top"><input class="manual-player-number manual-staff-letter" maxlength="1" value='@(Game.State.Ospiti.StaffLetters[ix] ?? "")' @oninput='e => SetStaffLetter("B", ix, e.Value?.ToString())' aria-label="Lettera dirigente ospite @(ix + 1)" /><button type="button" class="manual-card-clear" title="Svuota dirigente @(ix + 1)" aria-label="Svuota dirigente ospite @(ix + 1)" @onclick='() => ClearStaff("B", ix)'>×</button></div>
+                                <input class="manual-player-name" @bind="Game.State.Ospiti.StaffNames[ix]" @bind:event="oninput" placeholder="Nome" aria-label="Nome dirigente ospite @(ix + 1)" />
+                            </article>
                         }
-                        </tbody></table></div>
+                        </div>
+                        <div class="manual-color-box">
+                            <strong>COLORE OSPITI</strong>
+                            <div class="manual-color-palette">
+                                @foreach (var c in TeamColors)
+                                {
+                                    <button type="button" title="@c.Name" aria-label="Colore squadra ospite @c.Name" class="manual-color-swatch @(Game.State.Ospiti.Color == c.Hex ? "selected" : "")" style="background:@c.Hex" @onclick='() => SetTeamColor("B", c.Hex)'></button>
+                                }
+                            </div>
+                        </div>
                     </section>
                 </div>
             </div>

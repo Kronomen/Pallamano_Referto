@@ -14,6 +14,7 @@ public sealed class GameState
     // True quando la gara è terminata e il JSON deve essere salvato all'uscita dal referto.
     public bool MatchFinished { get; set; }
     public int HalfDurationMinutes { get; set; } = 30;
+    public int OvertimeDurationMinutes { get; set; } = 5;
     public string MatchMode { get; set; } = "STANDARD";
     public bool CronometroContinuativo { get; set; }
     public bool RichiediCartellinoEsclusione { get; set; }

@@ -481,7 +481,7 @@ public sealed class GameService : IAsyncDisposable
         {
             var end = phase <= 2
                 ? phase * State.HalfDurationMinutes * 60
-                : State.HalfDurationMinutes * 120 + (phase - 2) * 300;
+                : State.HalfDurationMinutes * 120 + (phase - 2) * State.OvertimeDurationMinutes * 60;
             var phaseA = ordered.Count(e => (e.Type is "GOAL" or "PENALTY_GOAL") && e.Team == "A" && ParseTime(e.Time) >= 0 && ParseTime(e.Time) <= end);
             var phaseB = ordered.Count(e => (e.Type is "GOAL" or "PENALTY_GOAL") && e.Team == "B" && ParseTime(e.Time) >= 0 && ParseTime(e.Time) <= end);
             State.PhaseScores[phase] = $"{phaseA}-{phaseB}";
@@ -964,9 +964,9 @@ public sealed class GameService : IAsyncDisposable
         if (State.Running) StartClock(); else StopClock(); Notify();
     }
 
-    public int GetCurrentPeriodDurationSeconds() => State.Phase <= 2 ? State.HalfDurationMinutes * 60 : 300;
-    public int GetCurrentPeriodEndSeconds() => State.Phase <= 2 ? State.Phase * State.HalfDurationMinutes * 60 : State.HalfDurationMinutes * 120 + (State.Phase - 2) * 300;
-    public int GetPeriodStartSeconds(int phase) => phase <= 1 ? 0 : phase == 2 ? State.HalfDurationMinutes * 60 : State.HalfDurationMinutes * 120 + (phase - 3) * 300;
+    public int GetCurrentPeriodDurationSeconds() => State.Phase <= 2 ? State.HalfDurationMinutes * 60 : State.OvertimeDurationMinutes * 60;
+    public int GetCurrentPeriodEndSeconds() => State.Phase <= 2 ? State.Phase * State.HalfDurationMinutes * 60 : State.HalfDurationMinutes * 120 + (State.Phase - 2) * State.OvertimeDurationMinutes * 60;
+    public int GetPeriodStartSeconds(int phase) => phase <= 1 ? 0 : phase == 2 ? State.HalfDurationMinutes * 60 : State.HalfDurationMinutes * 120 + (phase - 3) * State.OvertimeDurationMinutes * 60;
     public int GetMiniTimerSeconds() => State.MiniTimerSeconds;
 
     public IEnumerable<(string Number, string Remaining)> GetSuspensions(string team, string? number = null)
