@@ -2543,38 +2543,93 @@ window.addEventListener('load', () => {
   if (params.get('share') !== '1') return;
   const phoneDigits = (params.get('phone') || '').replace(/\D/g, '');
   const phoneLabel = phoneDigits ? '+' + phoneDigits : '';
+  let preparedFile = null;
+  let preparedBlob = null;
+  let preparedName = 'Referto_FIGH.pdf';
+
   const bar = document.createElement('div');
   bar.id = 'sharePdfBar';
   bar.style.cssText = 'position:fixed;left:10px;right:10px;bottom:10px;z-index:100001;background:#10233f;color:white;padding:12px;border-radius:12px;box-shadow:0 4px 20px #0005;font:14px Arial,sans-serif;display:flex;flex-direction:column;gap:8px;';
-  bar.innerHTML = '<strong>REFERTO PRONTO PER WHATSAPP</strong><span>Destinatario inserito: ' + phoneLabel + '</span><span style="font-size:12px;line-height:1.35">Tocca il pulsante per creare il PDF e aprire la condivisione di iPad. Per motivi di sicurezza iPad non consente a una pagina web di scegliere automaticamente il contatto WhatsApp.</span><button id="sharePdfNow" style="padding:12px;border:0;border-radius:8px;background:#25d366;color:#062b16;font-weight:700;font-size:16px">GENERA PDF E CONDIVIDI</button><button id="closeSharePdf" style="padding:8px;border:1px solid #ffffff66;border-radius:8px;background:transparent;color:white">CHIUDI</button>';
+  bar.innerHTML = '<strong>REFERTO PRONTO PER WHATSAPP</strong><span>Numero inserito: ' + phoneLabel + '</span><span id="sharePdfHint" style="font-size:12px;line-height:1.35">Primo tocco: crea il PDF. Secondo tocco: apre la condivisione dell’iPad. In WhatsApp dovrai confermare il destinatario e l’invio.</span><button id="sharePdfNow" style="padding:12px;border:0;border-radius:8px;background:#25d366;color:#062b16;font-weight:700;font-size:16px">1. GENERA PDF</button><button id="downloadPdfFallback" style="display:none;padding:10px;border:1px solid #ffffff66;border-radius:8px;background:transparent;color:white">SCARICA PDF</button><button id="closeSharePdf" style="padding:8px;border:1px solid #ffffff66;border-radius:8px;background:transparent;color:white">CHIUDI</button>';
   document.body.appendChild(bar);
+
+  const shareButton = document.getElementById('sharePdfNow');
+  const downloadButton = document.getElementById('downloadPdfFallback');
+  const hint = document.getElementById('sharePdfHint');
   document.getElementById('closeSharePdf').onclick = () => bar.remove();
-  document.getElementById('sharePdfNow').onclick = async (event) => {
-    const btn = event.currentTarget;
-    btn.disabled = true; btn.textContent = 'CREAZIONE PDF…';
+
+  function downloadPreparedPdf() {
+    if (!preparedBlob) return;
+    const objectUrl = URL.createObjectURL(preparedBlob);
+    const a = document.createElement('a');
+    a.href = objectUrl;
+    a.download = preparedName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+  }
+
+  downloadButton.onclick = downloadPreparedPdf;
+
+  shareButton.onclick = async () => {
+    // Primo tocco: genera il PDF, senza tentare la condivisione dopo un'attesa asincrona.
+    if (!preparedFile) {
+      shareButton.disabled = true;
+      shareButton.textContent = 'CREAZIONE PDF…';
+      try {
+        if (!window.isSecureContext) throw new Error('La condivisione richiede una pagina HTTPS. Apri il sito pubblicato su GitHub Pages con https://.');
+        if (!window.html2pdf) throw new Error('Libreria PDF non disponibile. Controlla la connessione internet e riprova.');
+        const element = document.getElementById('page');
+        if (!element) throw new Error('Non trovo il referto da convertire in PDF.');
+        preparedName = ('Referto_FIGH_' + (partita.matchNumber || 'gara') + '_' + (partita.teamA || 'Casa') + '_' + (partita.teamB || 'Ospiti')).replace(/[^a-z0-9_-]/gi, '_') + '.pdf';
+        const options = { margin: [4, 4, 4, 4], image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', scrollY: 0 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }, pagebreak: { mode: ['css', 'legacy'] } };
+        preparedBlob = await html2pdf().set(options).from(element).toPdf().output('blob');
+        preparedFile = new File([preparedBlob], preparedName, { type: 'application/pdf' });
+        shareButton.disabled = false;
+        shareButton.textContent = '2. CONDIVIDI PDF';
+        hint.textContent = 'PDF pronto. Tocca “2. CONDIVIDI PDF” per aprire subito il pannello di condivisione dell’iPad.';
+        downloadButton.style.display = 'block';
+      } catch (err) {
+        console.error('Errore generazione PDF', err);
+        alert(err && err.message ? err.message : 'Impossibile generare il PDF.');
+        shareButton.disabled = false;
+        shareButton.textContent = 'RIPROVA GENERAZIONE PDF';
+      }
+      return;
+    }
+
+    // Secondo tocco: la chiamata a navigator.share avviene direttamente nel gesto dell'utente.
+    const shareText = 'Referto FIGH: ' + (partita.teamA || 'Casa') + ' - ' + (partita.teamB || 'Ospiti') + ' (' + (partita.finalScoreA ?? partita.scoreA ?? 0) + '-' + (partita.finalScoreB ?? partita.scoreB ?? 0) + ')' + (phoneLabel ? '. Numero destinatario indicato: ' + phoneLabel : '');
     try {
-      if (!window.html2pdf) throw new Error('Libreria PDF non disponibile. Controlla la connessione internet e riprova.');
-      const element = document.getElementById('page');
-      if (!element) throw new Error('Non trovo il referto da convertire in PDF.');
-      const fileName = ('Referto_FIGH_' + (partita.matchNumber || 'gara') + '_' + (partita.teamA || 'Casa') + '_' + (partita.teamB || 'Ospiti')).replace(/[^a-z0-9_-]/gi, '_') + '.pdf';
-      const options = { margin: [4, 4, 4, 4], filename: fileName, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', scrollY: 0 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }, pagebreak: { mode: ['css', 'legacy'] } };
-      const blob = await html2pdf().set(options).from(element).toPdf().output('blob');
-      const file = new File([blob], fileName, { type: 'application/pdf' });
-      const shareText = 'Referto FIGH: ' + (partita.teamA || 'Casa') + ' - ' + (partita.teamB || 'Ospiti') + ' (' + (partita.finalScoreA ?? partita.scoreA ?? 0) + '-' + (partita.finalScoreB ?? partita.scoreB ?? 0) + ')' + (phoneLabel ? '. Destinatario indicato: ' + phoneLabel : '');
-      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: 'Referto FIGH', text: shareText });
-        btn.textContent = 'PDF CONDIVISO';
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [preparedFile] })) {
+        const sharePromise = navigator.share({ files: [preparedFile], title: 'Referto FIGH', text: shareText });
+        shareButton.disabled = true;
+        shareButton.textContent = 'APERTURA CONDIVISIONE…';
+        await sharePromise;
+        shareButton.textContent = 'CONDIVISIONE COMPLETATA';
+        hint.textContent = 'Se hai scelto WhatsApp, completa lì l’invio del documento.';
       } else {
-        const objectUrl = URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = objectUrl; a.download = fileName; a.click();
-        setTimeout(() => URL.revokeObjectURL(objectUrl), 30000);
-        alert('Il PDF è stato preparato. Il browser non supporta la condivisione diretta: apri WhatsApp e allega il file PDF appena scaricato.');
-        btn.textContent = 'PDF PRONTO';
+        downloadPreparedPdf();
+        hint.textContent = 'La condivisione diretta di file non è disponibile in questo browser. Il PDF è stato scaricato: apri WhatsApp e allegalo alla chat desiderata.';
+        downloadButton.style.display = 'block';
+        shareButton.textContent = 'PDF SCARICATO';
       }
     } catch (err) {
-      console.error('Errore generazione/condivisione PDF', err);
-      alert(err && err.message ? err.message : 'Impossibile generare o condividere il PDF.');
-      btn.disabled = false; btn.textContent = 'RIPROVA GENERAZIONE PDF';
+      console.error('Errore condivisione PDF', err);
+      if (err && err.name === 'AbortError') {
+        shareButton.disabled = false;
+        shareButton.textContent = '2. CONDIVIDI PDF';
+        hint.textContent = 'Condivisione annullata. Tocca di nuovo per riprovare oppure scarica il PDF.';
+        return;
+      }
+      // Se iPadOS rifiuta la condivisione, non perdere il PDF già creato.
+      downloadPreparedPdf();
+      downloadButton.style.display = 'block';
+      shareButton.disabled = false;
+      shareButton.textContent = 'RIPROVA CONDIVISIONE';
+      hint.textContent = 'Safari ha bloccato la condivisione diretta. Il PDF è stato scaricato; puoi riprovare o allegarlo manualmente in WhatsApp.';
+      alert('Safari non ha consentito la condivisione diretta. Ho avviato il download del PDF: puoi allegarlo manualmente in WhatsApp.');
     }
   };
 });

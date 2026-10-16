@@ -19,7 +19,7 @@ Il workflow imposta automaticamente il percorso corretto in base al nome del rep
 1. Apri l'URL pubblicato con Safari su iPad e attendi il caricamento completo.
 2. Prova ad aprire la gestione gara e verifica i comandi principali.
 3. Per il referto, usa una gara di prova: controlla che il referto FIGH si apra e che il comando di uscita non mostri la schermata iniziale.
-4. Prova **INVIA PDF VIA WHATSAPP**: inserisci il numero, genera il PDF e scegli WhatsApp dal pannello Condividi di iPad. L'invio finale richiede la conferma dell'utente; un sito web non può inviare in autonomia un allegato a un contatto WhatsApp specifico.
+4. Prova **INVIA PDF VIA WHATSAPP**: inserisci il numero, genera il PDF con il primo tocco, poi tocca di nuovo per aprire il pannello Condividi di iPad e scegliere WhatsApp. L'invio finale richiede la conferma dell'utente; un sito web non può inviare in autonomia un allegato a un contatto WhatsApp specifico.
 5. Verifica che il PDF contenga tutte le pagine e che i dati della gara siano corretti prima di usarlo in una partita ufficiale.
 
 ## Importante
