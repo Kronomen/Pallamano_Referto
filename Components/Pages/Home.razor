@@ -386,8 +386,8 @@
                     <h3><span>01</span> Dati della gara</h3>
                     <div class="manual-data-grid">
                         <label>Numero gara<input @bind="Game.State.MatchNumber" @bind:event="oninput" placeholder="Es. 447" /></label>
-                        <label>Data<input type="date" value="@Game.State.MatchDate" @oninput="OnMatchDateInput" /></label>
-                        <label>Ora<input type="time" value="@Game.State.MatchTime" @oninput="OnMatchTimeInput" /></label>
+                        <label class="manual-date-field">Data<input type="date" value="@Game.State.MatchDate" @oninput="OnMatchDateInput" /></label>
+                        <label class="manual-time-field">Ora<input type="time" value="@Game.State.MatchTime" @oninput="OnMatchTimeInput" /></label>
                         <label>Campionato<input @bind="Game.State.Championship" @bind:event="oninput" placeholder="Es. Serie A2 Femminile" /></label>
                         <label>Località<input @bind="Game.State.City" @bind:event="oninput" placeholder="Città" /></label>
                         <label>Impianto<input @bind="Game.State.Venue" @bind:event="oninput" placeholder="Nome impianto" /></label>
@@ -396,17 +396,18 @@
                         <label>Arbitro 2<input @bind="Game.State.Referee2" @bind:event="oninput" /></label>
                         <label>Delegato 1<input @bind="Game.State.Delegate1" @bind:event="oninput" /></label>
                         <label>Delegato 2<input @bind="Game.State.Delegate2" @bind:event="oninput" /></label>
-                        <label>Cronometrista<input @bind="Game.State.Timekeeper" @bind:event="oninput" /></label>
-                        <label>Segretario<input @bind="Game.State.Secretary" @bind:event="oninput" /></label>
                     </div>
                 </section>
                 <div class="manual-teams-grid">
                     <section class="manual-team-card manual-team-home">
                         <header><span class="manual-team-dot"></span><div><h3>Squadra di casa</h3><p>Inserisci numero di maglia e nome dei giocatori.</p></div></header>
                         <label class="manual-team-name">Nome squadra<input @bind="Game.State.Casa.Name" @bind:event="oninput" placeholder="Squadra di casa" /></label>
-                        <div class="manual-table-wrap"><table class="manual-roster-table"><thead><tr><th>N°</th><th>Nome e cognome</th></tr></thead><tbody>
-                        @for (var i = 0; i < 16; i++) { var ix = i;
-                            <tr><td><input class="manual-jersey" type="text" inputmode="numeric" maxlength="2" value='@GetNumberLabel("A", ix)' @oninput='e => SetNumberLabel("A", ix, e.Value?.ToString())' aria-label="Numero giocatore casa @(ix + 1)" /></td><td><input class="manual-name-input" @bind="Game.State.Casa.PlayerNames[ix]" @bind:event="oninput" placeholder="Giocatore @(ix + 1)" /></td></tr>
+                        <div class="manual-table-wrap"><table class="manual-roster-table manual-player-two-column"><thead><tr><th>N°</th><th>Nome e cognome</th><th>N°</th><th>Nome e cognome</th></tr></thead><tbody>
+                        @for (var i = 0; i < 8; i++) { var ix = i; var jx = i + 8;
+                            <tr>
+                                <td><input class="manual-jersey" type="text" inputmode="numeric" maxlength="2" value='@GetNumberLabel("A", ix)' @oninput='e => SetNumberLabel("A", ix, e.Value?.ToString())' aria-label="Numero giocatore casa @(ix + 1)" /></td><td><input class="manual-name-input" @bind="Game.State.Casa.PlayerNames[ix]" @bind:event="oninput" placeholder="Giocatore @(ix + 1)" /></td>
+                                <td><input class="manual-jersey" type="text" inputmode="numeric" maxlength="2" value='@GetNumberLabel("A", jx)' @oninput='e => SetNumberLabel("A", jx, e.Value?.ToString())' aria-label="Numero giocatore casa @(jx + 1)" /></td><td><input class="manual-name-input" @bind="Game.State.Casa.PlayerNames[jx]" @bind:event="oninput" placeholder="Giocatore @(jx + 1)" /></td>
+                            </tr>
                         }
                         </tbody></table></div>
                         <h4>Dirigenti</h4>
@@ -419,9 +420,12 @@
                     <section class="manual-team-card manual-team-away">
                         <header><span class="manual-team-dot"></span><div><h3>Squadra ospite</h3><p>Inserisci numero di maglia e nome dei giocatori.</p></div></header>
                         <label class="manual-team-name">Nome squadra<input @bind="Game.State.Ospiti.Name" @bind:event="oninput" placeholder="Squadra ospite" /></label>
-                        <div class="manual-table-wrap"><table class="manual-roster-table"><thead><tr><th>N°</th><th>Nome e cognome</th></tr></thead><tbody>
-                        @for (var i = 0; i < 16; i++) { var ix = i;
-                            <tr><td><input class="manual-jersey" type="text" inputmode="numeric" maxlength="2" value='@GetNumberLabel("B", ix)' @oninput='e => SetNumberLabel("B", ix, e.Value?.ToString())' aria-label="Numero giocatore ospite @(ix + 1)" /></td><td><input class="manual-name-input" @bind="Game.State.Ospiti.PlayerNames[ix]" @bind:event="oninput" placeholder="Giocatore @(ix + 1)" /></td></tr>
+                        <div class="manual-table-wrap"><table class="manual-roster-table manual-player-two-column"><thead><tr><th>N°</th><th>Nome e cognome</th><th>N°</th><th>Nome e cognome</th></tr></thead><tbody>
+                        @for (var i = 0; i < 8; i++) { var ix = i; var jx = i + 8;
+                            <tr>
+                                <td><input class="manual-jersey" type="text" inputmode="numeric" maxlength="2" value='@GetNumberLabel("B", ix)' @oninput='e => SetNumberLabel("B", ix, e.Value?.ToString())' aria-label="Numero giocatore ospite @(ix + 1)" /></td><td><input class="manual-name-input" @bind="Game.State.Ospiti.PlayerNames[ix]" @bind:event="oninput" placeholder="Giocatore @(ix + 1)" /></td>
+                                <td><input class="manual-jersey" type="text" inputmode="numeric" maxlength="2" value='@GetNumberLabel("B", jx)' @oninput='e => SetNumberLabel("B", jx, e.Value?.ToString())' aria-label="Numero giocatore ospite @(jx + 1)" /></td><td><input class="manual-name-input" @bind="Game.State.Ospiti.PlayerNames[jx]" @bind:event="oninput" placeholder="Giocatore @(jx + 1)" /></td>
+                            </tr>
                         }
                         </tbody></table></div>
                         <h4>Dirigenti</h4>
