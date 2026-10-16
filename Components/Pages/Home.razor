@@ -444,6 +444,24 @@
     </div></div>
 }
 
+@if (ShowWhatsAppDialog)
+{
+    <div class="overlay">
+        <div class="dialog-card" style="max-width:480px;width:calc(100% - 32px);">
+            <div class="dialog-kicker">INVIO REFERTO FIGH</div>
+            <h2>Invia il referto via WhatsApp</h2>
+            <p>Inserisci il numero del destinatario con prefisso internazionale (es. +39...). Il programma preparerà il PDF e aprirà la condivisione di iPad.</p>
+            <label for="whatsappPhone" style="display:block;font-weight:700;margin:12px 0 6px;">Numero di telefono</label>
+            <input id="whatsappPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+39 333 1234567" @bind="WhatsAppPhone" style="width:100%;padding:12px;border-radius:8px;border:1px solid #64748b;font-size:18px;box-sizing:border-box;" />
+            <p style="font-size:12px;opacity:.8;">Nota: iPad non permette ai siti web di inviare automaticamente un allegato a un numero WhatsApp specifico. Dopo la generazione del PDF, scegli WhatsApp dal pannello Condividi e seleziona il destinatario.</p>
+            <div class="dialog-grid" style="margin-top:16px;">
+                <button type="button" class="primary" @onclick="ShareRefertoWhatsApp">GENERA PDF E CONDIVIDI</button>
+                <button type="button" @onclick="CloseWhatsAppDialog">ANNULLA</button>
+            </div>
+        </div>
+    </div>
+}
+
 @if (Game.ShowMatchEnd)
 {
     <div class="overlay match-end-overlay">
@@ -467,6 +485,7 @@
             }
             <div class="match-end-actions">
                 <button type="button" class="primary" @onclick="PrintReferto">▣ APRI REFERTO FIGH</button>
+                <button type="button" class="whatsapp-referto-button" @onclick="OpenWhatsAppDialog">INVIA PDF VIA WHATSAPP</button>
                 <button type="button" @onclick="Game.CloseMatchEnd">CHIUDI</button>
                 <button type="button" class="danger" @onclick="ExitApplication">⇱ ESCI DAL PROGETTO</button>
             </div>
@@ -586,6 +605,18 @@
 }
 
 @code {
+    private bool ShowWhatsAppDialog { get; set; }
+    private string WhatsAppPhone { get; set; } = "";
+
+    private void OpenWhatsAppDialog() { WhatsAppPhone = ""; ShowWhatsAppDialog = true; }
+    private void CloseWhatsAppDialog() => ShowWhatsAppDialog = false;
+    private async Task ShareRefertoWhatsApp()
+    {
+        var phone = new string((WhatsAppPhone ?? "").Where(char.IsDigit).ToArray());
+        if (phone.Length < 8) { await JS.InvokeVoidAsync("alert", "Inserisci un numero di telefono valido con prefisso internazionale."); return; }
+        ShowWhatsAppDialog = false;
+        await SendRefertoData(phone);
+    }
     private static readonly (string Name, string Hex)[] TeamColors = [
         ("BLU", "#2563eb"), ("VIOLA", "#7c3aed"), ("VERDE", "#16a34a"),
         ("ARANCIONE", "#ea580c"), ("NERO", "#111827"),
@@ -1036,7 +1067,9 @@
     public sealed class ImportedPlayer { public string? Number { get; set; } public string? Name { get; set; } }
     public sealed class ImportedStaff { public string? Letter { get; set; } public string? Name { get; set; } }
 
-    private async Task PrintReferto()
+    private Task PrintReferto() => SendRefertoData(null);
+
+    private async Task SendRefertoData(string? whatsappPhone)
     {
         // Il referto viene costruito dal modello HTML ufficiale FIGH presente in wwwroot/RefertoFIGH.html.
         // Qui passiamo soltanto i dati già presenti nel progetto.
@@ -1135,7 +1168,7 @@
             shootoutScoreB = Game.State.ShootoutScoreB,
             scoreA = Game.State.ScoreA,
             scoreB = Game.State.ScoreB
-        });
+        }, whatsappPhone);
     }
 
     public async void Dispose()

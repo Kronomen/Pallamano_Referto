@@ -1,30 +1,27 @@
-# Referto Pallamano — GitHub Pages
+# Referto Pallamano — pacchetto per GitHub Pages e iPad
 
-Progetto Blazor WebAssembly in C#, predisposto per la pubblicazione su GitHub Pages.
+Questa cartella contiene il progetto Blazor WebAssembly e il workflow che compila e pubblica il sito su GitHub Pages.
 
-## Caricamento nel repository
+## Caricamento su GitHub
 
-1. Apri il repository GitHub `Referto_Pallamano` dell'account `kronomen` (oppure crea un repository con questo nome).
+1. Crea su GitHub un repository, per esempio `Referto_Pallamano`.
 2. Estrai questo ZIP sul computer.
-3. Carica **tutti i file e le cartelle contenuti nello ZIP nella radice del repository**. Non caricare lo ZIP come singolo file e non caricare la cartella contenitore. La cartella `.github/workflows` deve essere presente nella radice.
-4. Salva/committa i file sul branch `main`.
-5. In GitHub apri **Settings → Pages** e seleziona **GitHub Actions** come origine della pubblicazione.
-6. Apri **Actions** e attendi il completamento di `Deploy Referto Pallamano`.
+3. Apri la cartella estratta: devi vedere subito `RefertoPallamano_Blazor.csproj`, `Program.cs`, `Components`, `Models`, `Services`, `wwwroot` e `.github`. **Non caricare la cartella contenitore esterna**: carica il contenuto di questa cartella nella radice del repository.
+4. In GitHub scegli **Add file → Upload files**, trascina tutti i file e le cartelle, quindi fai **Commit changes** sul branch `main`.
+5. Apri la scheda **Actions** e attendi che `Deploy Referto Pallamano` termini con esito verde.
+6. In **Settings → Pages**, se richiesto, seleziona la pubblicazione tramite **GitHub Actions**.
+7. Apri l'indirizzo indicato dal deployment. Per un repository chiamato `Referto_Pallamano`, sarà in genere `https://NOMEUTENTE.github.io/Referto_Pallamano/`.
 
-Se il repository è `kronomen/Referto_Pallamano`, l'indirizzo previsto è:
+Il workflow imposta automaticamente il percorso corretto in base al nome del repository: non è necessario modificare manualmente `wwwroot/index.html` se scegli un nome diverso.
 
-`https://kronomen.github.io/Referto_Pallamano/`
+## Prova su iPad
 
-## Esecuzione locale
+1. Apri l'URL pubblicato con Safari su iPad e attendi il caricamento completo.
+2. Prova ad aprire la gestione gara e verifica i comandi principali.
+3. Per il referto, usa una gara di prova: controlla che il referto FIGH si apra e che il comando di uscita non mostri la schermata iniziale.
+4. Prova **INVIA PDF VIA WHATSAPP**: inserisci il numero, genera il PDF e scegli WhatsApp dal pannello Condividi di iPad. L'invio finale richiede la conferma dell'utente; un sito web non può inviare in autonomia un allegato a un contatto WhatsApp specifico.
+5. Verifica che il PDF contenga tutte le pagine e che i dati della gara siano corretti prima di usarlo in una partita ufficiale.
 
-Richiede il .NET 10 SDK. Dalla cartella che contiene `RefertoPallamano_Blazor.csproj`, esegui:
+## Importante
 
-```bash
-dotnet restore
-dotnet build
-dotnet run
-```
-
-## Nota
-
-Il workflow usa .NET 10 e pubblica automaticamente a ogni push sul branch `main`. Prima dell'uso ufficiale, testare l'applicazione e la stampa con una gara di prova.
+Il pacchetto è predisposto per la pubblicazione su GitHub Pages. La pubblicazione deve essere completata sul tuo account GitHub e la prova effettiva su iPad deve essere eseguita sul dispositivo: da questo ambiente non posso accedere al tuo account né controllare fisicamente il comportamento di Safari/WhatsApp sul tuo iPad.

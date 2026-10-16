@@ -75,7 +75,7 @@ window.refertoDownload = (filename, text) => {
 </script>
 
 <script>
-window.stampaReferto = (d) => {
+window.stampaReferto = (d, whatsappPhone = null) => {
   // Il progetto utilizza direttamente il referto HTML ufficiale fornito come modello.
   // I dati Blazor vengono convertiti nel formato atteso da RefertoFIGH.html e
   // salvati nel localStorage condiviso dalla stessa origine.
@@ -172,8 +172,9 @@ window.stampaReferto = (d) => {
     localStorage.setItem('RefertoPallamano', JSON.stringify(partita));
     localStorage.setItem('RefertoFIGH', JSON.stringify(partita));
 
-    const url = new URL('RefertoFIGH.html', document.baseURI).href;
-    const w = window.open(url, '_blank');
+    const url = new URL('RefertoFIGH.html', document.baseURI);
+    if (whatsappPhone) { url.searchParams.set('share', '1'); url.searchParams.set('phone', whatsappPhone); }
+    const w = window.open(url.href, '_blank');
     if (!w) {
       alert('Il browser ha bloccato l’apertura del referto. Consenti i popup per questo sito.');
       return;

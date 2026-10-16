@@ -2499,42 +2499,20 @@ function chiudiPopupStampa(){
 }
 
 function esciReferto(){
+    // Il referto viene aperto dal progetto in una nuova scheda.
+    // Chiudiamo questa scheda, senza tornare alla pagina iniziale
+    // né navigare verso siti esterni. Il comportamento replica ESCI DAL PROGETTO.
+    try { window.close(); } catch(e) {}
 
-    // CHIUDI è l'unico comando che esce da RefertoFIGH.
-    // Ordine di destinazione:
-    // 1) RegistroPostGara
-    // 2) Referto Pallamano
-    // 3) index
-
-    const destinazioni = [
-        "RegistroPostGara.html",
-        "Referto Pallamano.html",
-        "index.html"
-    ];
-
-    function provaDestinazione(indice){
-        if(indice >= destinazioni.length){
-            window.location.href = "https://www.google.it/";
-            return;
-        }
-
-        const url = destinazioni[indice];
-
-        // Verifica che il file esista prima di cambiare pagina.
-        fetch(url, {method:"HEAD", cache:"no-store"})
-            .then(response => {
-                if(response.ok){
-                    window.location.href = url;
-                }else{
-                    provaDestinazione(indice + 1);
-                }
-            })
-            .catch(() => {
-                provaDestinazione(indice + 1);
-            });
-    }
-
-    provaDestinazione(0);
+    // Se il browser/iPad non consente la chiusura automatica,
+    // mostriamo la stessa indicazione usata dal pulsante ESCI del progetto.
+    setTimeout(function(){
+        try {
+            if (!window.closed) {
+                document.body.innerHTML = '<div style="height:100vh;display:grid;place-items:center;background:#eef2f7;font-family:Arial,sans-serif"><div style="padding:30px;text-align:center"><h2>Referto Pallamano</h2><p>Puoi chiudere questa scheda del browser.</p></div></div>';
+            }
+        } catch(e) {}
+    }, 150);
 }
 
 function stampaEdEsci(){
@@ -2555,6 +2533,51 @@ function stampaEdEsci(){
     window.print();
 }
 
+</script>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script>
+window.addEventListener('load', () => {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('share') !== '1') return;
+  const phoneDigits = (params.get('phone') || '').replace(/\D/g, '');
+  const phoneLabel = phoneDigits ? '+' + phoneDigits : '';
+  const bar = document.createElement('div');
+  bar.id = 'sharePdfBar';
+  bar.style.cssText = 'position:fixed;left:10px;right:10px;bottom:10px;z-index:100001;background:#10233f;color:white;padding:12px;border-radius:12px;box-shadow:0 4px 20px #0005;font:14px Arial,sans-serif;display:flex;flex-direction:column;gap:8px;';
+  bar.innerHTML = '<strong>REFERTO PRONTO PER WHATSAPP</strong><span>Destinatario inserito: ' + phoneLabel + '</span><span style="font-size:12px;line-height:1.35">Tocca il pulsante per creare il PDF e aprire la condivisione di iPad. Per motivi di sicurezza iPad non consente a una pagina web di scegliere automaticamente il contatto WhatsApp.</span><button id="sharePdfNow" style="padding:12px;border:0;border-radius:8px;background:#25d366;color:#062b16;font-weight:700;font-size:16px">GENERA PDF E CONDIVIDI</button><button id="closeSharePdf" style="padding:8px;border:1px solid #ffffff66;border-radius:8px;background:transparent;color:white">CHIUDI</button>';
+  document.body.appendChild(bar);
+  document.getElementById('closeSharePdf').onclick = () => bar.remove();
+  document.getElementById('sharePdfNow').onclick = async (event) => {
+    const btn = event.currentTarget;
+    btn.disabled = true; btn.textContent = 'CREAZIONE PDF…';
+    try {
+      if (!window.html2pdf) throw new Error('Libreria PDF non disponibile. Controlla la connessione internet e riprova.');
+      const element = document.getElementById('page');
+      if (!element) throw new Error('Non trovo il referto da convertire in PDF.');
+      const fileName = ('Referto_FIGH_' + (partita.matchNumber || 'gara') + '_' + (partita.teamA || 'Casa') + '_' + (partita.teamB || 'Ospiti')).replace(/[^a-z0-9_-]/gi, '_') + '.pdf';
+      const options = { margin: [4, 4, 4, 4], filename: fileName, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', scrollY: 0 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }, pagebreak: { mode: ['css', 'legacy'] } };
+      const blob = await html2pdf().set(options).from(element).toPdf().output('blob');
+      const file = new File([blob], fileName, { type: 'application/pdf' });
+      const shareText = 'Referto FIGH: ' + (partita.teamA || 'Casa') + ' - ' + (partita.teamB || 'Ospiti') + ' (' + (partita.finalScoreA ?? partita.scoreA ?? 0) + '-' + (partita.finalScoreB ?? partita.scoreB ?? 0) + ')' + (phoneLabel ? '. Destinatario indicato: ' + phoneLabel : '');
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: 'Referto FIGH', text: shareText });
+        btn.textContent = 'PDF CONDIVISO';
+      } else {
+        const objectUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = objectUrl; a.download = fileName; a.click();
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 30000);
+        alert('Il PDF è stato preparato. Il browser non supporta la condivisione diretta: apri WhatsApp e allega il file PDF appena scaricato.');
+        btn.textContent = 'PDF PRONTO';
+      }
+    } catch (err) {
+      console.error('Errore generazione/condivisione PDF', err);
+      alert(err && err.message ? err.message : 'Impossibile generare o condividere il PDF.');
+      btn.disabled = false; btn.textContent = 'RIPROVA GENERAZIONE PDF';
+    }
+  };
+});
 </script>
 
 </body>

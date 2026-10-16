@@ -13,3 +13,8 @@ Dopo i primi 5 tiri per squadra, se il punteggio della serie è pari, la gara pr
 Durante l'oltranza, un giocatore che ha già effettuato un tiro non può essere selezionato nuovamente finché tutti i giocatori eleggibili della sua squadra non hanno effettuato un tiro. Gli espulsi/inibiti restano sempre esclusi. Quando tutti gli eleggibili hanno completato il giro, il gruppo dei potenziali tiratori viene azzerato e tutti gli eleggibili possono tornare a tirare.
 
 Versione layout: v117 — configurazione iPad 11" compatta, pannelli accorciati e barra azioni ridotta.
+
+## Invio referto PDF via WhatsApp da iPad
+A fine gara è disponibile il pulsante **INVIA PDF VIA WHATSAPP**. Inserire il numero del destinatario con prefisso internazionale, quindi scegliere **GENERA PDF E CONDIVIDI** nella pagina del referto. Il PDF viene creato dal modello ufficiale FIGH e inviato al pannello di condivisione nativo di iPadOS; da lì scegliere WhatsApp.
+
+**Limite di iPadOS/WhatsApp:** una pagina web non può forzare WhatsApp ad allegare un file e inviarlo automaticamente a un numero specifico. Per sicurezza il destinatario va selezionato/confermato in WhatsApp. La generazione del PDF e l'apertura della condivisione sono automatizzate. La generazione PDF usa html2pdf.js da CDN e richiede una connessione internet.

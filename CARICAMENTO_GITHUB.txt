@@ -1,0 +1,12 @@
+CARICAMENTO SU GITHUB — REFerto PALLAMANO
+
+1. Crea un repository GitHub chiamato Referto_Pallamano (oppure usa un repository esistente).
+2. Estrai lo ZIP.
+3. Entra nella cartella estratta e carica su GitHub TUTTO IL SUO CONTENUTO, inclusa la cartella nascosta .github. I file del progetto devono trovarsi direttamente nella radice del repository.
+4. Fai Commit changes sul branch main.
+5. Vai in Actions e attendi il completamento verde di “Deploy Referto Pallamano”.
+6. Se necessario, vai in Settings > Pages e seleziona GitHub Actions come metodo di pubblicazione.
+7. Apri l'URL mostrato nel deployment da Safari su iPad.
+
+Il workflow adatta automaticamente il percorso al nome del repository.
+La prova reale su iPad/WhatsApp deve essere fatta sul dispositivo. L'invio del PDF richiede comunque la conferma dell'utente nel pannello Condividi.
