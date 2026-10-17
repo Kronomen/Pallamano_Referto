@@ -15,6 +15,8 @@ public sealed class GameService : IAsyncDisposable
     public (string Team, string Number, bool IsStaff)? PendingYellow { get; private set; }
     public (string Team, int Index)? PendingStaff { get; private set; }
     public bool ShowPeriodEnd { get; private set; }
+    public bool ShowNextPeriod { get; private set; }
+    public string NextPeriodName => State.Phase switch { 1 => "2° TEMPO", 3 => "2° TEMPO SUPPLEMENTARE", 5 => "4° TEMPO SUPPLEMENTARE", _ => PhaseName(Math.Min(State.Phase + 1, 6)) };
     public bool ShowShootoutStart { get; private set; }
     public bool ShowShootoutFirstTeam { get; private set; }
     public bool ShowShootoutWinner { get; private set; }
@@ -79,7 +81,7 @@ public sealed class GameService : IAsyncDisposable
     public void Reset()
     {
         StopClock(); State = CreateNewGame(); State.MiniTimerSeconds = 0; State.MiniTimerRunning = false; ClearPending(); _undoState = null;
-        PeriodStartConfirmed = true; ShowPeriodEnd = false; ShowShootoutStart = false; ShowShootoutFirstTeam = false; ShowShootoutWinner = false; ShowMatchEnd = false; PendingShootout = null; ShowConfiguration = true; ValidationError = null; Notify();
+        PeriodStartConfirmed = true; ShowPeriodEnd = false; ShowNextPeriod = false; State.PeriodEndAcknowledged = false; ShowShootoutStart = false; ShowShootoutFirstTeam = false; ShowShootoutWinner = false; ShowMatchEnd = false; PendingShootout = null; ShowConfiguration = true; ValidationError = null; Notify();
     }
 
     public bool SelectEvent(string type)
@@ -539,27 +541,61 @@ public sealed class GameService : IAsyncDisposable
     public void FinishCurrentPeriod()
     {
         if (State.Phase is < 1 or > 6 || State.MatchFinished || State.ShootoutStarted) return;
-        StopClock();
-        State.TimerSeconds = GetCurrentPeriodEndSeconds();
-        State.PhaseScores[State.Phase] = ScoreText();
-        AddSystemEvent($"FINE {PhaseName(State.Phase)}");
-        PeriodStartConfirmed = false;
-        ShowPeriodEnd = true;
+        if (ShowPeriodEnd || ShowNextPeriod) return;
+
+        // Primo passaggio: si chiude il tempo e si mostra il popup. Dopo l'OK
+        // l'operatore può inserire o correggere eventi senza avviare il periodo seguente.
+        if (!State.PeriodEndAcknowledged)
+        {
+            StopClock();
+            State.TimerSeconds = GetCurrentPeriodEndSeconds();
+            State.PhaseScores[State.Phase] = ScoreText();
+            if (!State.Events.Any(e => e.Type == "SYSTEM" && e.Text == $"FINE {PhaseName(State.Phase)}"))
+                AddSystemEvent($"FINE {PhaseName(State.Phase)}");
+            PeriodStartConfirmed = false;
+            ShowPeriodEnd = true;
+            Notify();
+            return;
+        }
+
+        // Secondo passaggio: dopo la revisione degli eventi, si chiede conferma
+        // per il periodo successivo. Se invece è una situazione conclusiva,
+        // viene mostrato il popup risultato finale (o quello dei rigori).
+        if (IsFinalDecisionPoint())
+        {
+            NextPeriod();
+            return;
+        }
+
+        ShowNextPeriod = true;
         Notify();
     }
 
     public void ClosePeriodDialog()
     {
-        // Nel flusso gara il pulsante CHIUDI del popup di fine periodo equivale
-        // alla conferma del passaggio successivo. In particolare, al termine del
-        // 1° tempo porta SEMPRE al 2° tempo; non può mai chiudere la gara.
-        if (ShowPeriodEnd && !State.MatchFinished && !State.ShootoutStarted)
-        {
-            NextPeriod();
-            return;
-        }
+        if (!ShowPeriodEnd || State.MatchFinished || State.ShootoutStarted) return;
         ShowPeriodEnd = false;
+        State.PeriodEndAcknowledged = true;
         Notify();
+    }
+
+    public void ConfirmNextPeriod()
+    {
+        if (!ShowNextPeriod || !State.PeriodEndAcknowledged || State.MatchFinished || State.ShootoutStarted) return;
+        ShowNextPeriod = false;
+        NextPeriod();
+    }
+
+    private bool IsFinalDecisionPoint()
+    {
+        var decided = State.ScoreA != State.ScoreB;
+        return State.Phase switch
+        {
+            2 => State.MatchMode == "STANDARD" || State.MatchMode == "RIGORI" || decided,
+            4 => decided,
+            6 => true,
+            _ => false
+        };
     }
 
     // Sequenza gara allineata alle regole del precedente Referto HTML:
@@ -574,6 +610,7 @@ public sealed class GameService : IAsyncDisposable
         if (PeriodStartConfirmed || State.MatchFinished || State.ShootoutStarted) return false;
 
         ShowPeriodEnd = false;
+        ShowNextPeriod = false;
 
         switch (State.Phase)
         {
@@ -656,6 +693,7 @@ public sealed class GameService : IAsyncDisposable
         if (phase < 1 || phase > 6 || State.MatchFinished || State.ShootoutStarted) return;
 
         State.Phase = phase;
+        State.PeriodEndAcknowledged = false;
         State.TimerSeconds = GetPeriodStartSeconds(phase);
         // Il possesso va confermato all'inizio di ogni periodo (dopo il cambio campo/intervallo).
         State.PossessionTeam = "";
@@ -677,6 +715,8 @@ public sealed class GameService : IAsyncDisposable
         State.MiniTimerRunning = false;
         PeriodStartConfirmed = true;
         ShowPeriodEnd = false;
+        ShowNextPeriod = false;
+        State.PeriodEndAcknowledged = false;
         ShowShootoutStart = true;
         Notify();
     }
@@ -689,6 +729,8 @@ public sealed class GameService : IAsyncDisposable
         State.MiniTimerRunning = false;
         PeriodStartConfirmed = true;
         ShowPeriodEnd = false;
+        ShowNextPeriod = false;
+        State.PeriodEndAcknowledged = false;
         ShowShootoutStart = false;
         ShowMatchEnd = true;
         var result = ScoreText();
@@ -1214,7 +1256,14 @@ public sealed class GameService : IAsyncDisposable
             State.TimeoutAOpponentPossessionObserved = TimeoutCount("A") == 0;
             State.TimeoutBOpponentPossessionObserved = TimeoutCount("B") == 0;
         }
-        State.MiniTimerRunning = false; ClearPending(); PendingShootout = null; ShowShootoutStart = false; ShowShootoutFirstTeam = false; ShowShootoutWinner = false; ShowMatchEnd = false; _undoState = null; PeriodStartConfirmed = !State.MatchFinished && !State.ShootoutStarted; Notify();
+        State.MiniTimerRunning = false; ClearPending(); PendingShootout = null;
+        ShowNextPeriod = false; ShowShootoutStart = false; ShowShootoutFirstTeam = false; ShowShootoutWinner = false;
+        var phaseAtEnd = State.Phase is >= 1 and <= 6 && State.TimerSeconds >= GetCurrentPeriodEndSeconds() && State.PhaseScores.ContainsKey(State.Phase);
+        ShowPeriodEnd = !State.MatchFinished && !State.ShootoutStarted && phaseAtEnd && !State.PeriodEndAcknowledged;
+        ShowMatchEnd = State.MatchFinished;
+        _undoState = null;
+        PeriodStartConfirmed = !State.MatchFinished && !State.ShootoutStarted && !State.PeriodEndAcknowledged && !ShowPeriodEnd;
+        Notify();
     }
     public string ScoreText() => $"{State.ScoreA}-{State.ScoreB}";
     public static string FormatTime(int seconds) => $"{Math.Max(0, seconds) / 60:00}:{Math.Max(0, seconds) % 60:00}";
@@ -1328,8 +1377,10 @@ public sealed class GameService : IAsyncDisposable
                         State.Running = false;
                         State.MiniTimerRunning = false;
                         PeriodStartConfirmed = false;
+                        State.PeriodEndAcknowledged = false;
                         State.PhaseScores[State.Phase] = ScoreText();
-                        AddSystemEvent($"FINE {PhaseName(State.Phase)}");
+                        if (!State.Events.Any(e => e.Type == "SYSTEM" && e.Text == $"FINE {PhaseName(State.Phase)}"))
+                            AddSystemEvent($"FINE {PhaseName(State.Phase)}");
                         ShowPeriodEnd = true;
                         Notify();
                         break;

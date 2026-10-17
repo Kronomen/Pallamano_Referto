@@ -201,7 +201,7 @@
         </main>
 
         <footer class="bottom-bar">
-            <button @onclick="SaveGame">💾 SALVA GARA</button><button @onclick="RestoreRecovery">↩ RIPRISTINA</button><button @onclick="LoadMatchData">📥 CARICA DATI GARA</button><button @onclick="PrintReferto">📄 REFERTO</button><button @onclick="Game.OpenConfiguration" disabled="@Game.State.MatchStarted">⚙ CONFIGURAZIONE</button><button @onclick="Game.FinishCurrentPeriod" disabled="@(Game.State.MatchFinished || Game.State.ShootoutStarted)">FINE PERIODO</button><button @onclick="ProceedToNextPeriod" disabled="@(Game.PeriodStartConfirmed || Game.State.MatchFinished)">PROSSIMO PERIODO</button>        <div class="mini-timer-card mini-timer-toolbar">
+            <button @onclick="SaveGame">💾 SALVA GARA</button><button @onclick="RestoreRecovery">↩ RIPRISTINA</button><button @onclick="LoadMatchData">📥 CARICA DATI GARA</button><button @onclick="PrintReferto">📄 REFERTO</button><button @onclick="Game.OpenConfiguration" disabled="@Game.State.MatchStarted">⚙ CONFIGURAZIONE</button><button @onclick="Game.FinishCurrentPeriod" disabled="@(Game.State.MatchFinished || Game.State.ShootoutStarted)">FINE PERIODO</button>        <div class="mini-timer-card mini-timer-toolbar">
             <div class="mini-timer-label">CRONOMETRO</div>
             <div class="mini-timer-display">@GameService.FormatTime(Game.GetMiniTimerSeconds())</div>
         </div>
@@ -407,7 +407,7 @@
                     <span>—</span>
                     <strong>@Game.State.ScoreB</strong>
                 </div>
-                <p>Confermare la fine del periodo</p>
+                <p>Il cronometro resterà fermo. Dopo l’OK potrai aggiungere o correggere gli eventi prima di passare al periodo successivo.</p>
                 <div class="period-end-actions-top">
                     <button type="button" class="period-end-referto" @onclick="PrintReferto">▣&nbsp; APRI REFERTO FIGH</button>
                     @if (Game.State.Phase > 1)
@@ -415,7 +415,32 @@
                         <button type="button" class="period-end-exit" @onclick="ExitApplication">⇱&nbsp; ESCI DAL PROGETTO</button>
                     }
                 </div>
-                <button type="button" class="period-end-close" @onclick="Game.ClosePeriodDialog">@(Game.State.Phase == 1 ? "INIZIA 2° TEMPO" : "CONFERMA")</button>
+                <button type="button" class="period-end-close" @onclick="Game.ClosePeriodDialog">OK · RIVEDI EVENTI</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (Game.ShowNextPeriod)
+{
+    <div class="overlay period-end-overlay">
+        <div class="period-end-dialog" role="dialog" aria-modal="true" aria-labelledby="next-period-title">
+            <div class="period-end-header">
+                <div class="period-end-header-title">
+                    <span class="period-end-flag" aria-hidden="true">▶</span>
+                    <span>INIZIO PERIODO SUCCESSIVO</span>
+                </div>
+            </div>
+            <div class="period-end-body">
+                <h2 id="next-period-title">Preparazione: @Game.NextPeriodName</h2>
+                <div class="period-end-score-label">RISULTATO AGGIORNATO</div>
+                <div class="period-end-score">
+                    <strong>@Game.State.ScoreA</strong>
+                    <span>—</span>
+                    <strong>@Game.State.ScoreB</strong>
+                </div>
+                <p>Gli eventi del periodo precedente sono stati rivisti. Conferma per passare al periodo successivo. Il cronometro resterà fermo fino alla pressione di START.</p>
+                <button type="button" class="period-end-close" @onclick="Game.ConfirmNextPeriod">OK · PREPARA @Game.NextPeriodName</button>
             </div>
         </div>
     </div>
@@ -467,15 +492,47 @@
 @if (ShowWhatsAppDialog)
 {
     <div class="overlay">
-        <div class="dialog-card" style="max-width:480px;width:calc(100% - 32px);">
+        <div class="dialog-card" style="max-width:620px;width:calc(100% - 28px);max-height:90vh;overflow:auto;">
             <div class="dialog-kicker">INVIO REFERTO FIGH</div>
-            <h2>Invia il referto via WhatsApp</h2>
-            <p>Inserisci il numero del destinatario con prefisso internazionale (es. +39...). Il programma preparerà il PDF e aprirà la condivisione di iPad.</p>
-            <label for="whatsappPhone" style="display:block;font-weight:700;margin:12px 0 6px;">Numero di telefono</label>
-            <input id="whatsappPhone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+39 333 1234567" @bind="WhatsAppPhone" style="width:100%;padding:12px;border-radius:8px;border:1px solid #64748b;font-size:18px;box-sizing:border-box;" />
-            <p style="font-size:12px;opacity:.8;">Nota: iPad non permette ai siti web di inviare automaticamente un allegato a un numero WhatsApp specifico. Dopo la generazione del PDF, scegli WhatsApp dal pannello Condividi e seleziona il destinatario.</p>
+            <h2>Condividi il referto PDF</h2>
+            <p>Inserisci fino a 10 numeri WhatsApp e fino a 10 indirizzi email. Il PDF viene generato una sola volta. Per WhatsApp si aprirà direttamente la chat del numero inserito; dovrai allegare il PDF scaricato e premere INVIA. Per email si apre il programma di posta con gli indirizzi già inseriti; dovrai allegare il PDF scaricato.</p>
+
+            <section style="border:1px solid #cbd5e1;border-radius:10px;padding:12px;margin-top:12px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                    <h3 style="margin:0;font-size:16px;">Destinatari WhatsApp <span style="font-weight:400;font-size:12px;">(@WhatsAppPhones.Count/10)</span></h3>
+                    <button type="button" @onclick="AddWhatsAppPhone" disabled="@(WhatsAppPhones.Count >= 10)" style="padding:6px 10px;">+ AGGIUNGI</button>
+                </div>
+                @for (var i = 0; i < WhatsAppPhones.Count; i++)
+                {
+                    var index = i;
+                    <div @key="index" style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+                        <label style="min-width:22px;font-weight:700;">@(index + 1).</label>
+                        <input type="tel" inputmode="tel" autocomplete="tel" placeholder="+39 333 1234567" @bind="WhatsAppPhones[index]" style="flex:1;min-width:0;padding:9px;border-radius:7px;border:1px solid #94a3b8;font-size:16px;box-sizing:border-box;" />
+                        <button type="button" @onclick="() => RemoveWhatsAppPhone(index)" disabled="@(WhatsAppPhones.Count <= 1)" aria-label="Rimuovi numero" style="padding:7px 10px;">×</button>
+                    </div>
+                }
+                <p style="font-size:12px;margin:8px 0 0;opacity:.8;">L'app apre la chat di un numero per volta. Allega il PDF scaricato e premi INVIA in WhatsApp; poi torna qui per aprire la chat successiva.</p>
+            </section>
+
+            <section style="border:1px solid #cbd5e1;border-radius:10px;padding:12px;margin-top:12px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                    <h3 style="margin:0;font-size:16px;">Destinatari email <span style="font-weight:400;font-size:12px;">(@EmailRecipients.Count/10)</span></h3>
+                    <button type="button" @onclick="AddEmailRecipient" disabled="@(EmailRecipients.Count >= 10)" style="padding:6px 10px;">+ AGGIUNGI</button>
+                </div>
+                @for (var i = 0; i < EmailRecipients.Count; i++)
+                {
+                    var index = i;
+                    <div @key="index" style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+                        <label style="min-width:22px;font-weight:700;">@(index + 1).</label>
+                        <input type="email" inputmode="email" autocomplete="email" placeholder="nome@esempio.it" @bind="EmailRecipients[index]" style="flex:1;min-width:0;padding:9px;border-radius:7px;border:1px solid #94a3b8;font-size:16px;box-sizing:border-box;" />
+                        <button type="button" @onclick="() => RemoveEmailRecipient(index)" disabled="@(EmailRecipients.Count <= 1)" aria-label="Rimuovi email" style="padding:7px 10px;">×</button>
+                    </div>
+                }
+                <p style="font-size:12px;margin:8px 0 0;opacity:.8;">Il programma di posta si apre con tutti gli indirizzi compilati. Per limiti del browser, allega manualmente il PDF scaricato prima di inviare.</p>
+            </section>
+
             <div class="dialog-grid" style="margin-top:16px;">
-                <button type="button" class="primary" @onclick="ShareRefertoWhatsApp">GENERA PDF E CONDIVIDI</button>
+                <button type="button" class="primary" @onclick="ShareRefertoRecipients">PREPARA PDF E DESTINATARI</button>
                 <button type="button" @onclick="CloseWhatsAppDialog">ANNULLA</button>
             </div>
         </div>
@@ -493,19 +550,19 @@
             <div class="match-end-score">@Game.State.ScoreA <span>−</span> @Game.State.ScoreB</div>
             @if (Game.State.ScoreA == Game.State.ScoreB)
             {
-                <div class="match-end-label">RISULTATO FINALE</div>
+                <div class="match-end-label">FINE GARA IN PARITÀ</div>
                 <div class="match-end-team draw">@Game.State.Casa.Name <span>—</span> @Game.State.Ospiti.Name</div>
-                <p>La gara è terminata in parità. Il risultato è stato registrato nel Registro Gara.</p>
+                <p>La gara è terminata in parità. Il risultato finale è stato registrato nel Registro Gara.</p>
             }
             else
             {
-                <div class="match-end-label">SQUADRA VINCENTE</div>
+                <div class="match-end-label">È PROCLAMATA VINCITRICE</div>
                 <div class="match-end-team">@(Game.State.ScoreA > Game.State.ScoreB ? Game.State.Casa.Name : Game.State.Ospiti.Name)</div>
-                <p>La gara è terminata. Il risultato è stato registrato nel Registro Gara e i dati sono pronti per il referto finale.</p>
+                <p>La gara è terminata. La squadra indicata è proclamata vincitrice. Il risultato è stato registrato nel Registro Gara ed è pronto per il referto finale.</p>
             }
             <div class="match-end-actions">
                 <button type="button" class="primary" @onclick="PrintReferto">▣ APRI REFERTO FIGH</button>
-                <button type="button" class="whatsapp-referto-button" @onclick="OpenWhatsAppDialog">INVIA PDF VIA WHATSAPP</button>
+                <button type="button" class="whatsapp-referto-button" @onclick="OpenWhatsAppDialog">CONDIVIDI PDF · WHATSAPP / EMAIL</button>
                 <button type="button" @onclick="Game.CloseMatchEnd">CHIUDI</button>
                 <button type="button" class="danger" @onclick="ExitApplication">⇱ ESCI DAL PROGETTO</button>
             </div>
@@ -628,7 +685,8 @@
 
 @code {
     private bool ShowWhatsAppDialog { get; set; }
-    private string WhatsAppPhone { get; set; } = "";
+    private List<string> WhatsAppPhones { get; set; } = [""];
+    private List<string> EmailRecipients { get; set; } = [""];
     private bool ShowManualConfiguration { get; set; }
 
     private void OpenManualConfiguration() => ShowManualConfiguration = true;
@@ -640,14 +698,39 @@
         StateHasChanged();
     }
 
-    private void OpenWhatsAppDialog() { WhatsAppPhone = ""; ShowWhatsAppDialog = true; }
-    private void CloseWhatsAppDialog() => ShowWhatsAppDialog = false;
-    private async Task ShareRefertoWhatsApp()
+    private void OpenWhatsAppDialog()
     {
-        var phone = new string((WhatsAppPhone ?? "").Where(char.IsDigit).ToArray());
-        if (phone.Length < 8) { await JS.InvokeVoidAsync("alert", "Inserisci un numero di telefono valido con prefisso internazionale."); return; }
+        WhatsAppPhones = [""];
+        EmailRecipients = [""];
+        ShowWhatsAppDialog = true;
+    }
+    private void CloseWhatsAppDialog() => ShowWhatsAppDialog = false;
+    private void AddWhatsAppPhone() { if (WhatsAppPhones.Count < 10) WhatsAppPhones.Add(""); }
+    private void RemoveWhatsAppPhone(int index) { if (WhatsAppPhones.Count > 1 && index >= 0 && index < WhatsAppPhones.Count) WhatsAppPhones.RemoveAt(index); }
+    private void AddEmailRecipient() { if (EmailRecipients.Count < 10) EmailRecipients.Add(""); }
+    private void RemoveEmailRecipient(int index) { if (EmailRecipients.Count > 1 && index >= 0 && index < EmailRecipients.Count) EmailRecipients.RemoveAt(index); }
+    private async Task ShareRefertoRecipients()
+    {
+        var phones = WhatsAppPhones.Select(x => new string((x ?? "").Where(char.IsDigit).ToArray())).Where(x => x.Length > 0).ToArray();
+        var emails = EmailRecipients.Select(x => (x ?? "").Trim()).Where(x => x.Length > 0).ToArray();
+        if (phones.Length == 0 && emails.Length == 0)
+        {
+            await JS.InvokeVoidAsync("alert", "Inserisci almeno un numero WhatsApp o un indirizzo email.");
+            return;
+        }
+        if (phones.Any(x => x.Length < 8 || x.Length > 15))
+        {
+            await JS.InvokeVoidAsync("alert", "Controlla i numeri WhatsApp: inserisci il prefisso internazionale e un numero valido (8–15 cifre).");
+            return;
+        }
+        if (emails.Length > 10 || emails.Any(x => !System.Net.Mail.MailAddress.TryCreate(x, out var address) || address.Address != x))
+        {
+            await JS.InvokeVoidAsync("alert", "Controlla gli indirizzi email inseriti: uno o più indirizzi non sono validi.");
+            return;
+        }
+        if (phones.Length > 10) { await JS.InvokeVoidAsync("alert", "Puoi inserire al massimo 10 numeri WhatsApp."); return; }
         ShowWhatsAppDialog = false;
-        await SendRefertoData(phone);
+        await SendRefertoData(new { phones, emails });
     }
     private static readonly (string Name, string Hex)[] TeamColors = [
         ("BLU", "#2563eb"), ("VIOLA", "#7c3aed"), ("VERDE", "#16a34a"),
@@ -1105,7 +1188,7 @@
 
     private Task PrintReferto() => SendRefertoData(null);
 
-    private async Task SendRefertoData(string? whatsappPhone)
+    private async Task SendRefertoData(object? shareConfig)
     {
         // Il referto viene costruito dal modello HTML ufficiale FIGH presente in wwwroot/RefertoFIGH.html.
         // Qui passiamo soltanto i dati già presenti nel progetto.
@@ -1204,7 +1287,7 @@
             shootoutScoreB = Game.State.ShootoutScoreB,
             scoreA = Game.State.ScoreA,
             scoreB = Game.State.ScoreB
-        }, whatsappPhone);
+        }, shareConfig);
     }
 
     public async void Dispose()

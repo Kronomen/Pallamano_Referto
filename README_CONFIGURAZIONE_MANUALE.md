@@ -18,3 +18,12 @@ Il modulo riutilizza i dati già esistenti del progetto, senza creare una second
 - Al termine del minuto, il popup resta visibile a **00:00** finché l’operatore preme **CHIUDI TIME OUT**. Il pulsante è disabilitato prima della fine del minuto; la chiusura non riavvia il cronometro ufficiale, che riparte solo quando l’operatore preme **START**.
 
 Nella configurazione gara, i campi **Data** e **Ora inizio gara** sono affiancati e compatti; l’ora viene salvata e riportata nei dati del referto.
+
+## Fine periodo e fine gara
+
+Alla fine del tempo il popup iniziale serve soltanto a confermare la chiusura del periodo. Dopo l'OK, il cronometro resta fermo e l'operatore può aggiungere o correggere gli eventi. Premendo nuovamente **FINE PERIODO** si apre la conferma del periodo successivo; dopo l'OK il nuovo periodo è pronto ma il cronometro riparte solo con **START**. Se il periodo chiuso conclude la gara, viene mostrato il popup con la squadra vincente oppure con il risultato finale in parità.
+
+## Invio del referto a più destinatari (WhatsApp ed email)
+La finestra di condivisione consente di inserire fino a 10 numeri WhatsApp e fino a 10 indirizzi email. Il PDF viene generato una sola volta e scaricato sul dispositivo. Per WhatsApp, il programma apre direttamente la chat del numero selezionato, una chat alla volta; l'operatore deve allegare il PDF scaricato e premere INVIA in WhatsApp per ciascun destinatario. Il sito non può inviare autonomamente allegati o certificare la consegna.
+
+Per email, il programma apre il client di posta con tutti gli indirizzi inseriti nei destinatari e scarica il PDF. Per limiti del browser e dello schema `mailto:`, il file non può essere allegato automaticamente: va allegato manualmente dall'app di posta prima dell'invio. La procedura va provata su iPad/Safari e sul client di posta configurato.

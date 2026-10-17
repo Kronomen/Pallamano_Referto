@@ -13,6 +13,8 @@ public sealed class GameState
     public bool MatchStarted { get; set; }
     // True quando la gara è terminata e il JSON deve essere salvato all'uscita dal referto.
     public bool MatchFinished { get; set; }
+    // True dopo che l’operatore ha confermato il popup di fine periodo: consente di rivedere/correggere gli eventi prima di proseguire.
+    public bool PeriodEndAcknowledged { get; set; }
     public int HalfDurationMinutes { get; set; } = 30;
     public int OvertimeDurationMinutes { get; set; } = 5;
     public string MatchMode { get; set; } = "STANDARD";

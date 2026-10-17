@@ -75,7 +75,7 @@ window.refertoDownload = (filename, text) => {
 </script>
 
 <script>
-window.stampaReferto = (d, whatsappPhone = null) => {
+window.stampaReferto = (d, shareConfig = null) => {
   // Il progetto utilizza direttamente il referto HTML ufficiale fornito come modello.
   // I dati Blazor vengono convertiti nel formato atteso da RefertoFIGH.html e
   // salvati nel localStorage condiviso dalla stessa origine.
@@ -173,7 +173,19 @@ window.stampaReferto = (d, whatsappPhone = null) => {
     localStorage.setItem('RefertoFIGH', JSON.stringify(partita));
 
     const url = new URL('RefertoFIGH.html', document.baseURI);
-    if (whatsappPhone) { url.searchParams.set('share', '1'); url.searchParams.set('phone', whatsappPhone); }
+    if (typeof shareConfig === 'string' && shareConfig) {
+      // Compatibilità con i vecchi collegamenti che passavano un solo numero.
+      url.searchParams.set('share', '1');
+      url.searchParams.set('phones', shareConfig);
+    } else if (shareConfig && typeof shareConfig === 'object') {
+      const phones = Array.isArray(shareConfig.phones) ? shareConfig.phones : [];
+      const emails = Array.isArray(shareConfig.emails) ? shareConfig.emails : [];
+      if (phones.length || emails.length) {
+        url.searchParams.set('share', '1');
+        if (phones.length) url.searchParams.set('phones', phones.join(','));
+        if (emails.length) url.searchParams.set('emails', emails.join(','));
+      }
+    }
     const w = window.open(url.href, '_blank');
     if (!w) {
       alert('Il browser ha bloccato l’apertura del referto. Consenti i popup per questo sito.');
