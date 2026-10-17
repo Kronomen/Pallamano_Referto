@@ -7069,3 +7069,175 @@ html,body,#app{overflow:hidden!important;width:100%;height:100%;}
   .ipad11-config-card .config-details-grid .match-main-info-row .match-date-field input { width: 122px !important; }
   .ipad11-config-card .config-details-grid .match-main-info-row .match-time-field input { width: 92px !important; }
 }
+
+
+/* CONTENITORE UNICO VISIBILE: CARICA CONFIGURAZIONE e CONFIGURAZIONE MANUALE DELLE SQUADRE */
+.config-bottom-actions > .config-manual-actions-group {
+    grid-column: span 2;
+    display: grid;
+    grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr);
+    gap: 4px;
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 3px;
+    border: 2px solid #123b67;
+    border-radius: 10px;
+    background: #eaf1f8;
+    align-self: stretch;
+}
+.config-manual-actions-group > button {
+    min-width: 0 !important;
+    width: 100%;
+    height: 100%;
+    max-width: none !important;
+    box-sizing: border-box;
+}
+@media (max-width: 900px) {
+    .config-bottom-actions > .config-manual-actions-group {
+        grid-column: span 2;
+    }
+}
+
+
+/* CARICA CONFIGURAZIONE è collocato nel footer della finestra Configurazione manuale delle squadre. */
+.manual-config-footer-actions { display:flex; align-items:center; justify-content:flex-end; gap:8px; flex:0 0 auto; }
+.manual-config-footer .manual-load-config-button { background:#fff; color:#123b67; border:1px solid #123b67; }
+@media(max-width:900px) { .manual-config-footer-actions { width:100%; } .manual-config-footer-actions button { flex:1; } }
+
+
+/* Titolo principale della finestra Configurazione gara: in alto e con lo stile blu di Configurazione squadre. */
+.ipad11-config-card > .config-main-title {
+    flex: 0 0 34px !important;
+    min-height: 34px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 9px !important;
+    box-sizing: border-box !important;
+    padding: 0 13px !important;
+    margin: 0 !important;
+    border: 1px solid #123b67 !important;
+    border-radius: 9px !important;
+    background: #123b67 !important;
+    color: #fff !important;
+    font-size: 18px !important;
+    font-weight: 950 !important;
+    line-height: 1 !important;
+    letter-spacing: .2px !important;
+    text-transform: uppercase !important;
+}
+.ipad11-config-card > .config-main-title > span { font-size: 20px !important; line-height: 1 !important; }
+@media (max-width: 900px) {
+    .ipad11-config-card > .config-main-title { flex-basis: 30px !important; min-height: 30px !important; font-size: 15px !important; padding: 0 9px !important; }
+    .ipad11-config-card > .config-main-title > span { font-size: 16px !important; }
+}
+
+/* v118 — titoli più leggibili e contenitore Configurazione gara ampliato. */
+.topbar {
+  position: relative !important;
+  height: 76px !important;
+  min-height: 76px !important;
+  flex: 0 0 76px !important;
+  padding: 8px 14px !important;
+  background: #123b67 !important;
+  border: 1px solid #123b67 !important;
+  border-radius: 12px !important;
+  box-sizing: border-box !important;
+}
+.topbar .brand {
+  position: absolute !important;
+  inset: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0 !important;
+  text-align: center !important;
+  pointer-events: none !important;
+}
+.topbar .brand img {
+  position: absolute !important;
+  left: 14px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: 50px !important;
+  height: 50px !important;
+  object-fit: contain !important;
+}
+.topbar .brand > div { text-align: center !important; padding: 0 82px !important; }
+.topbar .federation { font-size: 17px !important; line-height: 1.15 !important; font-weight: 900 !important; color: #fff !important; }
+.topbar .app-title { font-size: 23px !important; line-height: 1.15 !important; font-weight: 950 !important; color: #fff !important; }
+.topbar .phase-box { position: relative !important; z-index: 2 !important; margin-left: auto !important; font-size: 16px !important; font-weight: 950 !important; background: #334155 !important; border: 1px solid #64748b !important; padding: 10px 15px !important; }
+
+/* La finestra Configurazione gara usa meglio lo spazio disponibile e campi più leggibili. */
+.ipad11-config-card {
+  width: min(1450px, calc(100vw - 8px)) !important;
+  height: min(850px, calc(100dvh - 8px)) !important;
+  max-height: calc(100dvh - 8px) !important;
+  padding: 12px 14px !important;
+  gap: 9px !important;
+}
+.ipad11-config-card > .config-main-title {
+  flex-basis: 46px !important;
+  min-height: 46px !important;
+  padding: 0 17px !important;
+  gap: 12px !important;
+  border-radius: 10px !important;
+  font-size: 25px !important;
+  line-height: 1.05 !important;
+}
+.ipad11-config-card > .config-main-title > span { font-size: 26px !important; }
+.ipad11-config-card .config-topbar { gap: 8px !important; }
+.ipad11-config-card .config-duration-top,
+.ipad11-config-card .config-checks-top { min-height: 52px !important; }
+.ipad11-config-card .config-duration-top strong { font-size: 13px !important; }
+.ipad11-config-card .config-duration-top > span { font-size: 13px !important; }
+.ipad11-config-card .config-check-option { font-size: 12px !important; line-height: 1.2 !important; }
+.ipad11-config-card .config-details-grid { gap: 10px !important; }
+.ipad11-config-card .config-details-grid .match-main-info-row,
+.ipad11-config-card .config-details-grid .match-officials-row { gap: 9px !important; }
+.ipad11-config-card .config-details-grid .match-main-info-row label,
+.ipad11-config-card .config-details-grid .match-officials-row label {
+  font-size: 10.5px !important;
+  line-height: 1.15 !important;
+  gap: 4px !important;
+  font-weight: 900 !important;
+}
+.ipad11-config-card .config-details-grid .match-main-info-row input,
+.ipad11-config-card .config-details-grid .match-officials-row input {
+  height: 34px !important;
+  min-height: 34px !important;
+  padding: 5px 8px !important;
+  font-size: 14px !important;
+  border-radius: 6px !important;
+}
+.ipad11-config-card .config-mode-heading { font-size: 12px !important; flex-basis: 20px !important; padding-top: 4px !important; }
+.ipad11-config-card .config-mode-grid { gap: 9px !important; }
+.ipad11-config-card .config-mode-card { min-height: 90px !important; height: 90px !important; padding: 8px !important; gap: 4px !important; }
+.ipad11-config-card .config-mode-card strong { font-size: 14px !important; line-height: 1.1 !important; }
+.ipad11-config-card .config-mode-card small { font-size: 10px !important; line-height: 1.1 !important; }
+.ipad11-config-card .config-bottom-actions button { min-height: 42px !important; font-size: 12px !important; }
+@media (max-width: 900px) {
+  .topbar { height: 64px !important; min-height: 64px !important; flex-basis: 64px !important; }
+  .topbar .brand img { width: 42px !important; height: 42px !important; left: 8px !important; }
+  .topbar .brand > div { padding: 0 66px !important; }
+  .topbar .federation { font-size: 12px !important; }
+  .topbar .app-title { font-size: 17px !important; }
+  .topbar .phase-box { font-size: 12px !important; padding: 7px 9px !important; }
+  .ipad11-config-card { padding: 8px !important; gap: 6px !important; }
+  .ipad11-config-card > .config-main-title { flex-basis: 36px !important; min-height: 36px !important; font-size: 19px !important; padding: 0 10px !important; }
+  .ipad11-config-card > .config-main-title > span { font-size: 20px !important; }
+  .ipad11-config-card .config-details-grid .match-main-info-row label,
+  .ipad11-config-card .config-details-grid .match-officials-row label { font-size: 9px !important; }
+  .ipad11-config-card .config-details-grid .match-main-info-row input,
+  .ipad11-config-card .config-details-grid .match-officials-row input { height: 30px !important; min-height: 30px !important; font-size: 12px !important; }
+  .ipad11-config-card .config-mode-card { min-height: 70px !important; height: 70px !important; }
+  .ipad11-config-card .config-mode-card strong { font-size: 11px !important; }
+  .ipad11-config-card .config-mode-card small { font-size: 8px !important; }
+}
+@media (max-width: 480px) {
+  .topbar .brand img { width: 34px !important; height: 34px !important; left: 5px !important; }
+  .topbar .brand > div { padding: 0 56px !important; }
+  .topbar .federation { font-size: 9px !important; }
+  .topbar .app-title { font-size: 13px !important; }
+  .topbar .phase-box { font-size: 10px !important; padding: 5px 6px !important; }
+}

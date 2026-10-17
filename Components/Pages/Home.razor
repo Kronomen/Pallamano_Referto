@@ -221,6 +221,7 @@
 {
     <div class="overlay config-overlay">
         <div class="config-card ipad11-config-card">
+            <div class="config-main-title"><span aria-hidden="true">⚙</span> CONFIGURAZIONE GARA</div>
             <div class="config-topbar">
                 <div class="config-duration-top">
                     <strong>DURATA DI OGNI TEMPO</strong>
@@ -245,7 +246,6 @@
                 
 
                 <section class="config-center-team">
-                    <div class="config-center-heading"><span>⚙</span> CONFIGURAZIONE GARA</div>
                     <div class="config-details-grid">
                         <div class="match-main-info-row">
                             <label class="match-number-field">NUMERO GARA<input @bind="Game.State.MatchNumber" @bind:event="oninput" /></label>
@@ -286,8 +286,7 @@
             <div class="config-bottom-actions">
                 <button type="button" class="config-back-action" @onclick="CloseConfigWithoutStarting">← TORNA AL REFERTO</button>
                 <button type="button" class="config-save-action" @onclick="SaveConfiguration">▣ REFERTO GARA</button>
-                <button type="button" class="config-load-action" @onclick="LoadMatchData">▤ CARICA CONFIGURAZIONE</button>
-                <button type="button" class="config-manual-action" @onclick="OpenManualConfiguration">✎ CONFIGURAZIONE MANUALE DELLE SQUADRE</button>
+                <button type="button" class="config-manual-action" @onclick="OpenManualConfiguration">✎ CONFIGURAZIONE SQUADRE</button>
                 <button type="button" class="config-reset-action" @onclick="Game.Reset">↻ RESET</button>
                 <button type="button" class="config-exit-action" @onclick="ExitApplication">⇱ ESCI</button>
             </div>
@@ -382,7 +381,7 @@
             </div>
             <footer class="manual-config-footer">
                 <span>Puoi lasciare vuote le righe non utilizzate. I dati vengono riportati nella configurazione della gara.</span>
-                <div><button type="button" class="manual-cancel-button" @onclick="CloseManualConfiguration">ANNULLA</button><button type="button" class="manual-save-button" @onclick="SaveManualConfiguration">✓ SALVA DATI MANUALI</button></div>
+                <div class="manual-config-footer-actions"><button type="button" class="manual-load-config-button" @onclick="LoadMatchData">▤ CARICA CONFIGURAZIONE</button><button type="button" class="manual-cancel-button" @onclick="CloseManualConfiguration">ANNULLA</button><button type="button" class="manual-save-button" @onclick="SaveManualConfiguration">✓ SALVA DATI MANUALI</button></div>
             </footer>
         </section>
     </div>
@@ -1139,6 +1138,8 @@
         LoadPlayers(Game.State.Ospiti, d.PlayersB);
         LoadStaff(Game.State.Casa, d.StaffA);
         LoadStaff(Game.State.Ospiti, d.StaffB);
+        ShowManualConfiguration = false;
+        Game.SetValidationMessage(null);
         StateHasChanged();
     }
 
