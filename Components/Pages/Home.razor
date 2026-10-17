@@ -157,13 +157,17 @@
                 <div class="team-event-zone">
                     <div class="team-event-grid">
                         @foreach (var e in EventTypes) { <button type="button" class="event-button @e.Css @(Game.PendingEvent?.Type == e.Code ? "selected" : "")" @onclick="() => SelectEvent(e.Code)">@e.Label</button> }
-                        <button type="button" class="event-button timeout" @onclick='() => RegisterTimeout("A")' disabled="@(Game.TimeoutCount("A") >= 3)">TIME OUT</button>
+                        @if (Game.State.ControlloPossessoTimeOut)
+                        {
+                            <button type="button" class="event-button possession-button @(Game.State.PossessionTeam == "A" ? "possession-active" : "")" @onclick='() => Game.SetPossessionTeam("A")' disabled="@(Game.State.TimeoutRemainingSeconds > 0)" title="Segna che la squadra di casa è in possesso della palla">PALLA</button>
+                        }
+                        <button type="button" class="event-button timeout" @onclick='() => RegisterTimeout("A")' disabled="@(!Game.CanRequestTimeout("A"))" title="@Game.TimeoutAvailability("A")">TIME OUT</button>
                     </div>
                 </div>
                 <TeamPanel Team="A" Title="CASA" />
             </section>
             <section class="log-panel">
-                <div class="panel-title">REGISTRO GARA <span class="event-edit-hint">@(Game.CanEditEvents ? "· TOCCA UN EVENTO PER MODIFICARLO" : "")</span></div>
+                <div class="panel-title">REGISTRO GARA <span class="event-edit-hint">@(Game.CanEditEvents ? "· TOCCA UN EVENTO PER MODIFICARLO ANCHE A CRONOMETRO ATTIVO" : "")</span></div>
                 <div class="event-list">
                     <div class="event-row event-header"><span>Tempo</span><span>Sq</span><span>N.</span><span>Evento</span><strong>Ris.</strong></div>
                     @for (var displayIndex = Game.State.Events.Count - 1; displayIndex >= 0; displayIndex--)
@@ -185,7 +189,11 @@
 
 <div class="team-event-grid">
                         @foreach (var e in EventTypes) { <button type="button" class="event-button @e.Css @(Game.PendingEvent?.Type == e.Code ? "selected" : "")" @onclick="() => SelectEvent(e.Code)">@e.Label</button> }
-                        <button type="button" class="event-button timeout" @onclick='() => RegisterTimeout("B")' disabled="@(Game.TimeoutCount("B") >= 3)">TIME OUT</button>
+                        @if (Game.State.ControlloPossessoTimeOut)
+                        {
+                            <button type="button" class="event-button possession-button @(Game.State.PossessionTeam == "B" ? "possession-active" : "")" @onclick='() => Game.SetPossessionTeam("B")' disabled="@(Game.State.TimeoutRemainingSeconds > 0)" title="Segna che la squadra ospite è in possesso della palla">PALLA</button>
+                        }
+                        <button type="button" class="event-button timeout" @onclick='() => RegisterTimeout("B")' disabled="@(!Game.CanRequestTimeout("B"))" title="@Game.TimeoutAvailability("B")">TIME OUT</button>
                     </div>
                 </div>
                 <TeamPanel Team="B" Title="OSPITI" />
@@ -229,6 +237,7 @@
                 </div>
                 <div class="config-checks-top config-print-top">
                     <label class="config-check-option"><input type="checkbox" @bind="Game.State.RichiediCartellinoEsclusione" /><span>STAMPA CARTELLINO</span></label>
+                    <label class="config-check-option" title="Se disattivato, l’operatore verifica manualmente il possesso; restano attivi i limiti FIGH sui time-out."><input type="checkbox" @bind="Game.State.ControlloPossessoTimeOut" /><span>CONTROLLO POSSESSO TIME OUT</span></label>
                 </div>
             </div>
 
@@ -238,15 +247,20 @@
                 <section class="config-center-team">
                     <div class="config-center-heading"><span>⚙</span> CONFIGURAZIONE GARA</div>
                     <div class="config-details-grid">
-                        <label>NUMERO GARA<input @bind="Game.State.MatchNumber" @bind:event="oninput" /></label>
-                        <label>DATA<input type="date" value="@Game.State.MatchDate" @oninput="OnMatchDateInput" /></label>
-                        <label>LOCALITÀ<input @bind="Game.State.City" @bind:event="oninput" /></label>
-                        <label>IMPIANTO<input @bind="Game.State.Venue" @bind:event="oninput" /></label>
-                        <label class="championship-field">CAMPIONATO<input @bind="Game.State.Championship" @bind:event="oninput" /></label>
-                        <label class="referee-field">ARBITRO 1<input @bind="Game.State.Referee1" @bind:event="oninput" /></label>
-                        <label class="referee-field">ARBITRO 2<input @bind="Game.State.Referee2" @bind:event="oninput" /></label>
-                        <label class="delegate-field">DELEGATO F.I.G.H. 1<input @bind="Game.State.Delegate1" @bind:event="oninput" /></label>
-                        <label class="delegate-field">DELEGATO F.I.G.H. 2<input @bind="Game.State.Delegate2" @bind:event="oninput" /></label>
+                        <div class="match-main-info-row">
+                            <label class="match-number-field">NUMERO GARA<input @bind="Game.State.MatchNumber" @bind:event="oninput" /></label>
+                            <label class="championship-field">CAMPIONATO<input @bind="Game.State.Championship" @bind:event="oninput" /></label>
+                            <label class="match-date-field">DATA<input type="date" value="@Game.State.MatchDate" @oninput="OnMatchDateInput" /></label>
+                            <label class="match-time-field">ORA INIZIO GARA<input type="time" value="@Game.State.MatchTime" @oninput="OnMatchTimeInput" /></label>
+                            <label class="match-venue-field">IMPIANTO<input @bind="Game.State.Venue" @bind:event="oninput" /></label>
+                            <label class="match-city-field">LOCALITÀ<input @bind="Game.State.City" @bind:event="oninput" /></label>
+                        </div>
+                        <div class="match-officials-row">
+                            <label class="referee-field">ARBITRO 1<input @bind="Game.State.Referee1" @bind:event="oninput" /></label>
+                            <label class="referee-field">ARBITRO 2<input @bind="Game.State.Referee2" @bind:event="oninput" /></label>
+                            <label class="delegate-field">DELEGATO F.I.G.H. 1<input @bind="Game.State.Delegate1" @bind:event="oninput" /></label>
+                            <label class="delegate-field">DELEGATO F.I.G.H. 2<input @bind="Game.State.Delegate2" @bind:event="oninput" /></label>
+                        </div>
                     </div>
                     <div class="config-mode-heading">TIPO DI GARA</div>
                     <div class="config-mode-grid">
@@ -549,6 +563,7 @@
         <div class="dialog-card event-editor-dialog registro-gara">
             <div class="dialog-kicker">REGISTRO GARA</div>
             <h2>MODIFICA EVENTO</h2>
+            <p class="event-editor-live-note">Puoi correggere l'evento anche con il cronometro in movimento.</p>
             <div class="event-editor-grid">
                 <label>Tempo<input type="text" @bind="_editTime" /></label>
                 <label>Squadra
@@ -597,7 +612,7 @@
     </div>
 }
 
-@if (Game.State.TimeoutRemainingSeconds > 0)
+@if (Game.State.TimeoutPopupVisible && Game.State.TimeoutTeam is "A" or "B")
 {
     <div class="overlay timeout-overlay">
         <div class="dialog-card timeout-dialog @(Game.State.TimeoutTeam == "A" ? "timeout-team-a" : "timeout-team-b")">
@@ -605,7 +620,8 @@
             <h2>TIME OUT · @(Game.State.TimeoutTeam == "A" ? Game.State.Casa.Name : Game.State.Ospiti.Name)</h2>
             <div class="timeout-big-countdown timer-layout-adjusted registro-layout-adjusted registro-redesign-shell">@GameService.FormatTime(Game.State.TimeoutRemainingSeconds)</div>
             <p>Il cronometro di gara è fermo.</p>
-            <button type="button" class="timeout-exit-button" @onclick="Game.ExitTimeout">ESCI TIME OUT</button>
+            <div class="timeout-rule-note">Puoi chiudere il time-out anche in anticipo. Il cronometro di gara resta fermo e riparte soltanto quando l’operatore preme START.</div>
+            <button type="button" class="timeout-exit-button" @onclick="Game.ExitTimeout" aria-label="Chiudi il popup del time out">CHIUDI TIME OUT</button>
         </div>
     </div>
 }
@@ -862,10 +878,9 @@
 
     private void OpenEventEditor(int index)
     {
-        // La modifica del Registro Gara è volutamente possibile SOLO a cronometro fermo.
-        // In questo modo l'operatore non può alterare un evento mentre il tempo ufficiale
-        // sta scorrendo. Al tocco di una riga viene aperta una vera finestra di modifica,
-        // come nel precedente referto HTML.
+        // La modifica del Registro Gara è consentita anche a cronometro attivo,
+        // per correggere gli eventi con maggiore precisione senza interrompere la gara.
+        // È temporaneamente bloccata durante time-out, azioni in sospeso e rigori.
         if (!Game.CanEditEvents) return;
         if (index < 0 || index >= Game.State.Events.Count) return;
 
@@ -911,7 +926,7 @@
         if (_editingEvent is null) return;
         if (!Game.CanEditEvents)
         {
-            _eventEditorError = "Il cronometro deve essere fermo per registrare la modifica.";
+            _eventEditorError = "Modifica momentaneamente non disponibile durante un time-out, un'azione in sospeso o i rigori.";
             return;
         }
 

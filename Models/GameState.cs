@@ -18,9 +18,22 @@ public sealed class GameState
     public string MatchMode { get; set; } = "STANDARD";
     public bool CronometroContinuativo { get; set; }
     public bool RichiediCartellinoEsclusione { get; set; }
+    // Se attivo, il programma richiede la selezione del possesso per convalidare il Team Time-Out.
+    // Se disattivo, il possesso è verificato manualmente dall'operatore; restano attivi tutti i limiti FIGH su numero, tempi e supplementari.
+    public bool ControlloPossessoTimeOut { get; set; } = true;
     // Countdown separato del Team Time-Out (1 minuto). Il cronometro gara resta fermo.
     public int TimeoutRemainingSeconds { get; set; }
     public string TimeoutTeam { get; set; } = "";
+    public bool TimeoutPopupVisible { get; set; }
+
+    // Possesso palla dichiarato dall'operatore: è necessario per validare i Team Time-Out.
+    // Stringa vuota = possesso non ancora indicato.
+    public string PossessionTeam { get; set; } = "";
+    // Dopo un TTO, la stessa squadra può richiederne un altro solo dopo che gli avversari
+    // hanno avuto almeno un possesso. Nei vecchi salvataggi, il default conservativo è false
+    // per le squadre che avevano già richiesto un time-out (ricostruito in ImportJson).
+    public bool TimeoutAOpponentPossessionObserved { get; set; } = true;
+    public bool TimeoutBOpponentPossessionObserved { get; set; } = true;
     // True quando la distinta dirigenti è stata importata dal modello Excel.
     // Serve a distinguere le posizioni volutamente mancanti (lettera assente)
     // dalle nuove gare, che devono partire con A-B-C-D-E.

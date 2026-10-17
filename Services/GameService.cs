@@ -25,7 +25,7 @@ public sealed class GameService : IAsyncDisposable
     public string? ValidationError { get; private set; }
     public bool CanUndo => _undoState is not null;
     public string ShootoutWinnerName => State.ShootoutScoreA > State.ShootoutScoreB ? State.Casa.Name : State.Ospiti.Name;
-    public bool CanEditEvents => !State.Running && State.TimeoutRemainingSeconds <= 0 && PendingEvent is null && !State.ShootoutStarted;
+    public bool CanEditEvents => State.TimeoutRemainingSeconds <= 0 && !State.TimeoutPopupVisible && PendingEvent is null && !State.ShootoutStarted;
     public event Action? Changed;
 
     public void OpenConfiguration()
@@ -300,12 +300,18 @@ public sealed class GameService : IAsyncDisposable
 
     public bool EditEvent(int index, string time, string team, string number, string type)
     {
-        // Modifica consentita esclusivamente con il cronometro ufficiale fermo.
+        // La correzione degli eventi è consentita anche con il cronometro in movimento,
+        // così l'operatore può correggere subito un'azione senza fermare la gara.
+        // Resta bloccata durante un time-out, una registrazione in sospeso o i rigori.
         if (!CanEditEvents) return false;
         if (index < 0 || index >= State.Events.Count) return false;
 
         var ev = State.Events[index];
         if (ev.Type == "SYSTEM" || ev.Type is "SHOOTOUT_GOAL" or "SHOOTOUT_MISS") return false;
+        // I TTO registrati non possono essere trasformati in altri eventi o attribuiti
+        // all'altra squadra: non esiste uno storico automatico dei possessi passati.
+        if (IsTimeoutEvent(ev) && (type != "TIMEOUT" || team != ev.Team)) return false;
+        if (type == "TIMEOUT" && !IsTimeoutEvent(ev)) return false;
 
         var parsedTime = ParseTime(time.Trim());
         if (parsedTime < 0 || parsedTime > GetCurrentPeriodEndSeconds()) return false;
@@ -315,6 +321,7 @@ public sealed class GameService : IAsyncDisposable
         if (type == "TIMEOUT")
         {
             number = "";
+            if (!IsEditedTimeoutValid(index, parsedTime, team)) return false;
         }
         else if (!IsValidEditableIdentifier(team, number))
         {
@@ -650,6 +657,8 @@ public sealed class GameService : IAsyncDisposable
 
         State.Phase = phase;
         State.TimerSeconds = GetPeriodStartSeconds(phase);
+        // Il possesso va confermato all'inizio di ogni periodo (dopo il cambio campo/intervallo).
+        State.PossessionTeam = "";
         State.MiniTimerSeconds = 0;
         State.MiniTimerRunning = false;
         State.MatchStarted = true;
@@ -954,8 +963,9 @@ public sealed class GameService : IAsyncDisposable
 
     public void StartStop()
     {
-        // Durante un Team Time-Out il cronometro gara resta fermo fino alla fine del minuto.
-        if (State.TimeoutRemainingSeconds > 0) return;
+        // Durante il Team Time-Out il cronometro gara resta fermo fino al termine
+        // del minuto regolamentare, anche se l'operatore ha già chiuso il popup.
+        if ((State.TimeoutTeam is "A" or "B") || State.TimeoutRemainingSeconds > 0) return;
         if (State.MatchFinished || State.ShootoutStarted || !PeriodStartConfirmed) return;
         if (!State.MatchStarted && !ValidateRoster(out var error)) { ValidationError = error; ShowConfiguration = true; Notify(); return; }
         ValidationError = null; ShowConfiguration = false; State.MatchStarted = true; State.Running = !State.Running;
@@ -1004,15 +1014,92 @@ public sealed class GameService : IAsyncDisposable
     // La panchina ha inoltre la regola separata della sola prima ammonizione.
     public int YellowCountFor(string team) => PlayerYellowCount(team) + StaffYellowCount(team);
 
+    private bool IsTimeoutEvent(EventRecord e) => e.Type is "TIMEOUT" or "T.O." or "TO";
+
+    private bool TryGetRegularPhaseForTime(int seconds, out int phase)
+    {
+        var firstHalfEnd = State.HalfDurationMinutes * 60;
+        var regulationEnd = firstHalfEnd * 2;
+        if (seconds >= 0 && seconds < firstHalfEnd) { phase = 1; return true; }
+        if (seconds >= firstHalfEnd && seconds < regulationEnd) { phase = 2; return true; }
+        phase = 0;
+        return false;
+    }
+
+    private int TimeoutCountInPhase(string team, int phase, int excludedIndex = -1) => State.Events
+        .Select((e, i) => (e, i, time: ParseTime(e.Time)))
+        .Count(x => x.i != excludedIndex && x.e.Team == team && IsTimeoutEvent(x.e) &&
+                    TryGetRegularPhaseForTime(x.time, out var eventPhase) && eventPhase == phase);
+
+    private int TimeoutCountInFinalFiveMinutes(string team, int excludedIndex = -1)
+    {
+        var regulationEnd = State.HalfDurationMinutes * 120;
+        var finalFiveStart = regulationEnd - 5 * 60;
+        return State.Events.Select((e, i) => (e, i, time: ParseTime(e.Time)))
+            .Count(x => x.i != excludedIndex && x.e.Team == team && IsTimeoutEvent(x.e) &&
+                        x.time >= finalFiveStart && x.time < regulationEnd);
+    }
+
     public int TimeoutCount(string team) => State.Events.Count(e =>
-        e.Team == team && (e.Type == "TIMEOUT" || e.Type == "T.O." || e.Type == "TO"));
+        e.Team == team && IsTimeoutEvent(e) && TryGetRegularPhaseForTime(ParseTime(e.Time), out _));
+
+    public string TimeoutAvailability(string team)
+    {
+        if (team is not ("A" or "B")) return "Squadra non valida.";
+        if (State.MatchFinished || State.ShootoutStarted) return "La gara è terminata o sono iniziati i rigori.";
+        if (!State.MatchStarted) return "Avvia la gara prima di registrare un time-out.";
+        if (!PeriodStartConfirmed) return "Conferma prima l'inizio del periodo.";
+        if (State.Phase is not (1 or 2)) return "I Team Time-Out non sono previsti nei tempi supplementari.";
+        if (State.TimeoutTeam is "A" or "B") return "Chiudi prima il popup del time-out in corso.";
+        if (PendingEvent is not null) return "Completa o annulla prima l'evento in corso.";
+        if (TimeoutCount(team) >= 3) return "La squadra ha già utilizzato i 3 time-out regolamentari.";
+        if (TimeoutCountInPhase(team, State.Phase) >= 2) return "Sono già stati utilizzati 2 time-out in questo tempo.";
+        if (State.Phase == 2 && State.TimerSeconds >= State.HalfDurationMinutes * 120 - 5 * 60 &&
+            TimeoutCountInFinalFiveMinutes(team) >= 1) return "Negli ultimi 5 minuti del 2° tempo è già stato utilizzato il time-out consentito.";
+        if (State.ControlloPossessoTimeOut)
+        {
+            if (TimeoutCount(team) > 0 && !OpponentPossessionObserved(team)) return "Tra due time-out della stessa squadra gli avversari devono avere almeno un possesso palla.";
+            if (string.IsNullOrWhiteSpace(State.PossessionTeam)) return "Seleziona prima quale squadra è in possesso della palla.";
+            if (State.PossessionTeam != team) return "Il time-out può essere richiesto solo dalla squadra in possesso della palla.";
+        }
+        return "Time-out disponibile.";
+    }
+
+    private bool OpponentPossessionObserved(string team) => team == "A"
+        ? State.TimeoutAOpponentPossessionObserved
+        : State.TimeoutBOpponentPossessionObserved;
+
+    public bool CanRequestTimeout(string team) => TimeoutAvailability(team) == "Time-out disponibile.";
+
+    public void SetPossessionTeam(string team)
+    {
+        if (team is not ("A" or "B") || State.TimeoutTeam is "A" or "B" || State.ShootoutStarted || State.MatchFinished) return;
+        var changed = State.PossessionTeam != team;
+        State.PossessionTeam = team;
+        // Anche una conferma esplicita del possesso corrente dopo il ripristino di un vecchio
+        // salvataggio può certificare il possesso avversario richiesto dal regolamento.
+        if (team == "B") State.TimeoutAOpponentPossessionObserved = true;
+        if (team == "A") State.TimeoutBOpponentPossessionObserved = true;
+        Notify();
+    }
+
+    private bool IsEditedTimeoutValid(int index, int seconds, string team)
+    {
+        if (!TryGetRegularPhaseForTime(seconds, out var phase)) return false;
+        if (TimeoutCount(team, index) >= 3) return false;
+        if (TimeoutCountInPhase(team, phase, index) >= 2) return false;
+        var regulationEnd = State.HalfDurationMinutes * 120;
+        if (phase == 2 && seconds >= regulationEnd - 5 * 60 && TimeoutCountInFinalFiveMinutes(team, index) >= 1) return false;
+        return true;
+    }
+
+    private int TimeoutCount(string team, int excludedIndex) => State.Events
+        .Select((e, i) => (e, i, time: ParseTime(e.Time)))
+        .Count(x => x.i != excludedIndex && x.e.Team == team && IsTimeoutEvent(x.e) && TryGetRegularPhaseForTime(x.time, out _));
 
     public bool RegisterTimeout(string team)
     {
-        if (State.MatchFinished || State.ShootoutStarted || !PeriodStartConfirmed) return false;
-        if (team != "A" && team != "B") return false;
-        if (TimeoutCount(team) >= 3 || PendingEvent is not null) return false;
-        if (State.TimeoutRemainingSeconds > 0) return false;
+        if (!CanRequestTimeout(team)) return false;
         Snapshot();
         State.Events.Add(new EventRecord
         {
@@ -1020,9 +1107,12 @@ public sealed class GameService : IAsyncDisposable
             Type = "TIMEOUT", Text = "TIME OUT", Result = ScoreText()
         });
         State.TimeoutTeam = team;
+        State.TimeoutPopupVisible = true;
         State.TimeoutRemainingSeconds = 60;
+        if (team == "A") State.TimeoutAOpponentPossessionObserved = false;
+        else State.TimeoutBOpponentPossessionObserved = false;
         StopClock();
-        // Il cronometro gara resta fermo, ma il task del countdown del time-out deve continuare a correre.
+        // Il cronometro gara resta fermo, ma il task del countdown del time-out continua a correre.
         StartClock();
         Notify();
         return true;
@@ -1030,11 +1120,11 @@ public sealed class GameService : IAsyncDisposable
 
     public void ExitTimeout()
     {
-        if (State.TimeoutRemainingSeconds <= 0) return;
-
-        // Termina anticipatamente solo il conteggio del time-out.
-        // Il cronometro ufficiale della gara resta fermo: sarà l'operatore
-        // a premere START quando vuole riprendere il gioco.
+        // Chiudere il popup conclude il time-out anche se restano secondi.
+        // Il cronometro della gara resta fermo: la ripartenza avviene solo
+        // quando l'operatore preme START. Il time-out registrato resta nel referto.
+        if (State.TimeoutTeam is not ("A" or "B")) return;
+        State.TimeoutPopupVisible = false;
         State.TimeoutRemainingSeconds = 0;
         State.TimeoutTeam = "";
         StopClock();
@@ -1107,7 +1197,25 @@ public sealed class GameService : IAsyncDisposable
     }
 
     public string ExportJson() => JsonSerializer.Serialize(State, new JsonSerializerOptions { WriteIndented = true });
-    public void ImportJson(string json) { StopClock(); State = JsonSerializer.Deserialize<GameState>(json) ?? throw new InvalidOperationException("JSON partita non valido."); EnsureRosterArrays(State.Casa); EnsureRosterArrays(State.Ospiti); State.Shootout ??= []; State.ShootoutTakenA ??= []; State.ShootoutTakenB ??= []; State.MiniTimerRunning = false; ClearPending(); PendingShootout = null; ShowShootoutStart = false; ShowShootoutFirstTeam = false; ShowShootoutWinner = false; ShowMatchEnd = false; _undoState = null; PeriodStartConfirmed = !State.MatchFinished && !State.ShootoutStarted; Notify(); }
+    public void ImportJson(string json)
+    {
+        StopClock();
+        using var document = JsonDocument.Parse(json);
+        var root = document.RootElement;
+        var hasPossessionTracking = root.TryGetProperty(nameof(GameState.TimeoutAOpponentPossessionObserved), out _) &&
+                                   root.TryGetProperty(nameof(GameState.TimeoutBOpponentPossessionObserved), out _);
+        State = JsonSerializer.Deserialize<GameState>(json) ?? throw new InvalidOperationException("JSON partita non valido.");
+        EnsureRosterArrays(State.Casa); EnsureRosterArrays(State.Ospiti); State.Shootout ??= []; State.ShootoutTakenA ??= []; State.ShootoutTakenB ??= [];
+        State.PossessionTeam ??= "";
+        if (!hasPossessionTracking)
+        {
+            // Salvataggio precedente: non possiamo sapere se gli avversari hanno avuto possesso
+            // dopo l'ultimo TTO. Richiediamo un nuovo possesso avversario per sicurezza.
+            State.TimeoutAOpponentPossessionObserved = TimeoutCount("A") == 0;
+            State.TimeoutBOpponentPossessionObserved = TimeoutCount("B") == 0;
+        }
+        State.MiniTimerRunning = false; ClearPending(); PendingShootout = null; ShowShootoutStart = false; ShowShootoutFirstTeam = false; ShowShootoutWinner = false; ShowMatchEnd = false; _undoState = null; PeriodStartConfirmed = !State.MatchFinished && !State.ShootoutStarted; Notify();
+    }
     public string ScoreText() => $"{State.ScoreA}-{State.ScoreB}";
     public static string FormatTime(int seconds) => $"{Math.Max(0, seconds) / 60:00}:{Math.Max(0, seconds) % 60:00}";
     public static string PhaseName(int phase) => phase switch { 1 => "1° TEMPO", 2 => "2° TEMPO", 3 => "1° TEMPO SUPPLEMENTARE", 4 => "2° TEMPO SUPPLEMENTARE", 5 => "3° TEMPO SUPPLEMENTARE", 6 => "4° TEMPO SUPPLEMENTARE", _ => "RIGORI" };
@@ -1198,10 +1306,10 @@ public sealed class GameService : IAsyncDisposable
                 {
                     State.TimeoutRemainingSeconds--;
                     changed = true;
-                    if (State.TimeoutRemainingSeconds == 0)
-                    {
+                    // Se il popup è già stato chiuso, libera il cronometro soltanto
+                    // al termine del minuto; START resta comunque manuale.
+                    if (State.TimeoutRemainingSeconds == 0 && !State.TimeoutPopupVisible)
                         State.TimeoutTeam = "";
-                    }
                 }
 
                 if (State.Running)
