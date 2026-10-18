@@ -114,19 +114,19 @@
                         <span class="staff-sanction-badge staff-sanction-yellow @(staffYellow ? "is-active" : "")">A</span>
                         <span class="staff-sanction-badge staff-sanction-two @(staffSuspensions.Count > 0 ? "is-active" : "")">2</span>
                         <span class="staff-sanction-badge staff-sanction-red @(staffRed ? "is-active" : "")">E</span>
-                        @if (staffSuspensions.Count > 0)
-                        {
-                            <span class="staff-active-countdown">
-                                @foreach (var s in staffSuspensions)
-                                {
-                                    <span class="active-countdown">2' @s</span>
-                                }
-                            </span>
-                        }
                     </span>
                 </span>
                 <span class="staff-info">
                     <span class="staff-name" title="@staff.Name">@staff.Name</span>
+                    @if (staffSuspensions.Count > 0)
+                    {
+                        <span class="staff-active-countdown">
+                            @foreach (var s in staffSuspensions)
+                            {
+                                <span class="active-countdown">2' @s</span>
+                            }
+                        </span>
+                    }
                 </span>
             </button>
             }

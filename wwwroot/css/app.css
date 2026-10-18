@@ -7241,3 +7241,90 @@ html,body,#app{overflow:hidden!important;width:100%;height:100%;}
   .topbar .app-title { font-size: 13px !important; }
   .topbar .phase-box { font-size: 10px !important; padding: 5px 6px !important; }
 }
+
+
+/* v80 — DIRIGENTI: il countdown dei 2' va sotto il nome, mai sovrapposto.
+   La card usa tre righe distinte: sanzioni, nome, countdown. */
+.staff-card {
+  position: relative !important;
+  display: grid !important;
+  grid-template-columns: minmax(0,1fr) !important;
+  grid-template-rows: 25px 11px 14px !important;
+  row-gap: 1px !important;
+  min-height: 56px !important;
+  height: 56px !important;
+  padding: 3px !important;
+  overflow: visible !important;
+}
+.staff-card .staff-status-area { grid-row: 1 !important; align-self: start !important; min-height: 0 !important; height: 25px !important; }
+.staff-card .staff-info {
+  grid-row: 2 / span 2 !important; display: grid !important; grid-template-rows: 11px 14px !important;
+  align-content: start !important; justify-items: center !important; gap: 1px !important; min-width: 0 !important;
+  width: 100% !important; height: 26px !important; overflow: visible !important;
+}
+.staff-card .staff-name {
+  grid-row: 1 !important; display: block !important; width: 100% !important; height: 11px !important;
+  line-height: 11px !important; font-size: 7px !important; text-align: center !important; white-space: nowrap !important;
+  overflow: hidden !important; text-overflow: ellipsis !important;
+}
+.staff-card .staff-active-countdown {
+  position: static !important; grid-row: 2 !important; left: auto !important; top: auto !important; transform: none !important;
+  z-index: auto !important; display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important;
+  align-items: center !important; justify-content: center !important; width: 100% !important; height: 14px !important;
+  min-height: 14px !important; margin: 0 !important; gap: 2px !important; overflow: visible !important;
+}
+.staff-card .staff-active-countdown .active-countdown {
+  display: inline-flex !important; align-items: center !important; justify-content: center !important; min-width: 38px !important;
+  width: auto !important; max-width: 100% !important; height: 13px !important; line-height: 13px !important; padding: 0 3px !important;
+  font-size: 7px !important; white-space: nowrap !important; box-sizing: border-box !important;
+}
+@media (orientation: landscape) and (min-width: 900px) and (max-width: 1200px) {
+  .staff-card { grid-template-rows: 24px 10px 13px !important; min-height: 53px !important; height: 53px !important; padding: 2px !important; }
+  .staff-card .staff-status-area { height: 24px !important; }
+  .staff-card .staff-info { grid-template-rows: 10px 13px !important; height: 24px !important; gap: 1px !important; }
+  .staff-card .staff-name { height: 10px !important; line-height: 10px !important; font-size: 6.5px !important; }
+  .staff-card .staff-active-countdown { height: 13px !important; min-height: 13px !important; }
+  .staff-card .staff-active-countdown .active-countdown { min-width: 36px !important; height: 12px !important; line-height: 12px !important; font-size: 6.5px !important; padding: 0 2px !important; }
+}
+
+
+/* v118 — Configurazione gara: elimina lo spazio verticale vuoto tra i campi e i pulsanti.
+   Il pannello si dimensiona sul contenuto, invece di allungare la sezione centrale. */
+.config-overlay { align-items: flex-start !important; justify-content: center !important; padding: 5px !important; overflow: auto !important; }
+.ipad11-config-card {
+  height: max-content !important;
+  min-height: 0 !important;
+  max-height: calc(100dvh - 10px) !important;
+  flex: 0 0 auto !important;
+  align-self: flex-start !important;
+  overflow: visible !important;
+  gap: 6px !important;
+}
+.ipad11-config-card .config-main-columns {
+  flex: 0 0 auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+  align-self: stretch !important;
+}
+.ipad11-config-card .config-center-team {
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+@media (max-height: 520px) {
+  .ipad11-config-card { max-height: calc(100dvh - 10px) !important; overflow-y: auto !important; }
+}
+
+
+/* Toolbar referto: colori tenui e coerenti, senza il pulsante di caricamento dati gara. */
+.bottom-bar button.toolbar-save { background:#dcfce7 !important; color:#166534 !important; border-color:#86efac !important; }
+.bottom-bar button.toolbar-restore { background:#dbeafe !important; color:#1e40af !important; border-color:#93c5fd !important; }
+.bottom-bar button.toolbar-referto { background:#ede9fe !important; color:#5b21b6 !important; border-color:#c4b5fd !important; }
+.bottom-bar button.toolbar-config { background:#f1f5f9 !important; color:#475569 !important; border-color:#cbd5e1 !important; }
+.bottom-bar button.toolbar-config:disabled { background:#f1f5f9 !important; color:#64748b !important; border-color:#cbd5e1 !important; opacity:.75 !important; }
+.bottom-bar button.toolbar-period { background:#fef3c7 !important; color:#92400e !important; border-color:#fcd34d !important; }
+.bottom-bar button.toolbar-save:hover:not(:disabled) { background:#bbf7d0 !important; }
+.bottom-bar button.toolbar-restore:hover:not(:disabled) { background:#bfdbfe !important; }
+.bottom-bar button.toolbar-referto:hover:not(:disabled) { background:#ddd6fe !important; }
+.bottom-bar button.toolbar-period:hover:not(:disabled) { background:#fde68a !important; }

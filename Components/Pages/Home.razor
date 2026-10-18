@@ -201,7 +201,7 @@
         </main>
 
         <footer class="bottom-bar">
-            <button @onclick="SaveGame">💾 SALVA GARA</button><button @onclick="RestoreRecovery">↩ RIPRISTINA</button><button @onclick="LoadMatchData">📥 CARICA DATI GARA</button><button @onclick="PrintReferto">📄 REFERTO</button><button @onclick="Game.OpenConfiguration" disabled="@Game.State.MatchStarted">⚙ CONFIGURAZIONE</button><button @onclick="Game.FinishCurrentPeriod" disabled="@(Game.State.MatchFinished || Game.State.ShootoutStarted)">FINE PERIODO</button>        <div class="mini-timer-card mini-timer-toolbar">
+            <button class="toolbar-save" @onclick="SaveGame">💾 SALVA GARA</button><button class="toolbar-restore" @onclick="RestoreRecovery">↶ RIPRISTINA</button><button class="toolbar-referto" @onclick="PrintReferto">📄 REFERTO</button><button class="toolbar-config" @onclick="Game.OpenConfiguration" disabled="@Game.State.MatchStarted">⚙ CONFIGURAZIONE</button><button class="toolbar-period" @onclick="Game.FinishCurrentPeriod" disabled="@(Game.State.MatchFinished || Game.State.ShootoutStarted)">FINE PERIODO</button>        <div class="mini-timer-card mini-timer-toolbar">
             <div class="mini-timer-label">CRONOMETRO</div>
             <div class="mini-timer-display">@GameService.FormatTime(Game.GetMiniTimerSeconds())</div>
         </div>
