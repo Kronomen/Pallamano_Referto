@@ -23,6 +23,7 @@ public sealed class GameService : IAsyncDisposable
     public bool ShowMatchEnd { get; private set; }
     public (string Team, int Index)? PendingShootout { get; private set; }
     public bool ShowConfiguration { get; private set; } = true;
+    public bool ShowReadyPopup { get; private set; }
     public bool PeriodStartConfirmed { get; private set; } = true;
     public bool ShowPossessionPopup => State.PossessionSelectionPending;
     public string? ValidationError { get; private set; }
@@ -50,6 +51,7 @@ public sealed class GameService : IAsyncDisposable
         EnsureRosterArrays(State.Ospiti);
         if (!ValidateRoster(out var error)) { ValidationError = error; Notify(); return false; }
         ShowConfiguration = false;
+        if (!State.MatchStarted) ShowReadyPopup = true;
         Notify();
         return true;
     }
@@ -82,7 +84,7 @@ public sealed class GameService : IAsyncDisposable
     public void Reset()
     {
         StopClock(); State = CreateNewGame(); State.MiniTimerSeconds = 0; State.MiniTimerRunning = false; ClearPending(); _undoState = null;
-        PeriodStartConfirmed = true; State.PossessionSelectionPending = false; ShowPeriodEnd = false; ShowNextPeriod = false; State.PeriodEndAcknowledged = false; ShowShootoutStart = false; ShowShootoutFirstTeam = false; ShowShootoutWinner = false; ShowMatchEnd = false; PendingShootout = null; ShowConfiguration = true; ValidationError = null; Notify();
+        PeriodStartConfirmed = true; State.PossessionSelectionPending = false; ShowPeriodEnd = false; ShowNextPeriod = false; State.PeriodEndAcknowledged = false; ShowShootoutStart = false; ShowShootoutFirstTeam = false; ShowShootoutWinner = false; ShowMatchEnd = false; PendingShootout = null; ShowConfiguration = true; ShowReadyPopup = false; ValidationError = null; Notify();
     }
 
     public bool SelectEvent(string type)
@@ -580,6 +582,13 @@ public sealed class GameService : IAsyncDisposable
         Notify();
     }
 
+    public void PrepareSecondPeriodDirectly()
+    {
+        if (!ShowPeriodEnd || State.Phase != 1 || State.MatchFinished || State.ShootoutStarted) return;
+        State.PeriodEndAcknowledged = true;
+        NextPeriod();
+    }
+
     public void ConfirmNextPeriod()
     {
         if (!ShowNextPeriod || !State.PeriodEndAcknowledged || State.MatchFinished || State.ShootoutStarted) return;
@@ -706,6 +715,9 @@ public sealed class GameService : IAsyncDisposable
         // relativo minuto iniziale); l'ufficiale deve premere START per farlo partire.
         PeriodStartConfirmed = true;
         StopClock();
+        // Anche il nuovo periodo riparte dalla schermata "Referto pronto":
+        // l'operatore preme START e poi indica il possesso iniziale.
+        ShowReadyPopup = true;
         Notify();
     }
 
@@ -1013,6 +1025,7 @@ public sealed class GameService : IAsyncDisposable
         if (!State.MatchStarted && !ValidateRoster(out var error)) { ValidationError = error; ShowConfiguration = true; Notify(); return; }
         ValidationError = null;
         ShowConfiguration = false;
+        ShowReadyPopup = false;
         State.MatchStarted = true;
 
         if (!State.Running)

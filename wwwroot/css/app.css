@@ -7338,3 +7338,135 @@ html,body,#app{overflow:hidden!important;width:100%;height:100%;}
 .possession-choice { min-height: 82px; border: 3px solid var(--team-color); border-radius: 14px; background: var(--team-color); color: var(--team-text); font-size: clamp(16px, 2vw, 22px); font-weight: 800; padding: 14px; cursor: pointer; overflow-wrap: anywhere; }
 .possession-choice:hover { filter: brightness(1.08); transform: translateY(-1px); }
 @media (max-width: 520px) { .possession-choice-grid { grid-template-columns: 1fr; } }
+
+
+/* Popup compatto di conferma: referto pronto prima dell'avvio della gara. */
+.ready-overlay {
+    z-index: 1200;
+}
+.ready-dialog {
+    width: min(440px, calc(100vw - 32px));
+    padding: 22px 24px;
+    text-align: center;
+}
+.ready-dialog h2 {
+    margin: 8px 0 10px;
+    font-size: clamp(22px, 3vw, 28px);
+}
+.ready-dialog p {
+    margin: 0 0 18px;
+    line-height: 1.45;
+}
+.ready-start-button {
+    min-width: 150px;
+    min-height: 46px;
+    font-weight: 800;
+}
+
+
+/* Fine 1° tempo: comandi compatti sulla stessa riga e preparazione sotto. */
+.period-end-actions-top .period-end-referto,
+.period-end-actions-top .period-end-events {
+    min-height: 42px !important;
+    font-size: 11px !important;
+}
+.period-end-events {
+    background: #fff !important;
+    color: #172b4d !important;
+    border: 1px solid #94a3b8 !important;
+    border-radius: 8px !important;
+    font-weight: 900 !important;
+    cursor: pointer !important;
+}
+.period-end-events:hover { background: #f1f5f9 !important; }
+.period-end-prepare-next {
+    display: block !important;
+    width: 100% !important;
+    min-height: 48px !important;
+    margin: 8px auto 0 !important;
+    border: 1px solid #2563eb !important;
+    border-radius: 8px !important;
+    background: #2563eb !important;
+    color: #fff !important;
+    font-size: 12px !important;
+    font-weight: 900 !important;
+    cursor: pointer !important;
+}
+.period-end-prepare-next:hover { background: #1d4ed8 !important; }
+
+
+/* Fine gara: prima riga Referto FIGH / Esci; seconda riga Chiudi / Condividi PDF. */
+.match-end-actions {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    grid-template-rows: auto auto !important;
+    gap: 9px !important;
+}
+.match-end-actions > button {
+    min-width: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+}
+.match-end-actions > .match-end-close-small {
+    min-height: 40px !important;
+    padding: 5px 10px !important;
+    font-size: 11px !important;
+    background: #fff !important;
+    color: #111827 !important;
+    border: 1px solid #94a3b8 !important;
+}
+.match-end-actions > .whatsapp-referto-button {
+    min-height: 40px !important;
+    padding: 5px 10px !important;
+    font-size: 11px !important;
+    line-height: 1.2 !important;
+    background: #25d366 !important;
+    color: #073b20 !important;
+    border: 0 !important;
+}
+@media(max-width:900px) {
+    .match-end-actions {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    }
+    .match-end-actions > button {
+        min-height: 40px !important;
+        font-size: 10px !important;
+    }
+}
+
+
+/* Fine periodo (dal 2° tempo in poi): Rivedi eventi e Condividi PDF sulla stessa riga. */
+.period-end-actions-bottom {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    gap: 9px !important;
+    width: 100% !important;
+    margin-top: 9px !important;
+}
+.period-end-actions-bottom > button {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 40px !important;
+    margin: 0 !important;
+    padding: 5px 8px !important;
+    box-sizing: border-box !important;
+    font-size: 10px !important;
+    line-height: 1.2 !important;
+    white-space: normal !important;
+}
+.period-end-actions-bottom > .period-end-close {
+    max-width: none !important;
+}
+.period-end-actions-bottom > .whatsapp-referto-button {
+    border-radius: 8px !important;
+    background: #25d366 !important;
+    color: #073b20 !important;
+    border: 0 !important;
+    font-weight: 900 !important;
+}
+@media(max-width:900px) {
+    .period-end-actions-bottom { grid-template-columns: minmax(0,1fr) minmax(0,1fr) !important; }
+    .period-end-actions-bottom > button { min-height: 40px !important; font-size: 10px !important; }
+}
