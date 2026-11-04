@@ -24,6 +24,7 @@ public sealed class GameService : IAsyncDisposable
     public (string Team, int Index)? PendingShootout { get; private set; }
     public bool ShowConfiguration { get; private set; } = true;
     public bool PeriodStartConfirmed { get; private set; } = true;
+    public bool ShowPossessionPopup => State.PossessionSelectionPending;
     public string? ValidationError { get; private set; }
     public bool CanUndo => _undoState is not null;
     public string ShootoutWinnerName => State.ShootoutScoreA > State.ShootoutScoreB ? State.Casa.Name : State.Ospiti.Name;
@@ -81,7 +82,7 @@ public sealed class GameService : IAsyncDisposable
     public void Reset()
     {
         StopClock(); State = CreateNewGame(); State.MiniTimerSeconds = 0; State.MiniTimerRunning = false; ClearPending(); _undoState = null;
-        PeriodStartConfirmed = true; ShowPeriodEnd = false; ShowNextPeriod = false; State.PeriodEndAcknowledged = false; ShowShootoutStart = false; ShowShootoutFirstTeam = false; ShowShootoutWinner = false; ShowMatchEnd = false; PendingShootout = null; ShowConfiguration = true; ValidationError = null; Notify();
+        PeriodStartConfirmed = true; State.PossessionSelectionPending = false; ShowPeriodEnd = false; ShowNextPeriod = false; State.PeriodEndAcknowledged = false; ShowShootoutStart = false; ShowShootoutFirstTeam = false; ShowShootoutWinner = false; ShowMatchEnd = false; PendingShootout = null; ShowConfiguration = true; ValidationError = null; Notify();
     }
 
     public bool SelectEvent(string type)
@@ -309,7 +310,7 @@ public sealed class GameService : IAsyncDisposable
         if (index < 0 || index >= State.Events.Count) return false;
 
         var ev = State.Events[index];
-        if (ev.Type == "SYSTEM" || ev.Type is "SHOOTOUT_GOAL" or "SHOOTOUT_MISS") return false;
+        if (ev.Type is "SYSTEM" or "POSSESSION" || ev.Type is "SHOOTOUT_GOAL" or "SHOOTOUT_MISS") return false;
         // I TTO registrati non possono essere trasformati in altri eventi o attribuiti
         // all'altra squadra: non esiste uno storico automatico dei possessi passati.
         if (IsTimeoutEvent(ev) && (type != "TIMEOUT" || team != ev.Team)) return false;
@@ -422,7 +423,7 @@ public sealed class GameService : IAsyncDisposable
     {
         if (!CanEditEvents) return false;
         if (index < 0 || index >= State.Events.Count) return false;
-        if (State.Events[index].Type == "SYSTEM") return false;
+        if (State.Events[index].Type is "SYSTEM" or "POSSESSION") return false;
         Snapshot();
         State.Events.RemoveAt(index);
         RecalculateRegistry();
@@ -1010,10 +1011,28 @@ public sealed class GameService : IAsyncDisposable
         if ((State.TimeoutTeam is "A" or "B") || State.TimeoutRemainingSeconds > 0) return;
         if (State.MatchFinished || State.ShootoutStarted || !PeriodStartConfirmed) return;
         if (!State.MatchStarted && !ValidateRoster(out var error)) { ValidationError = error; ShowConfiguration = true; Notify(); return; }
-        ValidationError = null; ShowConfiguration = false; State.MatchStarted = true; State.Running = !State.Running;
+        ValidationError = null;
+        ShowConfiguration = false;
+        State.MatchStarted = true;
+
+        if (!State.Running)
+        {
+            // Il popup viene mostrato contestualmente alla partenza del cronometro:
+            // il tempo continua ad avanzare mentre l'operatore indica il possesso.
+            if (string.IsNullOrWhiteSpace(State.PossessionTeam))
+                State.PossessionSelectionPending = true;
+            State.Running = true;
+            StartClock();
+        }
+        else
+        {
+            State.Running = false;
+            StopClock();
+        }
+
         // Il piccolo cronometro segue esattamente START/STOP del cronometro principale.
         State.MiniTimerRunning = State.Running;
-        if (State.Running) StartClock(); else StopClock(); Notify();
+        Notify();
     }
 
     public int GetCurrentPeriodDurationSeconds() => State.Phase <= 2 ? State.HalfDurationMinutes * 60 : State.OvertimeDurationMinutes * 60;
@@ -1098,12 +1117,8 @@ public sealed class GameService : IAsyncDisposable
         if (TimeoutCountInPhase(team, State.Phase) >= 2) return "Sono già stati utilizzati 2 time-out in questo tempo.";
         if (State.Phase == 2 && State.TimerSeconds >= State.HalfDurationMinutes * 120 - 5 * 60 &&
             TimeoutCountInFinalFiveMinutes(team) >= 1) return "Negli ultimi 5 minuti del 2° tempo è già stato utilizzato il time-out consentito.";
-        if (State.ControlloPossessoTimeOut)
-        {
-            if (TimeoutCount(team) > 0 && !OpponentPossessionObserved(team)) return "Tra due time-out della stessa squadra gli avversari devono avere almeno un possesso palla.";
-            if (string.IsNullOrWhiteSpace(State.PossessionTeam)) return "Seleziona prima quale squadra è in possesso della palla.";
-            if (State.PossessionTeam != team) return "Il time-out può essere richiesto solo dalla squadra in possesso della palla.";
-        }
+        // Il possesso in campo è valutato dall’operatore: il referto registra il TTO
+        // senza imporre un vincolo automatico sulla squadra in possesso.
         return "Time-out disponibile.";
     }
 
@@ -1112,6 +1127,26 @@ public sealed class GameService : IAsyncDisposable
         : State.TimeoutBOpponentPossessionObserved;
 
     public bool CanRequestTimeout(string team) => TimeoutAvailability(team) == "Time-out disponibile.";
+
+    public void ConfirmInitialPossession(string team)
+    {
+        if (team is not ("A" or "B") || !ShowPossessionPopup || State.MatchFinished || State.ShootoutStarted) return;
+        Snapshot();
+        State.PossessionTeam = team;
+        if (team == "B") State.TimeoutAOpponentPossessionObserved = true;
+        if (team == "A") State.TimeoutBOpponentPossessionObserved = true;
+        State.Events.Add(new EventRecord
+        {
+            Time = FormatTime(State.TimerSeconds),
+            Team = team,
+            Number = "",
+            Type = "POSSESSION",
+            Text = $"POSSESSO INIZIALE · {(team == "A" ? State.Casa.Name : State.Ospiti.Name)}",
+            Result = ScoreText()
+        });
+        State.PossessionSelectionPending = false;
+        Notify();
+    }
 
     public void SetPossessionTeam(string team)
     {

@@ -31,6 +31,7 @@ public sealed class GameState
     // Possesso palla dichiarato dall'operatore: è necessario per validare i Team Time-Out.
     // Stringa vuota = possesso non ancora indicato.
     public string PossessionTeam { get; set; } = "";
+    public bool PossessionSelectionPending { get; set; }
     // Dopo un TTO, la stessa squadra può richiederne un altro solo dopo che gli avversari
     // hanno avuto almeno un possesso. Nei vecchi salvataggi, il default conservativo è false
     // per le squadre che avevano già richiesto un time-out (ricostruito in ImportJson).

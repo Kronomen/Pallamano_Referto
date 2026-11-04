@@ -157,10 +157,7 @@
                 <div class="team-event-zone">
                     <div class="team-event-grid">
                         @foreach (var e in EventTypes) { <button type="button" class="event-button @e.Css @(Game.PendingEvent?.Type == e.Code ? "selected" : "")" @onclick="() => SelectEvent(e.Code)">@e.Label</button> }
-                        @if (Game.State.ControlloPossessoTimeOut)
-                        {
-                            <button type="button" class="event-button possession-button @(Game.State.PossessionTeam == "A" ? "possession-active" : "")" @onclick='() => Game.SetPossessionTeam("A")' disabled="@(Game.State.TimeoutRemainingSeconds > 0)" title="Segna che la squadra di casa è in possesso della palla">PALLA</button>
-                        }
+                        <button type="button" class="event-button possession-button @(Game.State.PossessionTeam == "A" ? "possession-active" : "")" @onclick='() => Game.SetPossessionTeam("A")' disabled="@(Game.State.TimeoutRemainingSeconds > 0 || Game.ShowPossessionPopup)" title="Segna il possesso corrente della squadra di casa">PALLA</button>
                         <button type="button" class="event-button timeout" @onclick='() => RegisterTimeout("A")' disabled="@(!Game.CanRequestTimeout("A"))" title="@Game.TimeoutAvailability("A")">TIME OUT</button>
                     </div>
                 </div>
@@ -176,7 +173,7 @@
                         // l'indice della singola riga e non la variabile del ciclo for.
                         var eventIndex = displayIndex;
                         var ev = Game.State.Events[eventIndex];
-                        <button type="button" class="event-row event-row-button @(ev.Type == "SYSTEM" ? "system-row" : "")" style="--event-team-color:@GetEventTeamColor(ev.Team)" disabled="@(ev.Type == "SYSTEM")" @onclick="() => OpenEventEditor(eventIndex)" title="@(Game.CanEditEvents && ev.Type != "SYSTEM" ? "Modifica evento" : "")">
+                        <button type="button" class="event-row event-row-button @(ev.Type == "SYSTEM" ? "system-row" : "")" style="--event-team-color:@GetEventTeamColor(ev.Team)" disabled="@(ev.Type is "SYSTEM" or "POSSESSION")" @onclick="() => OpenEventEditor(eventIndex)" title="@(Game.CanEditEvents && ev.Type != "SYSTEM" ? "Modifica evento" : "")">
                             <span class="event-time">@ev.Time</span><span class="event-team-cell">@ev.Team</span><span class="event-number">@(ev.Number == "—" ? "" : ev.Number)</span><span class="event-description">@ev.Text</span><strong class="event-result">@ev.Result</strong>
                         </button>
                     }
@@ -189,10 +186,7 @@
 
 <div class="team-event-grid">
                         @foreach (var e in EventTypes) { <button type="button" class="event-button @e.Css @(Game.PendingEvent?.Type == e.Code ? "selected" : "")" @onclick="() => SelectEvent(e.Code)">@e.Label</button> }
-                        @if (Game.State.ControlloPossessoTimeOut)
-                        {
-                            <button type="button" class="event-button possession-button @(Game.State.PossessionTeam == "B" ? "possession-active" : "")" @onclick='() => Game.SetPossessionTeam("B")' disabled="@(Game.State.TimeoutRemainingSeconds > 0)" title="Segna che la squadra ospite è in possesso della palla">PALLA</button>
-                        }
+                        <button type="button" class="event-button possession-button @(Game.State.PossessionTeam == "B" ? "possession-active" : "")" @onclick='() => Game.SetPossessionTeam("B")' disabled="@(Game.State.TimeoutRemainingSeconds > 0 || Game.ShowPossessionPopup)" title="Segna il possesso corrente della squadra ospite">PALLA</button>
                         <button type="button" class="event-button timeout" @onclick='() => RegisterTimeout("B")' disabled="@(!Game.CanRequestTimeout("B"))" title="@Game.TimeoutAvailability("B")">TIME OUT</button>
                     </div>
                 </div>
@@ -238,7 +232,6 @@
                 </div>
                 <div class="config-checks-top config-print-top">
                     <label class="config-check-option"><input type="checkbox" @bind="Game.State.RichiediCartellinoEsclusione" /><span>STAMPA CARTELLINO</span></label>
-                    <label class="config-check-option" title="Se disattivato, l’operatore verifica manualmente il possesso; restano attivi i limiti FIGH sui time-out."><input type="checkbox" @bind="Game.State.ControlloPossessoTimeOut" /><span>CONTROLLO POSSESSO TIME OUT</span></label>
                 </div>
             </div>
 
@@ -663,6 +656,21 @@
                 <button type="button" class="danger" @onclick="DeleteEditingEvent">ELIMINA</button>
                 <button type="button" @onclick="CloseEventEditor">ANNULLA</button>
                 <button type="button" class="primary" @onclick="SaveEditingEvent">SALVA</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (Game.ShowPossessionPopup)
+{
+    <div class="overlay timeout-overlay">
+        <div class="dialog-card possession-dialog" role="dialog" aria-modal="true" aria-labelledby="possession-title">
+            <div class="dialog-kicker">POSSESSO DELLA PALLA</div>
+            <h2 id="possession-title">Quale squadra è in possesso della palla?</h2>
+            <p>Il cronometro è già partito e continua ad avanzare. Seleziona la squadra attualmente in possesso: l'evento verrà registrato nel Registro Gara.</p>
+            <div class="possession-choice-grid">
+                <button type="button" class="possession-choice" style="--team-color:@Game.State.Casa.Color;--team-text:@GetContrastTextColor(Game.State.Casa.Color)" @onclick='() => Game.ConfirmInitialPossession("A")'>@(string.IsNullOrWhiteSpace(Game.State.Casa.Name) ? "SQUADRA A" : Game.State.Casa.Name)</button>
+                <button type="button" class="possession-choice" style="--team-color:@Game.State.Ospiti.Color;--team-text:@GetContrastTextColor(Game.State.Ospiti.Color)" @onclick='() => Game.ConfirmInitialPossession("B")'>@(string.IsNullOrWhiteSpace(Game.State.Ospiti.Name) ? "SQUADRA B" : Game.State.Ospiti.Name)</button>
             </div>
         </div>
     </div>
