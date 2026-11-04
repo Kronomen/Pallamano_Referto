@@ -401,13 +401,27 @@
                 </div>
                 <p>Il cronometro resterà fermo. Dopo l’OK potrai aggiungere o correggere gli eventi prima di passare al periodo successivo.</p>
                 <div class="period-end-actions-top">
-                    <button type="button" class="period-end-referto" @onclick="PrintReferto">▣&nbsp; APRI REFERTO FIGH</button>
-                    @if (Game.State.Phase > 1)
+                    <button type="button" class="period-end-referto" @onclick="PrintReferto">▣&nbsp; REFERTO FIGH</button>
+                    @if (Game.State.Phase == 1)
+                    {
+                        <button type="button" class="period-end-events" @onclick="Game.ClosePeriodDialog">EVENTI</button>
+                    }
+                    else if (Game.State.Phase > 1)
                     {
                         <button type="button" class="period-end-exit" @onclick="ExitApplication">⇱&nbsp; ESCI DAL PROGETTO</button>
                     }
                 </div>
-                <button type="button" class="period-end-close" @onclick="Game.ClosePeriodDialog">OK · RIVEDI EVENTI</button>
+                @if (Game.State.Phase == 1)
+                {
+                    <button type="button" class="period-end-prepare-next" @onclick="Game.PrepareSecondPeriodDirectly">▶&nbsp; PREPARA 2° TEMPO</button>
+                }
+                else
+                {
+                    <div class="period-end-actions-bottom">
+                        <button type="button" class="period-end-close" @onclick="Game.ClosePeriodDialog">OK · RIVEDI EVENTI</button>
+                        <button type="button" class="whatsapp-referto-button" @onclick="OpenWhatsAppDialogFromPeriod">CONDIVIDI PDF · WHATSAPP / EMAIL</button>
+                    </div>
+                }
             </div>
         </div>
     </div>
@@ -554,8 +568,6 @@
             }
             <div class="match-end-actions">
                 <button type="button" class="primary" @onclick="PrintReferto">▣ APRI REFERTO FIGH</button>
-                <button type="button" class="whatsapp-referto-button" @onclick="OpenWhatsAppDialog">CONDIVIDI PDF · WHATSAPP / EMAIL</button>
-                <button type="button" @onclick="Game.CloseMatchEnd">CHIUDI</button>
                 <button type="button" class="danger" @onclick="ExitApplication">⇱ ESCI DAL PROGETTO</button>
             </div>
         </div>
@@ -661,6 +673,18 @@
     </div>
 }
 
+@if (Game.ShowReadyPopup)
+{
+    <div class="overlay ready-overlay">
+        <div class="dialog-card ready-dialog" role="dialog" aria-modal="true" aria-labelledby="ready-title">
+            <div class="dialog-kicker">REFerto GARA</div>
+            <h2 id="ready-title">Referto pronto</h2>
+            <p>La configurazione è completata. Premi START per avviare il cronometro; subito dopo ti verrà chiesto di indicare la squadra in possesso della palla.</p>
+            <button type="button" class="primary ready-start-button" @onclick="Game.StartStop">START</button>
+        </div>
+    </div>
+}
+
 @if (Game.ShowPossessionPopup)
 {
     <div class="overlay timeout-overlay">
@@ -707,9 +731,20 @@
 
     private void OpenWhatsAppDialog()
     {
-        // La condivisione del referto è anche la conferma di passaggio oltre
-        // alla schermata "Gara terminata": non serve premere prima CHIUDI.
         Game.CloseMatchEnd();
+        InitializeWhatsAppDialog();
+    }
+
+    private void OpenWhatsAppDialogFromPeriod()
+    {
+        // Chiude il popup di fine periodo e apre direttamente la condivisione.
+        // La conferma del periodo resta registrata, così si può poi rivedere il referto.
+        Game.ClosePeriodDialog();
+        InitializeWhatsAppDialog();
+    }
+
+    private void InitializeWhatsAppDialog()
+    {
         WhatsAppPhones = [""];
         EmailRecipients = [""];
         ShowWhatsAppDialog = true;
