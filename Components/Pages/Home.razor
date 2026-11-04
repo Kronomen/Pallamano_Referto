@@ -707,6 +707,9 @@
 
     private void OpenWhatsAppDialog()
     {
+        // La condivisione del referto è anche la conferma di passaggio oltre
+        // alla schermata "Gara terminata": non serve premere prima CHIUDI.
+        Game.CloseMatchEnd();
         WhatsAppPhones = [""];
         EmailRecipients = [""];
         ShowWhatsAppDialog = true;
