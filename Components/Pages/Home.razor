@@ -680,7 +680,10 @@
             <div class="dialog-kicker">REFerto GARA</div>
             <h2 id="ready-title">Referto pronto</h2>
             <p>La configurazione è completata. Premi START per avviare il cronometro; subito dopo ti verrà chiesto di indicare la squadra in possesso della palla.</p>
-            <button type="button" class="primary ready-start-button" @onclick="Game.StartStop">START</button>
+            <div class="ready-dialog-actions">
+                <button type="button" class="ready-config-button" @onclick="Game.ReturnToConfiguration">⚙ CONFIGURAZIONE</button>
+                <button type="button" class="primary ready-start-button" @onclick="Game.StartStop">START</button>
+            </div>
         </div>
     </div>
 }

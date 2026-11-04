@@ -42,6 +42,18 @@ public sealed class GameService : IAsyncDisposable
         if (!State.MatchStarted) { ValidationError = null; ShowConfiguration = false; Notify(); }
     }
 
+    // Dal popup "Referto pronto" consente di rientrare nella configurazione
+    // senza perdere i dati già inseriti. Dopo la nuova conferma il popup
+    // "Referto pronto" verrà mostrato nuovamente.
+    public void ReturnToConfiguration()
+    {
+        if (State.MatchStarted || State.ShootoutStarted) return;
+        ValidationError = null;
+        ShowReadyPopup = false;
+        ShowConfiguration = true;
+        Notify();
+    }
+
     public bool CloseConfiguration()
     {
         // La distinta è parte integrante del referto: numeri e posizioni vengono
