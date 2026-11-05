@@ -38,21 +38,8 @@
                 <div class="archive-card-title"><div><h2>Elenco campionati</h2><p>I campionati sono dati configurabili, non opzioni fisse del programma.</p></div><span class="archive-count">@Archivio.Data.Championships.Count</span></div>
                 <div class="archive-form-grid championship-form">
                     <label>Nome campionato
-                        <select @bind="ChampionshipName">
-                            <option value="">Seleziona un campionato</option>
-                            @foreach (var item in Archivio.Data.Championships.Where(x => x.IsActive).OrderBy(x => x.Name))
-                            {
-                                <option value="@item.Name">@item.Name</option>
-                            }
-                            <option value="__new__">＋ Nuovo campionato…</option>
-                        </select>
+                        <input @bind="ChampionshipName" placeholder="Es. Serie A1 Femminile" />
                     </label>
-                    @if (ChampionshipName == "__new__")
-                    {
-                        <label>Nuovo nome campionato
-                            <input @bind="NewChampionshipName" placeholder="Inserisci il nome del nuovo campionato" />
-                        </label>
-                    }
                     <label>Categoria
                         <select @bind="ChampionshipCategory">
                             <option value="">Seleziona categoria</option>
@@ -69,7 +56,7 @@
                             <option>Misto</option>
                         </select>
                     </label>
-                    <button class="archive-primary" @onclick="AddChampionship" disabled="@(ChampionshipName != "__new__" || string.IsNullOrWhiteSpace(NewChampionshipName))">+ AGGIUNGI CAMPIONATO</button>
+                    <button class="archive-primary" @onclick="AddChampionship" disabled="@string.IsNullOrWhiteSpace(ChampionshipName)">+ AGGIUNGI CAMPIONATO</button>
                 </div>
                 @if (Archivio.Data.Championships.Count == 0) { <div class="archive-empty">Nessun campionato inserito. Puoi crearne uno qui sopra o importare il modello Excel.</div> }
                 <div class="archive-list championship-grid">
@@ -178,7 +165,7 @@
 
 @code {
     private string Tab = "campionati";
-    private string ChampionshipName = ""; private string NewChampionshipName = ""; private string ChampionshipCategory = ""; private string ChampionshipGender = "";
+    private string ChampionshipName = ""; private string ChampionshipCategory = ""; private string ChampionshipGender = "";
     private string TeamName = ""; private string TeamShortName = "";
     private string SeasonName = ""; private DateTime SeasonStart = new(2027, 7, 1); private DateTime SeasonEnd = new(2028, 6, 30);
     private string PersonName = ""; private string PersonType = "PLAYER";
@@ -193,8 +180,8 @@
 
     private async Task AddChampionship()
     {
-        if (ChampionshipName != "__new__" || string.IsNullOrWhiteSpace(NewChampionshipName)) return;
-        var name = NewChampionshipName.Trim();
+        if (string.IsNullOrWhiteSpace(ChampionshipName)) return;
+        var name = ChampionshipName.Trim();
         if (Archivio.Data.Championships.Any(x => ArchiveService.Same(x.Name, name)))
         {
             ImportMessage = "Il campionato esiste già.";
@@ -207,7 +194,7 @@
             Gender = ChampionshipGender,
             IsActive = true
         });
-        ChampionshipName = NewChampionshipName = ChampionshipCategory = ChampionshipGender = "";
+        ChampionshipName = ChampionshipCategory = ChampionshipGender = "";
         ImportMessage = "Nuovo campionato aggiunto all'elenco.";
         await Archivio.SaveAsync();
     }
