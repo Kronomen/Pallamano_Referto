@@ -1,0 +1,248 @@
+@page "/archivio"
+@using System.Text.Json
+@inject ArchiveService Archivio
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+
+<PageTitle>Archivio - Referto Pallamano</PageTitle>
+
+<div class="archive-app">
+    <header class="archive-header">
+        <div class="archive-brand"><img src="images/FIGH.png" alt="FIGH" /><div><strong>REFERTO PALLAMANO</strong><span>GESTIONE ARCHIVIO</span></div></div>
+        <button class="archive-back" @onclick="BackToMatch">← TORNA ALLA GARA</button>
+    </header>
+
+    @if (!Archivio.IsLoaded)
+    {
+        <div class="archive-loading">Caricamento archivio…</div>
+    }
+    else
+    {
+        <section class="archive-intro">
+            <div><span class="archive-eyebrow">MODULO GESTIONALE</span><h1>Campionati, squadre e rose</h1><p>Gestisci gli archivi in modo dinamico: puoi aggiungere campionati e squadre senza modificare il programma.</p></div>
+            <div class="archive-stats"><div><b>@Archivio.Data.Championships.Count</b><span>Campionati</span></div><div><b>@Archivio.Data.Teams.Count</b><span>Squadre</span></div><div><b>@Archivio.Data.People.Count</b><span>Persone</span></div></div>
+        </section>
+
+        <nav class="archive-tabs">
+            <button class="@(Tab == "campionati" ? "active" : "")" @onclick='() => SetTab("campionati")'>CAMPIONATI</button>
+            <button class="@(Tab == "squadre" ? "active" : "")" @onclick='() => SetTab("squadre")'>SQUADRE</button>
+            <button class="@(Tab == "stagioni" ? "active" : "")" @onclick='() => SetTab("stagioni")'>STAGIONI</button>
+            <button class="@(Tab == "persone" ? "active" : "")" @onclick='() => SetTab("persone")'>ATLETI E DIRIGENTI</button>
+            <button class="@(Tab == "importa" ? "active" : "")" @onclick='() => SetTab("importa")'>IMPORTA EXCEL</button>
+            <button class="@(Tab == "gestione" ? "active" : "")" @onclick='() => SetTab("gestione")'>GESTIONE ARCHIVIO</button>
+        </nav>
+
+        @if (Tab == "campionati")
+        {
+            <section class="archive-card">
+                <div class="archive-card-title"><div><h2>Elenco campionati</h2><p>I campionati sono dati configurabili, non opzioni fisse del programma.</p></div><span class="archive-count">@Archivio.Data.Championships.Count</span></div>
+                <div class="archive-form-grid">
+                    <label>Nome campionato<input @bind="ChampionshipName" placeholder="Es. Serie A2 Femminile" /></label>
+                    <label>Categoria<input @bind="ChampionshipCategory" placeholder="Es. Senior / Under 18" /></label>
+                    <label>Genere<select @bind="ChampionshipGender"><option value="">Non specificato</option><option>Femminile</option><option>Maschile</option><option>Misto</option></select></label>
+                    <button class="archive-primary" @onclick="AddChampionship">+ AGGIUNGI CAMPIONATO</button>
+                </div>
+                @if (Archivio.Data.Championships.Count == 0) { <div class="archive-empty">Nessun campionato inserito. Puoi crearne uno qui sopra o importare il modello Excel.</div> }
+                <div class="archive-list">
+                    @foreach (var c in Archivio.Data.Championships.OrderBy(x => x.Name))
+                    {
+                        <div class="archive-list-row"><div class="archive-list-icon">🏆</div><div class="archive-list-main"><strong>@c.Name</strong><small>@(string.IsNullOrWhiteSpace(c.Category) ? "Categoria non specificata" : c.Category) · @(string.IsNullOrWhiteSpace(c.Gender) ? "Genere non specificato" : c.Gender)</small></div><span class="archive-status @(c.IsActive ? "on" : "off")">@(c.IsActive ? "ATTIVO" : "ARCHIVIATO")</span><button class="archive-small" @onclick="() => ToggleChampionship(c.Id)">@(c.IsActive ? "ARCHIVIA" : "RIATTIVA")</button><button class="archive-small danger" @onclick="() => DeleteChampionship(c.Id)">ELIMINA</button></div>
+                    }
+                </div>
+            </section>
+        }
+        else if (Tab == "squadre")
+        {
+            <section class="archive-card">
+                <div class="archive-card-title"><div><h2>Squadre</h2><p>Una squadra può essere iscritta a campionati e stagioni differenti.</p></div><span class="archive-count">@Archivio.Data.Teams.Count</span></div>
+                <div class="archive-form-grid">
+                    <label>Denominazione squadra<input @bind="TeamName" placeholder="Nome squadra" /></label>
+                    <label>Nome abbreviato<input @bind="TeamShortName" placeholder="Facoltativo" /></label>
+                    <button class="archive-primary" @onclick="AddTeam">+ AGGIUNGI SQUADRA</button>
+                </div>
+                <div class="archive-form-grid registration-form">
+                    <label>Squadra<select @bind="TeamRegistrationTeamId"><option value="">Seleziona squadra</option>@foreach (var x in Archivio.Data.Teams) { <option value="@x.Id">@x.Name</option> }</select></label>
+                    <label>Campionato<select @bind="TeamRegistrationChampionshipId"><option value="">Seleziona campionato</option>@foreach (var x in Archivio.Data.Championships) { <option value="@x.Id">@x.Name</option> }</select></label>
+                    <label>Stagione<select @bind="TeamRegistrationSeasonId"><option value="">Seleziona stagione</option>@foreach (var x in Archivio.Data.Seasons) { <option value="@x.Id">@x.Name</option> }</select></label>
+                    <button class="archive-primary" @onclick="AddTeamRegistration">ISCRIVI SQUADRA</button>
+                </div>
+                <div class="archive-list">
+                    @foreach (var t in Archivio.Data.Teams.OrderBy(x => x.Name))
+                    {
+                        <div class="archive-list-row"><div class="archive-list-icon">🏐</div><div class="archive-list-main"><strong>@t.Name</strong><small>@(string.IsNullOrWhiteSpace(t.ShortName) ? "Nessuna abbreviazione" : t.ShortName) · @Archivio.Data.TeamEntries.Count(x => x.TeamId == t.Id && x.EntryType == "TEAM") iscrizioni</small></div><span class="archive-status @(t.IsActive ? "on" : "off")">@(t.IsActive ? "ATTIVA" : "ARCHIVIATA")</span><button class="archive-small" @onclick="() => ToggleTeam(t.Id)">@(t.IsActive ? "ARCHIVIA" : "RIATTIVA")</button></div>
+                    }
+                </div>
+            </section>
+        }
+        else if (Tab == "stagioni")
+        {
+            <section class="archive-card">
+                <div class="archive-card-title"><div><h2>Stagioni sportive</h2><p>Ogni iscrizione e ogni rosa sono collegate a una stagione specifica.</p></div><span class="archive-count">@Archivio.Data.Seasons.Count</span></div>
+                <div class="archive-form-grid season-form">
+                    <label>Nome stagione<input @bind="SeasonName" placeholder="Es. 2027/2028" /></label>
+                    <label>Data inizio<input type="date" @bind="SeasonStart" /></label>
+                    <label>Data fine<input type="date" @bind="SeasonEnd" /></label>
+                    <button class="archive-primary" @onclick="AddSeason">+ AGGIUNGI STAGIONE</button>
+                </div>
+                <div class="archive-list">
+                    @foreach (var season in Archivio.Data.Seasons.OrderByDescending(x => x.Name))
+                    {
+                        <div class="archive-list-row"><div class="archive-list-icon">📅</div><div class="archive-list-main"><strong>@season.Name</strong><small>@season.StartDate.ToString("dd/MM/yyyy") – @season.EndDate.ToString("dd/MM/yyyy") · @Archivio.Data.TeamEntries.Count(x => x.SeasonId == season.Id) associazioni</small></div><span class="archive-status @(season.IsActive ? "on" : "off")">@(season.IsActive ? "ATTIVA" : "ARCHIVIATA")</span><button class="archive-small" @onclick="() => ToggleSeason(season.Id)">@(season.IsActive ? "ARCHIVIA" : "RIATTIVA")</button></div>
+                    }
+                </div>
+            </section>
+        }
+        else if (Tab == "persone")
+        {
+            <section class="archive-card">
+                <div class="archive-card-title"><div><h2>Anagrafica atleti e dirigenti</h2><p>Il numero di maglia e la lettera del dirigente appartengono all'iscrizione stagionale, non alla persona.</p></div><span class="archive-count">@Archivio.Data.People.Count</span></div>
+                <div class="archive-form-grid people-form">
+                    <label>Nominativo<input @bind="PersonName" placeholder="Cognome e nome" /></label>
+                    <label>Tipo<select @bind="PersonType"><option value="PLAYER">Atleta</option><option value="OFFICIAL">Dirigente</option></select></label>
+                    <button class="archive-primary" @onclick="AddPerson">+ AGGIUNGI PERSONA</button>
+                </div>
+                <div class="archive-form-grid registration-form">
+                    <label>Persona<select @bind="EntryPersonId"><option value="">Seleziona persona</option>@foreach (var x in Archivio.Data.People) { <option value="@x.Id">@x.FullName (@(x.PersonType == "PLAYER" ? "Atleta" : "Dirigente"))</option> }</select></label>
+                    <label>Squadra<select @bind="EntryTeamId"><option value="">Seleziona squadra</option>@foreach (var x in Archivio.Data.Teams) { <option value="@x.Id">@x.Name</option> }</select></label>
+                    <label>Campionato<select @bind="EntryChampionshipId"><option value="">Seleziona campionato</option>@foreach (var x in Archivio.Data.Championships) { <option value="@x.Id">@x.Name</option> }</select></label>
+                    <label>Stagione<select @bind="EntrySeasonId"><option value="">Seleziona stagione</option>@foreach (var x in Archivio.Data.Seasons) { <option value="@x.Id">@x.Name</option> }</select></label>
+                    <label>@(PersonTypeForEntry == "PLAYER" ? "Numero maglia" : "Lettera dirigente")<input @bind="EntryNumber" placeholder="Numero / A-E" /></label>
+                    <button class="archive-primary" @onclick="AddPersonEntry">ASSOCIA ALLA SQUADRA</button>
+                </div>
+                <div class="archive-list">
+                    @foreach (var p in Archivio.Data.People.OrderBy(x => x.FullName))
+                    {
+                        <div class="archive-list-row"><div class="archive-list-icon">@(p.PersonType == "PLAYER" ? "👤" : "📋")</div><div class="archive-list-main"><strong>@p.FullName</strong><small>@(p.PersonType == "PLAYER" ? "Atleta" : "Dirigente") · @Archivio.Data.TeamEntries.Count(x => x.PersonId == p.Id) associazioni</small></div><span class="archive-status @(p.IsActive ? "on" : "off")">@(p.IsActive ? "ATTIVO" : "ARCHIVIATO")</span><button class="archive-small" @onclick="() => TogglePerson(p.Id)">@(p.IsActive ? "ARCHIVIA" : "RIATTIVA")</button></div>
+                    }
+                </div>
+            </section>
+        }
+        else if (Tab == "importa")
+        {
+            <section class="archive-card import-card">
+                <div class="archive-card-title"><div><h2>Importazione del modello Excel</h2><p>Importa gli elenchi già presenti nei tre fogli del file .xlsm, mantenendo le anagrafiche riutilizzabili.</p></div><span class="archive-excel">XLSM</span></div>
+                <div class="archive-import-box"><div class="archive-import-icon">⇧</div><div><strong>Seleziona il modello Excel</strong><p>File supportati: .xlsm, .xlsx e .xls. Verranno letti i fogli «Squadre» e «Giocatori Dirigenti»; il foglio «Gara» viene usato per ricavare la stagione di riferimento.</p><InputFile OnChange="ImportExcel" accept=".xlsm,.xlsx,.xls" /></div></div>
+                @if (!string.IsNullOrWhiteSpace(ImportMessage)) { <div class="archive-message">@ImportMessage</div> }
+                <div class="archive-note"><strong>Come viene importato il modello</strong><ul><li>I campionati vengono creati dinamicamente in base ai nomi trovati nel foglio Squadre.</li><li>Le squadre vengono associate al rispettivo campionato.</li><li>Atleti e dirigenti vengono riconosciuti dai numeri di maglia e dalle lettere A–E.</li><li>Le anagrafiche già presenti vengono riutilizzate evitando duplicati.</li><li>La stagione viene letta dal foglio Gara; se manca, viene utilizzata 2026/2027.</li></ul></div>
+            </section>
+        }
+        else
+        {
+            <section class="archive-card import-card">
+                <div class="archive-card-title"><div><h2>Gestione e sicurezza archivio</h2><p>Esporta una copia, importa un archivio aggiornato oppure ripristina l'ultima copia di sicurezza.</p></div><span class="archive-count">JSON</span></div>
+                <div class="archive-stats">
+                    <div><b>@Archivio.Data.Championships.Count</b><span>Campionati</span></div>
+                    <div><b>@Archivio.Data.Teams.Count</b><span>Squadre</span></div>
+                    <div><b>@Archivio.Data.People.Count(x => x.PersonType == "PLAYER")</b><span>Atleti</span></div>
+                    <div><b>@Archivio.Data.People.Count(x => x.PersonType == "OFFICIAL")</b><span>Dirigenti</span></div>
+                </div>
+                <div class="archive-note"><strong>Esporta archivio completo</strong><p>Scarica tutte le anagrafiche, le squadre, i campionati, le stagioni e le associazioni in un file JSON.</p><button class="archive-primary" @onclick="ExportBackup">ESPORTA ARCHIVIO JSON</button></div>
+                <div class="archive-note"><strong>Importa archivio da file JSON</strong><p>La sostituzione crea prima una copia di sicurezza dell'archivio attuale. Seleziona un file JSON esportato da Referto Pallamano.</p><InputFile OnChange="ImportArchiveJson" accept=".json,application/json" /></div>
+                <div class="archive-note"><strong>Ripristina ultima copia di sicurezza</strong><p>Ripristina la copia salvata automaticamente prima dell'ultima importazione.</p><button class="archive-small" @onclick="RestoreBackup">RIPRISTINA BACKUP</button></div>
+                @if (!string.IsNullOrWhiteSpace(ImportMessage)) { <div class="archive-message">@ImportMessage</div> }
+                <div class="archive-note"><strong>Attenzione</strong><p>L'archivio è memorizzato nel browser e nel dispositivo in uso. Per trasferirlo su un altro dispositivo, esporta il JSON e importalo anche lì. Il caricamento di una nuova versione del sito non aggiorna automaticamente i dati locali.</p></div>
+            </section>
+        }
+        <footer class="archive-footer"><span>Archivio locale del browser · salvataggio automatico dopo le modifiche</span><button class="archive-small" @onclick="ExportBackup">ESPORTA ARCHIVIO JSON</button></footer>
+    }
+</div>
+
+@code {
+    private string Tab = "campionati";
+    private string ChampionshipName = ""; private string ChampionshipCategory = ""; private string ChampionshipGender = "";
+    private string TeamName = ""; private string TeamShortName = "";
+    private string SeasonName = ""; private DateTime SeasonStart = new(2027, 7, 1); private DateTime SeasonEnd = new(2028, 6, 30);
+    private string PersonName = ""; private string PersonType = "PLAYER";
+    private string TeamRegistrationTeamId = ""; private string TeamRegistrationChampionshipId = ""; private string TeamRegistrationSeasonId = "";
+    private string EntryPersonId = ""; private string EntryTeamId = ""; private string EntryChampionshipId = ""; private string EntrySeasonId = ""; private string EntryNumber = "";
+    private string PersonTypeForEntry => Archivio.Data.People.FirstOrDefault(x => x.Id == EntryPersonId)?.PersonType ?? "PLAYER";
+    private string ImportMessage = "";
+
+    protected override async Task OnInitializedAsync() => await Archivio.InitializeAsync();
+    private void SetTab(string value) => Tab = value;
+    private void BackToMatch() => Nav.NavigateTo("/");
+
+    private async Task AddChampionship()
+    {
+        if (string.IsNullOrWhiteSpace(ChampionshipName)) return;
+        if (Archivio.Data.Championships.Any(x => ArchiveService.Same(x.Name, ChampionshipName))) { ImportMessage = "Il campionato esiste già."; return; }
+        Archivio.Data.Championships.Add(new ArchiveChampionship { Name = ChampionshipName.Trim(), Category = ChampionshipCategory.Trim(), Gender = ChampionshipGender });
+        ChampionshipName = ChampionshipCategory = ChampionshipGender = ""; await Archivio.SaveAsync();
+    }
+    private async Task ToggleChampionship(string id) { var x = Archivio.Data.Championships.FirstOrDefault(x => x.Id == id); if (x is not null) { x.IsActive = !x.IsActive; await Archivio.SaveAsync(); } }
+    private async Task DeleteChampionship(string id) { var x = Archivio.Data.Championships.FirstOrDefault(x => x.Id == id); if (x is null) return; if (Archivio.Data.TeamEntries.Any(e => e.ChampionshipId == id)) { ImportMessage = "Non è possibile eliminare un campionato già utilizzato: archivialo per conservarne lo storico."; return; } Archivio.Data.Championships.Remove(x); await Archivio.SaveAsync(); }
+    private async Task AddTeam() { if (string.IsNullOrWhiteSpace(TeamName) || Archivio.Data.Teams.Any(x => ArchiveService.Same(x.Name, TeamName))) return; Archivio.Data.Teams.Add(new ArchiveTeam { Name = TeamName.Trim(), ShortName = TeamShortName.Trim() }); TeamName = TeamShortName = ""; await Archivio.SaveAsync(); }
+    private async Task AddSeason() { if (string.IsNullOrWhiteSpace(SeasonName) || SeasonEnd < SeasonStart || Archivio.Data.Seasons.Any(x => ArchiveService.Same(x.Name, SeasonName))) return; Archivio.Data.Seasons.Add(new ArchiveSeason { Name = SeasonName.Trim(), StartDate = DateOnly.FromDateTime(SeasonStart), EndDate = DateOnly.FromDateTime(SeasonEnd) }); SeasonName = ""; await Archivio.SaveAsync(); }
+    private async Task ToggleSeason(string id) { var x = Archivio.Data.Seasons.FirstOrDefault(x => x.Id == id); if (x is not null) { x.IsActive = !x.IsActive; await Archivio.SaveAsync(); } }
+    private async Task ToggleTeam(string id) { var x = Archivio.Data.Teams.FirstOrDefault(x => x.Id == id); if (x is not null) { x.IsActive = !x.IsActive; await Archivio.SaveAsync(); } }
+    private async Task AddTeamRegistration()
+    {
+        if (string.IsNullOrWhiteSpace(TeamRegistrationTeamId) || string.IsNullOrWhiteSpace(TeamRegistrationChampionshipId) || string.IsNullOrWhiteSpace(TeamRegistrationSeasonId)) return;
+        if (Archivio.Data.TeamEntries.Any(x => x.TeamId == TeamRegistrationTeamId && x.ChampionshipId == TeamRegistrationChampionshipId && x.SeasonId == TeamRegistrationSeasonId && x.EntryType == "TEAM")) { ImportMessage = "La squadra risulta già iscritta a quel campionato e stagione."; return; }
+        Archivio.Data.TeamEntries.Add(new ArchiveTeamEntry { TeamId = TeamRegistrationTeamId, ChampionshipId = TeamRegistrationChampionshipId, SeasonId = TeamRegistrationSeasonId, EntryType = "TEAM" });
+        await Archivio.SaveAsync();
+    }
+    private async Task AddPerson() { if (string.IsNullOrWhiteSpace(PersonName) || Archivio.Data.People.Any(x => ArchiveService.Same(x.FullName, PersonName) && x.PersonType == PersonType)) return; Archivio.Data.People.Add(new ArchivePerson { FullName = PersonName.Trim(), PersonType = PersonType }); PersonName = ""; await Archivio.SaveAsync(); }
+    private async Task TogglePerson(string id) { var x = Archivio.Data.People.FirstOrDefault(x => x.Id == id); if (x is not null) { x.IsActive = !x.IsActive; await Archivio.SaveAsync(); } }
+    private async Task AddPersonEntry()
+    {
+        if (string.IsNullOrWhiteSpace(EntryPersonId) || string.IsNullOrWhiteSpace(EntryTeamId) || string.IsNullOrWhiteSpace(EntryChampionshipId) || string.IsNullOrWhiteSpace(EntrySeasonId)) return;
+        var person = Archivio.Data.People.First(x => x.Id == EntryPersonId);
+        var isPlayer = person.PersonType == "PLAYER";
+        var value = EntryNumber.Trim().ToUpperInvariant();
+        if (isPlayer && value.Length > 0 && !(value == "0" || value == "00" || (int.TryParse(value, out var n) && n >= 1 && n <= 99))) { ImportMessage = "Numero maglia non valido: usa 0, 00 oppure un numero da 1 a 99."; return; }
+        if (!isPlayer && value.Length > 0 && !"ABCDE".Contains(value)) { ImportMessage = "Per i dirigenti utilizza una lettera da A a E."; return; }
+        if (Archivio.Data.TeamEntries.Any(x => x.PersonId == EntryPersonId && x.TeamId == EntryTeamId && x.ChampionshipId == EntryChampionshipId && x.SeasonId == EntrySeasonId)) { ImportMessage = "La persona è già associata a questa squadra, campionato e stagione."; return; }
+        Archivio.Data.TeamEntries.Add(new ArchiveTeamEntry { PersonId = EntryPersonId, TeamId = EntryTeamId, ChampionshipId = EntryChampionshipId, SeasonId = EntrySeasonId, EntryType = isPlayer ? "PLAYER" : "OFFICIAL", ShirtNumber = isPlayer ? value : "", OfficialLetter = isPlayer ? "" : value });
+        EntryNumber = ""; await Archivio.SaveAsync();
+    }
+
+    private async Task ImportExcel(InputFileChangeEventArgs e)
+    {
+        ImportMessage = "Lettura del file in corso…";
+        try
+        {
+            using var stream = e.File.OpenReadStream(15 * 1024 * 1024);
+            using var ms = new MemoryStream(); await stream.CopyToAsync(ms);
+            var base64 = Convert.ToBase64String(ms.ToArray());
+            var parsedJson = await JS.InvokeAsync<string>("archiveExcel.read", base64, e.File.Name);
+            var import = JsonSerializer.Deserialize<ArchiveWorkbookImport>(parsedJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            if (import is null) { ImportMessage = "Il file non contiene dati importabili."; return; }
+            await Archivio.ImportWorkbookAsync(import);
+            ImportMessage = $"Importazione completata: {import.Championships.Count} campionati rilevati, {import.Teams.Count} squadre e {import.People.Count} nominativi letti dal file. Totale archivio: {Archivio.Data.Championships.Count} campionati, {Archivio.Data.Teams.Count} squadre, {Archivio.Data.People.Count} persone.";
+
+        }
+        catch (Exception ex) { ImportMessage = "Importazione non completata: " + ex.Message; }
+    }
+    private async Task ExportBackup()
+    {
+        var json = await Archivio.ExportJsonAsync();
+        await JS.InvokeVoidAsync("refertoDownload", $"Archivio_RefertoPallamano_{DateTime.Now:yyyyMMdd_HHmm}.json", json);
+        ImportMessage = "Esportazione completata.";
+    }
+
+    private async Task ImportArchiveJson(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            using var stream = e.File.OpenReadStream(20 * 1024 * 1024);
+            using var reader = new StreamReader(stream);
+            var json = await reader.ReadToEndAsync();
+            if (!await JS.InvokeAsync<bool>("confirm", "L'archivio attuale verrà salvato in un backup e poi sostituito. Vuoi continuare?")) return;
+            await Archivio.ReplaceFromJsonAsync(json);
+            ImportMessage = "Archivio importato correttamente. La versione precedente è stata salvata nel backup.";
+        }
+        catch (Exception ex) { ImportMessage = "Importazione non completata: " + ex.Message; }
+    }
+
+    private async Task RestoreBackup()
+    {
+        if (!await JS.InvokeAsync<bool>("confirm", "Vuoi sostituire l'archivio attuale con l'ultima copia di sicurezza?")) return;
+        try
+        {
+            var restored = await Archivio.RestoreBackupAsync();
+            ImportMessage = restored ? "Backup ripristinato correttamente." : "Non è disponibile alcun backup.";
+        }
+        catch (Exception ex) { ImportMessage = "Ripristino non completato: " + ex.Message; }
+    }
+}

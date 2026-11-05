@@ -1,0 +1,193 @@
+using System.Text.Json;
+using Microsoft.JSInterop;
+using RefertoPallamano_Blazor.Models;
+
+namespace RefertoPallamano_Blazor.Services;
+
+public sealed class ArchiveService(IJSRuntime js)
+{
+    private const string StorageKey = "refertoPallamanoArchiveV1";
+    private const string BackupKey = "refertoPallamanoArchiveBackupV1";
+    private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
+    public ArchiveDatabase Data { get; private set; } = new();
+    public bool IsLoaded { get; private set; }
+    public event Action? Changed;
+
+    public async Task InitializeAsync()
+    {
+        if (IsLoaded) return;
+        try
+        {
+            var json = await js.InvokeAsync<string?>("archiveStorage.get", StorageKey);
+            if (!string.IsNullOrWhiteSpace(json))
+                Data = JsonSerializer.Deserialize<ArchiveDatabase>(json, JsonOptions) ?? new ArchiveDatabase();
+
+            // Se l'archivio locale non esiste ancora (o contiene soltanto le voci
+            // iniziali senza squadre), carica il catalogo ricavato dal modello Excel.
+            if (Data.Teams.Count == 0)
+            {
+                var seedJson = await js.InvokeAsync<string?>("archiveStorage.getSeed");
+                if (!string.IsNullOrWhiteSpace(seedJson))
+                    Data = JsonSerializer.Deserialize<ArchiveDatabase>(seedJson, JsonOptions) ?? Data;
+            }
+        }
+        catch { Data = new ArchiveDatabase(); }
+        if (Data.Seasons.Count == 0)
+            Data.Seasons.Add(new ArchiveSeason { Name = "2026/2027", StartDate = new DateOnly(2026, 7, 1), EndDate = new DateOnly(2027, 6, 30), IsActive = true });
+        if (Data.Championships.Count == 0)
+        {
+            Data.Championships.Add(new ArchiveChampionship { Name = "Serie A1 Femminile", Category = "Senior", Gender = "Femminile" });
+            Data.Championships.Add(new ArchiveChampionship { Name = "Serie B Maschile", Category = "Senior", Gender = "Maschile" });
+            Data.Championships.Add(new ArchiveChampionship { Name = "Serie Giovanile", Category = "Giovanile", Gender = "" });
+        }
+        IsLoaded = true;
+        await SaveAsync();
+    }
+
+    public async Task SaveAsync()
+    {
+        var json = JsonSerializer.Serialize(Data, JsonOptions);
+        await js.InvokeVoidAsync("archiveStorage.set", StorageKey, json);
+        Changed?.Invoke();
+    }
+
+
+    public async Task<string> ExportJsonAsync()
+    {
+        return JsonSerializer.Serialize(Data, new JsonSerializerOptions { WriteIndented = true });
+    }
+
+    public async Task<string> CreateBackupAsync()
+    {
+        var json = await ExportJsonAsync();
+        await js.InvokeVoidAsync("archiveStorage.set", BackupKey, json);
+        return json;
+    }
+
+    public async Task ReplaceFromJsonAsync(string json)
+    {
+        var imported = JsonSerializer.Deserialize<ArchiveDatabase>(json, JsonOptions)
+            ?? throw new InvalidOperationException("Il file JSON non contiene un archivio valido.");
+        imported.Championships ??= [];
+        imported.Seasons ??= [];
+        imported.Teams ??= [];
+        imported.People ??= [];
+        imported.TeamEntries ??= [];
+        if (imported.Championships.Count == 0 && imported.Teams.Count == 0 && imported.People.Count == 0)
+            throw new InvalidOperationException("L'archivio selezionato è vuoto. L'archivio attuale non è stato modificato.");
+
+        await CreateBackupAsync();
+        Data = imported;
+        IsLoaded = true;
+        await SaveAsync();
+    }
+
+    public async Task<bool> RestoreBackupAsync()
+    {
+        var json = await js.InvokeAsync<string?>("archiveStorage.get", BackupKey);
+        if (string.IsNullOrWhiteSpace(json)) return false;
+        var restored = JsonSerializer.Deserialize<ArchiveDatabase>(json, JsonOptions);
+        if (restored is null) return false;
+        Data = restored;
+        IsLoaded = true;
+        await SaveAsync();
+        return true;
+    }
+
+    public async Task<bool> HasBackupAsync()
+    {
+        var json = await js.InvokeAsync<string?>("archiveStorage.get", BackupKey);
+        return !string.IsNullOrWhiteSpace(json);
+    }
+
+    public async Task ImportWorkbookAsync(ArchiveWorkbookImport import)
+    {
+        var seasonName = string.IsNullOrWhiteSpace(import.Season) ? "2026/2027" : import.Season.Trim();
+        var season = Data.Seasons.FirstOrDefault(x => Same(x.Name, seasonName));
+        if (season is null)
+        {
+            season = new ArchiveSeason { Name = seasonName };
+            Data.Seasons.Add(season);
+        }
+
+        foreach (var categoryName in import.Championships.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase))
+            GetOrAddChampionship(categoryName);
+
+        foreach (var teamRow in import.Teams)
+        {
+            if (string.IsNullOrWhiteSpace(teamRow.Championship) || string.IsNullOrWhiteSpace(teamRow.Team)) continue;
+            var championship = GetOrAddChampionship(teamRow.Championship);
+            var team = Data.Teams.FirstOrDefault(x => Same(x.Name, teamRow.Team));
+            if (team is null)
+            {
+                team = new ArchiveTeam { Name = teamRow.Team.Trim() };
+                Data.Teams.Add(team);
+            }
+            if (!Data.TeamEntries.Any(x => x.TeamId == team.Id && x.ChampionshipId == championship.Id &&
+                    x.SeasonId == season.Id && x.EntryType == "TEAM" && x.IsActive))
+                Data.TeamEntries.Add(new ArchiveTeamEntry { TeamId = team.Id, ChampionshipId = championship.Id, SeasonId = season.Id, EntryType = "TEAM" });
+        }
+
+        foreach (var personRow in import.People)
+        {
+            if (string.IsNullOrWhiteSpace(personRow.Championship) || string.IsNullOrWhiteSpace(personRow.Team) || string.IsNullOrWhiteSpace(personRow.Name)) continue;
+            var championship = GetOrAddChampionship(personRow.Championship);
+            var team = Data.Teams.FirstOrDefault(x => Same(x.Name, personRow.Team));
+            if (team is null)
+            {
+                team = new ArchiveTeam { Name = personRow.Team.Trim() };
+                Data.Teams.Add(team);
+            }
+            if (!Data.TeamEntries.Any(x => x.TeamId == team.Id && x.ChampionshipId == championship.Id &&
+                    x.SeasonId == season.Id && x.EntryType == "TEAM" && x.IsActive))
+                Data.TeamEntries.Add(new ArchiveTeamEntry { TeamId = team.Id, ChampionshipId = championship.Id, SeasonId = season.Id, EntryType = "TEAM" });
+
+            var rawNumber = (personRow.Number ?? "").Trim();
+            var isOfficial = rawNumber.Length == 1 && "ABCDE".Contains(rawNumber.ToUpperInvariant());
+            var personType = isOfficial ? "OFFICIAL" : "PLAYER";
+            var person = Data.People.FirstOrDefault(x => Same(x.FullName, personRow.Name) && x.PersonType == personType);
+            if (person is null)
+            {
+                person = new ArchivePerson { FullName = personRow.Name.Trim(), PersonType = personType };
+                Data.People.Add(person);
+            }
+
+            var number = isOfficial ? "" : rawNumber;
+            var letter = isOfficial ? rawNumber.ToUpperInvariant() : "";
+            var entry = Data.TeamEntries.FirstOrDefault(x => x.TeamId == team.Id && x.ChampionshipId == championship.Id &&
+                x.SeasonId == season.Id && x.PersonId == person.Id && x.EntryType == personType && x.IsActive);
+            if (entry is null)
+                Data.TeamEntries.Add(new ArchiveTeamEntry { TeamId = team.Id, ChampionshipId = championship.Id, SeasonId = season.Id,
+                    PersonId = person.Id, EntryType = personType, ShirtNumber = number, OfficialLetter = letter });
+            else
+            {
+                entry.ShirtNumber = number;
+                entry.OfficialLetter = letter;
+            }
+        }
+        await SaveAsync();
+    }
+
+    public ArchiveChampionship GetOrAddChampionship(string name)
+    {
+        // Il modello Excel usa "Giovanile"; nell'archivio manteniamo la denominazione estesa concordata.
+        if (Same(name, "Giovanile")) name = "Serie Giovanile";
+        var found = Data.Championships.FirstOrDefault(x => Same(x.Name, name));
+        if (found is not null) return found;
+        var item = new ArchiveChampionship { Name = name.Trim() };
+        Data.Championships.Add(item);
+        return item;
+    }
+
+    public static bool Same(string? a, string? b) => string.Equals((a ?? "").Trim(), (b ?? "").Trim(), StringComparison.OrdinalIgnoreCase);
+}
+
+public sealed class ArchiveWorkbookImport
+{
+    public string Season { get; set; } = "";
+    public List<string> Championships { get; set; } = [];
+    public List<ArchiveWorkbookTeam> Teams { get; set; } = [];
+    public List<ArchiveWorkbookPerson> People { get; set; } = [];
+}
+public sealed class ArchiveWorkbookTeam { public string Championship { get; set; } = ""; public string Team { get; set; } = ""; }
+public sealed class ArchiveWorkbookPerson { public string Championship { get; set; } = ""; public string Team { get; set; } = ""; public string Name { get; set; } = ""; public string Number { get; set; } = ""; }
