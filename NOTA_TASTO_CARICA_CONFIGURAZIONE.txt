@@ -1,0 +1,3 @@
+MODIFICA INTERFACCIA
+
+Il pulsante “CARICA CONFIGURAZIONE” è stato rimosso dalla barra inferiore di CONFIGURAZIONE GARA e collocato nel footer della finestra “Configurazione manuale delle squadre”, accanto ad ANNULLA e SALVA DATI MANUALI. Il pulsante conferma i dati correnti della configurazione manuale e chiude la finestra, salvando il recupero.

@@ -1,0 +1,7 @@
+FIX POPUP v125
+
+Questa versione corregge il layout dei pulsanti e cambia l'URL del foglio CSS in css/app.css?v=125 per evitare che Safari/GitHub Pages riutilizzi la vecchia versione in cache.
+
+GitHub: sostituire i file mantenendo le cartelle del repository, in particolare wwwroot/css/app.css e wwwroot/index.html. Eseguire Commit changes e attendere il completamento del workflow di pubblicazione. Poi ricaricare il sito su iPad.
+
+Nel popup FINE 1° TEMPO, APRI REFERTO FIGH deve occupare tutta la larghezza della riga quando è l'unico pulsante in alto; INIZIA 2° TEMPO deve occupare tutta la larghezza sotto. Nei popup con più azioni, i pulsanti sono organizzati in colonne uguali e su schermi stretti si dispongono in verticale.
