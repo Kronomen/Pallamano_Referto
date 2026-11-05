@@ -17,7 +17,10 @@
         <div class="home-background" aria-hidden="true"></div>
         <div class="home-bottom-shade" aria-hidden="true"></div>
         <div class="home-content">
-            <button id="home-open-button" type="button" class="home-open-button">🏐&nbsp; APRI GESTIONE GARA</button>
+            <div class="home-actions">
+                <button id="home-open-button" type="button" class="home-open-button">🏐&nbsp; APRI GESTIONE GARA</button>
+                <a id="home-archive-button" class="home-archive-button" href="archivio">GESTIONE ARCHIVIO</a>
+            </div>
             <div class="home-version">Kronoman V. 2.01 08/26</div>
         </div>
     </div>
@@ -26,10 +29,13 @@
       .home-background{position:absolute;inset:0;background:url("images/referto-pallamano-home-clean.png") center/contain no-repeat #061a34;}
       .home-bottom-shade{position:absolute;left:0;right:0;bottom:0;height:24%;pointer-events:none;background:linear-gradient(to top,rgba(0,8,22,.70),rgba(0,8,22,.10),transparent);}
       .home-content{position:relative;width:100%;height:100%;}
-      .home-open-button{position:absolute;left:50%;bottom:max(34px,6.5vh);transform:translateX(-50%);display:flex;align-items:center;justify-content:center;width:min(380px,72vw);height:clamp(48px,6.5vh,60px);border:0;border-radius:10px;background:#1557a6;color:#fff;font-size:clamp(15px,1.8vw,21px);font-weight:900;letter-spacing:.4px;text-decoration:none;box-shadow:0 6px 18px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.18);touch-action:manipulation;-webkit-user-select:none;user-select:none;cursor:pointer;}
-      .home-open-button:active{transform:translateX(-50%) scale(.985);background:#0d468b;}
+      .home-actions{position:absolute;left:50%;bottom:max(34px,6.5vh);transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:10px;width:min(380px,78vw);}
+      .home-open-button,.home-archive-button{display:flex;align-items:center;justify-content:center;width:100%;height:clamp(48px,6.5vh,60px);box-sizing:border-box;border:0;border-radius:10px;color:#fff;font-size:clamp(15px,1.8vw,21px);font-weight:900;letter-spacing:.4px;text-decoration:none;box-shadow:0 6px 18px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.18);touch-action:manipulation;-webkit-user-select:none;user-select:none;cursor:pointer;}
+      .home-open-button{background:#1557a6;}
+      .home-archive-button{background:#14745e;border:1px solid rgba(255,255,255,.3);}
+      .home-open-button:active,.home-archive-button:active{transform:scale(.985);filter:brightness(.92);}
       .home-version{position:absolute;right:max(10px,env(safe-area-inset-right));bottom:max(7px,env(safe-area-inset-bottom));color:rgba(255,255,255,.72);font-size:8px;text-shadow:0 2px 6px rgba(0,0,0,.9);}
-      @media(orientation:portrait){.home-open-button{width:min(360px,78vw);bottom:max(42px,6vh);height:52px;font-size:17px;}}
+      @media(orientation:portrait){.home-actions{width:min(360px,82vw);bottom:max(42px,6vh);gap:9px}.home-open-button,.home-archive-button{height:52px;font-size:17px;}}
     </style>
 
     <div id="app">Caricamento Referto Pallamano…</div>
@@ -58,12 +64,27 @@
   document.addEventListener('DOMContentLoaded',function(){
     var btn=document.getElementById('home-open-button');
     if(btn) btn.addEventListener('click',openGame);
+
+    // Su un percorso Blazor interno (es. /archivio), la schermata iniziale
+    // non deve coprire la pagina caricata tramite il fallback 404 di GitHub Pages.
+    var base=document.querySelector('base');
+    var basePath=base ? new URL(base.href, window.location.href).pathname : '/';
+    var currentPath=window.location.pathname;
+    var normalizedBase=basePath.endsWith('/') ? basePath : basePath + '/';
+    if(currentPath !== basePath && currentPath !== normalizedBase){
+      openGame();
+    }
   });
 })();
 </script>
     <script src="_framework/blazor.webassembly.js"></script>
 
 
+
+<button id="fullscreen-toggle" type="button" aria-label="Attiva schermo intero" title="Schermo intero"
+        onclick="window.pallamanoFullscreenToggle && window.pallamanoFullscreenToggle()">
+  <span id="fullscreen-toggle-icon">⛶</span>
+</button>
 </body>
 </html>
 <script>
@@ -251,5 +272,106 @@ window.chiudiApplicazione = function(){
       }
     } catch(e) {}
   }, 150);
+};
+</script>
+
+<script>
+// Archivio gestionale: persistenza locale e lettura del modello Excel.
+window.archiveStorage = (() => {
+  const openDb = () => new Promise((resolve, reject) => {
+    if (!window.indexedDB) { reject(new Error('IndexedDB non disponibile')); return; }
+    const request = indexedDB.open('RefertoPallamanoArchive', 1);
+    request.onupgradeneeded = () => request.result.createObjectStore('records', { keyPath: 'key' });
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+  return {
+    getSeed: async () => {
+      try {
+        const response = await fetch('data/archivio-iniziale.json', { cache: 'no-store' });
+        if (!response.ok) return null;
+        return await response.text();
+      } catch { return null; }
+    },
+    get: async key => {
+      try {
+        const db = await openDb();
+        return await new Promise((resolve, reject) => {
+          const request = db.transaction('records', 'readonly').objectStore('records').get(key);
+          request.onsuccess = () => resolve(request.result ? request.result.value : null);
+          request.onerror = () => reject(request.error);
+        });
+      } catch { return localStorage.getItem(key); }
+    },
+    set: async (key, value) => {
+      try {
+        const db = await openDb();
+        return await new Promise((resolve, reject) => {
+          const request = db.transaction('records', 'readwrite').objectStore('records').put({ key, value });
+          request.onsuccess = () => resolve(true);
+          request.onerror = () => reject(request.error);
+        });
+      } catch { localStorage.setItem(key, value); return true; }
+    }
+  };
+})();
+window.archiveExcel = {
+  read: function(base64, filename) {
+    if (!window.XLSX) throw new Error('Lettore Excel non disponibile. Ricaricare la pagina.');
+    const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+    const wb = XLSX.read(bytes, { type: 'array', cellDates: true });
+    const getRows = name => {
+      const sheet = wb.Sheets[name];
+      return sheet ? XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false, blankrows: true }) : [];
+    };
+    const clean = value => String(value ?? '').replace(/\s+/g, ' ').trim();
+    const teamsRows = getRows('Squadre');
+    const peopleRows = getRows('Giocatori Dirigenti');
+    const gameRows = getRows('Gara');
+    if (!teamsRows.length || !peopleRows.length)
+      throw new Error('Il file deve contenere i fogli «Squadre» e «Giocatori Dirigenti».');
+
+    // Il modello colloca i nomi dei campionati nella riga 5.
+    // Ogni colonna con intestazione e almeno una squadra sottostante è un gruppo.
+    const championships = [];
+    const teams = [];
+    const teamHeader = teamsRows[4] || [];
+    for (let c = 0; c < teamHeader.length; c++) {
+      const championship = clean(teamHeader[c]);
+      if (!championship || championship.toLowerCase() === 'campionati') continue;
+      const names = [];
+      for (let r = 5; r < teamsRows.length; r++) {
+        const name = clean(teamsRows[r]?.[c]);
+        if (name) names.push(name);
+      }
+      // Mantiene anche i gruppi vuoti (es. Giovanile), se il titolo è presente.
+      if (names.length || championship) {
+        championships.push(championship);
+        for (const team of names) teams.push({ championship, team });
+      }
+    }
+
+    // Nel foglio persone i blocchi sono individuati dalle intestazioni:
+    // riga 2 = nome campionato; riga 3 = Squadra | Giocatori/Dirigenti | NU.
+    const people = [];
+    const peopleHeader = peopleRows[2] || [];
+    for (let c = 0; c < peopleHeader.length; c++) {
+      if (clean(peopleHeader[c]).toLowerCase() !== 'squadra') continue;
+      const championship = clean(peopleRows[1]?.[c]);
+      const nameHeader = clean(peopleHeader[c + 1]).toLowerCase();
+      if (!championship || nameHeader !== 'giocatori/dirigenti') continue;
+      for (let r = 3; r < peopleRows.length; r++) {
+        const team = clean(peopleRows[r]?.[c]);
+        const name = clean(peopleRows[r]?.[c + 1]);
+        const number = clean(peopleRows[r]?.[c + 2]);
+        if (team && name) people.push({ championship, team, name, number });
+      }
+    }
+
+    const season = clean(gameRows[9]?.[2]);
+    if (!championships.length) throw new Error('Non ho trovato intestazioni di campionato nella riga 5 del foglio «Squadre».');
+    if (!teams.length) throw new Error('Ho trovato i campionati, ma nessuna squadra sotto le relative intestazioni nel foglio «Squadre».');
+    return JSON.stringify({ season, championships, teams, people });
+  }
 };
 </script>
