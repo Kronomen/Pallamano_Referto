@@ -19,7 +19,7 @@
         <div class="home-content">
             <div class="home-actions">
                 <button id="home-open-button" type="button" class="home-open-button" onclick="this.blur(); document.getElementById('home-screen').style.display='none'; document.getElementById('home-screen').setAttribute('aria-hidden','true');">🏐&nbsp; APRI GESTIONE GARA</button>
-                <a id="home-archive-button" class="home-archive-button" href="archivio" onclick="window.location.href = new URL('archivio', document.baseURI).href; return false;">GESTIONE ARCHIVIO</a>
+                <a id="home-archive-button" class="home-archive-button" href="archivio" onclick="this.blur(); var home=document.getElementById('home-screen'); if(home){home.style.display='none'; home.setAttribute('aria-hidden','true');} window.location.assign(new URL('archivio', document.baseURI).href); return false;">GESTIONE ARCHIVIO</a>
             </div>
             <div class="home-version">Kronoman V. 2.01 08/26</div>
         </div>
