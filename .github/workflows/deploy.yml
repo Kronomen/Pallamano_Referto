@@ -1,5 +1,74 @@
+
+name: Deploy Referto Pallamano
+
 "on":
   push:
     branches:
       - main
   workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Compila e prepara GitHub Pages
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Ripristina dipendenze
+        run: dotnet restore RefertoPallamano_Blazor.csproj
+
+      - name: Compila progetto
+        run: dotnet build RefertoPallamano_Blazor.csproj --configuration Release --no-restore
+
+      - name: Pubblica Blazor
+        run: dotnet publish RefertoPallamano_Blazor.csproj --configuration Release --no-build --no-restore --output release
+
+      - name: Configura GitHub Pages e percorsi
+        run: |
+          sed -i 's|<base href="/" />|<base href="/Pallamano_Referto/" />|' release/wwwroot/index.html
+          grep -Fq '<base href="/Pallamano_Referto/"' release/wwwroot/index.html
+          cp release/wwwroot/index.html release/wwwroot/404.html
+          touch release/wwwroot/.nojekyll
+
+      - name: Configura Pages
+        uses: actions/configure-pages@v5
+
+      - name: Carica artefatto
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: release/wwwroot
+
+  deploy:
+    name: Pubblica su GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    permissions:
+      pages: write
+      id-token: write
+
+    steps:
+      - name: Pubblica sito
+        id: deployment
+        uses: actions/deploy-pages@v4
