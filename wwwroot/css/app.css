@@ -7569,7 +7569,7 @@ button.toolbar-period.toolbar-period-ended:hover:not(:disabled) {
 .archive-match-picker-heading{display:flex;flex-direction:column;gap:2px}
 .archive-match-picker-heading strong{font-size:12px;font-weight:900;color:#173f68;letter-spacing:.35px}
 .archive-match-picker-heading span{font-size:10px;color:#64748b}
-.archive-match-picker-grid{display:grid;grid-template-columns:minmax(150px,1.1fr) minmax(125px,.8fr) minmax(180px,1.2fr) auto minmax(180px,1.2fr) auto;gap:8px;align-items:end}
+.archive-match-picker-grid{display:grid;grid-template-columns:minmax(150px,1.1fr) minmax(125px,.8fr) minmax(180px,1.2fr) minmax(180px,1.2fr);gap:8px;align-items:end}
 .archive-match-picker-grid label{display:flex;flex-direction:column;gap:4px;font-size:10px;font-weight:800;color:#334155}
 .archive-match-picker-grid select{height:34px;min-width:0;border:1px solid #cbd5e1;border-radius:6px;background:#fff;padding:0 8px;color:#1e293b;font-size:11px}
 .archive-roster-load-button{height:34px;border:0;border-radius:6px;background:#1d4ed8;color:white;font-size:10px;font-weight:900;padding:0 12px;white-space:nowrap}
@@ -7613,6 +7613,8 @@ button.toolbar-period.toolbar-period-ended:hover:not(:disabled) {
 .archive-roster-alphabet-list,.archive-roster-staff-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 10px}
 .archive-roster-alpha-row{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:38px;padding:4px 8px;background:white;border:1px solid #e2e8f0;border-radius:6px}
 .archive-roster-alpha-name{font-size:11px;font-weight:650;color:#1e293b;flex:1;min-width:0}
+.archive-roster-player-check{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
+.archive-roster-player-check input{flex:0 0 auto}
 .archive-roster-alpha-row>label{display:flex;align-items:center;gap:6px;font-size:9px;color:#64748b;white-space:nowrap}
 .archive-roster-number{width:55px;height:27px;text-align:center;font-weight:800;color:#173f68}
 .archive-roster-staff-toolbar{margin-top:8px;padding-top:8px;border-top:1px solid #cbd5e1}
@@ -7755,7 +7757,7 @@ html:-webkit-full-screen, body:-webkit-full-screen{width:100%;height:100%;overfl
 
 /* Convocazioni persistenti: pannelli compatti CASA / OSPITI */
 .archive-roster-live-panels {
-    position: fixed; inset: 50% 10px auto 10px; transform: translateY(-50%);
+    position: absolute; inset: 50% 10px auto 10px; transform: translateY(-50%);
     display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;
     z-index: 12000; pointer-events: none;
 }
@@ -7782,3 +7784,32 @@ html:-webkit-full-screen, body:-webkit-full-screen{width:100%;height:100%;overfl
  .archive-roster-live-panel { width:auto; max-height:none; }
  .archive-roster-page { padding-left:12px !important; padding-right:12px !important; }
 }
+
+
+/* Convocazioni: elenco atleti su tre colonne per ridurre lo scorrimento verticale */
+.archive-roster-alphabet-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px 8px;
+}
+@media (max-width: 1000px) {
+    .archive-roster-alphabet-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+@media (max-width: 560px) {
+    .archive-roster-alphabet-list {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Convocazioni: evidenza immediata dei numeri/lettere duplicati. */
+.archive-roster-alpha-row.archive-roster-duplicate { background:#fff0f0; border:2px solid #dc2626; }
+.archive-roster-alpha-row.archive-roster-duplicate .archive-roster-number,
+.archive-roster-alpha-row.archive-roster-duplicate .archive-roster-letter { border:2px solid #dc2626; background:#fff1f2; color:#991b1b; }
+.archive-roster-alpha-row input[type="checkbox"]:disabled { cursor:not-allowed; opacity:.45; }
+
+/* Convocazioni: conflitti visibili nei campi numero e lettera. */
+.archive-roster-number.archive-roster-duplicate,
+.archive-roster-letter.archive-roster-duplicate { border: 2px solid #dc2626 !important; background: #fee2e2 !important; color: #991b1b !important; }
+.archive-roster-player-check input:disabled,
+.archive-roster-staff-check input:disabled { cursor: not-allowed; opacity: .45; }

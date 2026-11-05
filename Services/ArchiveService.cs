@@ -32,6 +32,7 @@ public sealed class ArchiveService(IJSRuntime js)
             }
         }
         catch { Data = new ArchiveDatabase(); }
+        UpgradeSchema();
         if (Data.Seasons.Count == 0)
             Data.Seasons.Add(new ArchiveSeason { Name = "2026/2027", StartDate = new DateOnly(2026, 7, 1), EndDate = new DateOnly(2027, 6, 30), IsActive = true });
         if (Data.Championships.Count == 0)
@@ -42,6 +43,19 @@ public sealed class ArchiveService(IJSRuntime js)
         }
         IsLoaded = true;
         await SaveAsync();
+    }
+
+
+    private void UpgradeSchema()
+    {
+        if (Data.SchemaVersion < 2)
+        {
+            // In schema 1 IsSelected existed but was not used by the application;
+            // its default value must not make every athlete appear already called up.
+            foreach (var entry in Data.TeamEntries.Where(x => x.EntryType != "TEAM"))
+                entry.IsSelected = false;
+            Data.SchemaVersion = 2;
+        }
     }
 
     public async Task SaveAsync()
@@ -73,6 +87,11 @@ public sealed class ArchiveService(IJSRuntime js)
         imported.Teams ??= [];
         imported.People ??= [];
         imported.TeamEntries ??= [];
+        if (imported.SchemaVersion < 2)
+        {
+            foreach (var entry in imported.TeamEntries.Where(x => x.EntryType != "TEAM")) entry.IsSelected = false;
+            imported.SchemaVersion = 2;
+        }
         if (imported.Championships.Count == 0 && imported.Teams.Count == 0 && imported.People.Count == 0)
             throw new InvalidOperationException("L'archivio selezionato è vuoto. L'archivio attuale non è stato modificato.");
 
@@ -89,6 +108,7 @@ public sealed class ArchiveService(IJSRuntime js)
         var restored = JsonSerializer.Deserialize<ArchiveDatabase>(json, JsonOptions);
         if (restored is null) return false;
         Data = restored;
+        UpgradeSchema();
         IsLoaded = true;
         await SaveAsync();
         return true;

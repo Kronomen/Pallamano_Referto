@@ -2,7 +2,7 @@ namespace RefertoPallamano_Blazor.Models;
 
 public sealed class ArchiveDatabase
 {
-    public int SchemaVersion { get; set; } = 1;
+    public int SchemaVersion { get; set; } = 2;
     public List<ArchiveChampionship> Championships { get; set; } = [];
     public List<ArchiveSeason> Seasons { get; set; } = [];
     public List<ArchiveTeam> Teams { get; set; } = [];
@@ -56,6 +56,6 @@ public sealed class ArchiveTeamEntry
     public string EntryType { get; set; } = "PLAYER";
     public string ShirtNumber { get; set; } = "";
     public string OfficialLetter { get; set; } = "";
-    public bool IsSelected { get; set; } = true;
+    public bool IsSelected { get; set; } = false;
     public bool IsActive { get; set; } = true;
 }
