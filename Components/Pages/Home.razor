@@ -1738,8 +1738,11 @@
 
     private static void LoadPlayers(TeamState team, ImportedPlayer[]? players)
     {
-        team.Numbers = Enumerable.Range(1, 16).ToArray();
-        team.NumberLabels = Enumerable.Range(1, 16).Select(n => n.ToString()).ToArray();
+        // Gli slot vuoti devono restare realmente vuoti: inizializzare qui
+        // i numeri 1-16 rendeva attivi anche gli atleti non caricati e poteva
+        // generare falsi duplicati (per esempio il numero 14).
+        team.Numbers = Enumerable.Repeat(-1, 16).ToArray();
+        team.NumberLabels = new string[16];
         team.PlayerNames = new string[16];
         team.ActivePlayers = new bool[16];
         var slot = 0;
