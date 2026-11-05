@@ -7523,3 +7523,24 @@ html,body,#app{overflow:hidden!important;width:100%;height:100%;}
 .period-end-actions-row > .period-end-close {
     display: flex !important;
 }
+
+
+/* Evidenzia FINE PERIODO in verde intenso solo quando il periodo è terminato
+   e il cronometro gara è fermo. */
+.bottom-bar button.toolbar-period.toolbar-period-ended,
+button.toolbar-period.toolbar-period-ended {
+    background: #16a34a !important;
+    color: #ffffff !important;
+    border-color: #15803d !important;
+    box-shadow: 0 0 0 2px rgba(22, 163, 74, .18), 0 3px 10px rgba(21, 128, 61, .22) !important;
+}
+.bottom-bar button.toolbar-period.toolbar-period-ended:hover:not(:disabled),
+button.toolbar-period.toolbar-period-ended:hover:not(:disabled) {
+    background: #15803d !important;
+    color: #ffffff !important;
+}
+
+/* Il popup finale dei rigori usa la stessa fascia comandi inferiore degli altri finali. */
+.shootout-final-actions-row {
+    margin-top: 18px !important;
+}

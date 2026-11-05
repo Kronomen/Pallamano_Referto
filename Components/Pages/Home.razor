@@ -195,7 +195,7 @@
         </main>
 
         <footer class="bottom-bar">
-            <button class="toolbar-save" @onclick="SaveGame">💾 SALVA GARA</button><button class="toolbar-restore" @onclick="RestoreRecovery">↶ RIPRISTINA</button><button class="toolbar-referto" @onclick="PrintReferto">📄 REFERTO</button><button class="toolbar-config" @onclick="Game.OpenConfiguration" disabled="@Game.State.MatchStarted">⚙ CONFIGURAZIONE</button><button class="toolbar-period" @onclick="Game.FinishCurrentPeriod" disabled="@(Game.State.MatchFinished || Game.State.ShootoutStarted)">FINE PERIODO</button>        <div class="mini-timer-card mini-timer-toolbar">
+            <button class="toolbar-save" @onclick="SaveGame">💾 SALVA GARA</button><button class="toolbar-restore" @onclick="RestoreRecovery">↶ RIPRISTINA</button><button class="toolbar-referto" @onclick="PrintReferto">📄 REFERTO</button><button class="toolbar-config" @onclick="Game.OpenConfiguration" disabled="@Game.State.MatchStarted">⚙ CONFIGURAZIONE</button><button class="toolbar-period @(Game.IsPeriodStoppedAtEnd ? "toolbar-period-ended" : string.Empty)" @onclick="Game.FinishCurrentPeriod" disabled="@(Game.State.MatchFinished || Game.State.ShootoutStarted)">FINE PERIODO</button>        <div class="mini-timer-card mini-timer-toolbar">
             <div class="mini-timer-label">CRONOMETRO</div>
             <div class="mini-timer-display">@GameService.FormatTime(Game.GetMiniTimerSeconds())</div>
         </div>
@@ -587,11 +587,11 @@
             <div class="shootout-winner-label">SQUADRA VINCENTE</div>
             <div class="shootout-winner-team">@Game.ShootoutWinnerName</div>
             <p>La serie dei rigori è terminata. Il risultato è stato registrato nel Registro Gara.</p>
-            <div class="shootout-winner-actions">
-                <button type="button" class="primary" @onclick="PrintReferto">▣ APRI REFERTO FIGH</button>
+            <div class="period-end-actions-row shootout-final-actions-row">
+                <button type="button" class="period-end-referto" @onclick="PrintReferto">▣&nbsp; REFERTO FIGH</button>
+                <button type="button" class="period-end-exit" @onclick="ExitApplication">⇱&nbsp; ESCI DAL PROGETTO</button>
+                <button type="button" class="period-end-close" @onclick="Game.CloseShootoutWinner">CHIUDI</button>
                 <button type="button" class="whatsapp-referto-button" @onclick="OpenWhatsAppDialogFromPeriod">CONDIVIDI PDF · WHATSAPP / EMAIL</button>
-                <button type="button" @onclick="Game.CloseShootoutWinner">CHIUDI</button>
-                <button type="button" class="danger" @onclick="ExitApplication">⇱ ESCI DAL PROGETTO</button>
             </div>
         </div>
     </div>

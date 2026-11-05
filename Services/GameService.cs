@@ -16,6 +16,11 @@ public sealed class GameService : IAsyncDisposable
     public (string Team, int Index)? PendingStaff { get; private set; }
     public bool ShowPeriodEnd { get; private set; }
     public bool ShowNextPeriod { get; private set; }
+    public bool IsPeriodStoppedAtEnd =>
+        State.Phase is >= 1 and <= 6 &&
+        !State.Running &&
+        State.TimerSeconds >= GetCurrentPeriodEndSeconds() &&
+        State.PhaseScores.ContainsKey(State.Phase);
     public string NextPeriodName => State.Phase switch { 1 => "2° TEMPO", 3 => "2° TEMPO SUPPLEMENTARE", 5 => "4° TEMPO SUPPLEMENTARE", _ => PhaseName(Math.Min(State.Phase + 1, 6)) };
     public string PeriodEndSummaryTitle => State.Phase switch
     {
