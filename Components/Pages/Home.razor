@@ -539,28 +539,39 @@
 
 @if (Game.ShowMatchEnd)
 {
-    <div class="overlay match-end-overlay">
-        <div class="match-end-dialog">
-            <div class="match-end-kicker">GARA TERMINATA</div>
-            <div class="match-end-title">
-                @(Game.State.ScoreA == Game.State.ScoreB ? "PAREGGIO" : "SQUADRA VINCENTE")
+    <div class="overlay period-end-overlay">
+        <div class="period-end-dialog" role="dialog" aria-modal="true" aria-labelledby="match-end-title">
+            <div class="period-end-header">
+                <div class="period-end-header-title">
+                    <span class="period-end-flag" aria-hidden="true">⚑</span>
+                    <span>GARA TERMINATA</span>
+                </div>
             </div>
-            <div class="match-end-score">@Game.State.ScoreA <span>−</span> @Game.State.ScoreB</div>
-            @if (Game.State.ScoreA == Game.State.ScoreB)
-            {
-                <div class="match-end-label">FINE GARA IN PARITÀ</div>
-                <div class="match-end-team draw">@Game.State.Casa.Name <span>—</span> @Game.State.Ospiti.Name</div>
-                <p>La gara è terminata in parità. Il risultato finale è stato registrato nel Registro Gara.</p>
-            }
-            else
-            {
-                <div class="match-end-label">È PROCLAMATA VINCITRICE</div>
-                <div class="match-end-team">@(Game.State.ScoreA > Game.State.ScoreB ? Game.State.Casa.Name : Game.State.Ospiti.Name)</div>
-                <p>La gara è terminata. La squadra indicata è proclamata vincitrice. Il risultato è stato registrato nel Registro Gara ed è pronto per il referto finale.</p>
-            }
-            <div class="match-end-actions">
-                <button type="button" class="primary" @onclick="PrintReferto">▣ APRI REFERTO FIGH</button>
-                <button type="button" class="danger" @onclick="ExitApplication">⇱ ESCI DAL PROGETTO</button>
+            <div class="period-end-body">
+                <h2 id="match-end-title">@Game.PeriodEndSummaryTitle</h2>
+                <div class="period-end-score-label">RISULTATO FINALE</div>
+                <div class="period-end-score">
+                    <strong>@Game.State.ScoreA</strong>
+                    <span>—</span>
+                    <strong>@Game.State.ScoreB</strong>
+                </div>
+                @if (Game.State.ScoreA == Game.State.ScoreB)
+                {
+                    <div class="period-end-summary-title">PAREGGIO</div>
+                    <p>La gara è terminata in parità tra @Game.State.Casa.Name e @Game.State.Ospiti.Name.</p>
+                }
+                else
+                {
+                    <div class="period-end-summary-title">SQUADRA VINCENTE</div>
+                    <p>È proclamata vincitrice @((Game.State.ScoreA > Game.State.ScoreB) ? Game.State.Casa.Name : Game.State.Ospiti.Name).</p>
+                }
+                <p>Il risultato finale è stato registrato. Puoi rivedere gli eventi per apportare eventuali correzioni, aprire il referto, inviarlo oppure chiudere il progetto.</p>
+                <div class="period-end-actions-row">
+                    <button type="button" class="period-end-referto" @onclick="PrintReferto">▣&nbsp; REFERTO FIGH</button>
+                    <button type="button" class="period-end-exit" @onclick="ExitApplication">⇱&nbsp; ESCI DAL PROGETTO</button>
+                    <button type="button" class="period-end-close" @onclick="Game.ReopenFinalMatchReview">OK · RIVEDI EVENTI</button>
+                    <button type="button" class="whatsapp-referto-button" @onclick="OpenWhatsAppDialogFromPeriod">CONDIVIDI PDF · WHATSAPP / EMAIL</button>
+                </div>
             </div>
         </div>
     </div>
@@ -736,9 +747,11 @@
 
     private void OpenWhatsAppDialogFromPeriod()
     {
-        // Chiude il popup di fine periodo e apre direttamente la condivisione.
-        // La conferma del periodo resta registrata, così si può poi rivedere il referto.
+        // Chiude ogni popup di fine periodo/finale gara prima di mostrare
+        // la finestra di scelta WhatsApp/email, evitando overlay sovrapposti.
         Game.ClosePeriodDialog();
+        Game.CloseMatchEnd();
+        Game.CloseShootoutWinner();
         InitializeWhatsAppDialog();
     }
 
