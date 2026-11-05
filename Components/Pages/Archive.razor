@@ -36,17 +36,46 @@
         {
             <section class="archive-card">
                 <div class="archive-card-title"><div><h2>Elenco campionati</h2><p>I campionati sono dati configurabili, non opzioni fisse del programma.</p></div><span class="archive-count">@Archivio.Data.Championships.Count</span></div>
-                <div class="archive-form-grid">
-                    <label>Nome campionato<input @bind="ChampionshipName" placeholder="Es. Serie A2 Femminile" /></label>
-                    <label>Categoria<input @bind="ChampionshipCategory" placeholder="Es. Senior / Under 18" /></label>
-                    <label>Genere<select @bind="ChampionshipGender"><option value="">Non specificato</option><option>Femminile</option><option>Maschile</option><option>Misto</option></select></label>
-                    <button class="archive-primary" @onclick="AddChampionship">+ AGGIUNGI CAMPIONATO</button>
+                <div class="archive-form-grid championship-form">
+                    <label>Nome campionato
+                        <select @bind="ChampionshipName">
+                            <option value="">Seleziona un campionato</option>
+                            @foreach (var item in Archivio.Data.Championships.Where(x => x.IsActive).OrderBy(x => x.Name))
+                            {
+                                <option value="@item.Name">@item.Name</option>
+                            }
+                            <option value="__new__">＋ Nuovo campionato…</option>
+                        </select>
+                    </label>
+                    @if (ChampionshipName == "__new__")
+                    {
+                        <label>Nuovo nome campionato
+                            <input @bind="NewChampionshipName" placeholder="Inserisci il nome del nuovo campionato" />
+                        </label>
+                    }
+                    <label>Categoria
+                        <select @bind="ChampionshipCategory">
+                            <option value="">Seleziona categoria</option>
+                            <option value="Senior">Senior</option>
+                            <option value="Junior">Junior</option>
+                            <option value="Open">Open</option>
+                        </select>
+                    </label>
+                    <label>Genere
+                        <select @bind="ChampionshipGender">
+                            <option value="">Non specificato</option>
+                            <option>Femminile</option>
+                            <option>Maschile</option>
+                            <option>Misto</option>
+                        </select>
+                    </label>
+                    <button class="archive-primary" @onclick="AddChampionship" disabled="@(ChampionshipName != "__new__" || string.IsNullOrWhiteSpace(NewChampionshipName))">+ AGGIUNGI CAMPIONATO</button>
                 </div>
                 @if (Archivio.Data.Championships.Count == 0) { <div class="archive-empty">Nessun campionato inserito. Puoi crearne uno qui sopra o importare il modello Excel.</div> }
-                <div class="archive-list">
+                <div class="archive-list championship-grid">
                     @foreach (var c in Archivio.Data.Championships.OrderBy(x => x.Name))
                     {
-                        <div class="archive-list-row"><div class="archive-list-icon">🏆</div><div class="archive-list-main"><strong>@c.Name</strong><small>@(string.IsNullOrWhiteSpace(c.Category) ? "Categoria non specificata" : c.Category) · @(string.IsNullOrWhiteSpace(c.Gender) ? "Genere non specificato" : c.Gender)</small></div><span class="archive-status @(c.IsActive ? "on" : "off")">@(c.IsActive ? "ATTIVO" : "ARCHIVIATO")</span><button class="archive-small" @onclick="() => ToggleChampionship(c.Id)">@(c.IsActive ? "ARCHIVIA" : "RIATTIVA")</button><button class="archive-small danger" @onclick="() => DeleteChampionship(c.Id)">ELIMINA</button></div>
+                        <div class="archive-list-row championship-row"><div class="archive-list-icon">🏆</div><div class="archive-list-main"><strong>@c.Name</strong><small>@(string.IsNullOrWhiteSpace(c.Category) ? "Categoria non specificata" : c.Category) · @(string.IsNullOrWhiteSpace(c.Gender) ? "Genere non specificato" : c.Gender)</small></div><span class="archive-status @(c.IsActive ? "on" : "off")">@(c.IsActive ? "ATTIVO" : "ARCHIVIATO")</span><button class="archive-small" @onclick="() => ToggleChampionship(c.Id)">@(c.IsActive ? "ARCHIVIA" : "RIATTIVA")</button><button class="archive-small danger" @onclick="() => DeleteChampionship(c.Id)">ELIMINA</button></div>
                     }
                 </div>
             </section>
@@ -66,7 +95,7 @@
                     <label>Stagione<select @bind="TeamRegistrationSeasonId"><option value="">Seleziona stagione</option>@foreach (var x in Archivio.Data.Seasons) { <option value="@x.Id">@x.Name</option> }</select></label>
                     <button class="archive-primary" @onclick="AddTeamRegistration">ISCRIVI SQUADRA</button>
                 </div>
-                <div class="archive-list">
+                <div class="archive-list teams-grid">
                     @foreach (var t in Archivio.Data.Teams.OrderBy(x => x.Name))
                     {
                         <div class="archive-list-row"><div class="archive-list-icon">🏐</div><div class="archive-list-main"><strong>@t.Name</strong><small>@(string.IsNullOrWhiteSpace(t.ShortName) ? "Nessuna abbreviazione" : t.ShortName) · @Archivio.Data.TeamEntries.Count(x => x.TeamId == t.Id && x.EntryType == "TEAM") iscrizioni</small></div><span class="archive-status @(t.IsActive ? "on" : "off")">@(t.IsActive ? "ATTIVA" : "ARCHIVIATA")</span><button class="archive-small" @onclick="() => ToggleTeam(t.Id)">@(t.IsActive ? "ARCHIVIA" : "RIATTIVA")</button></div>
@@ -149,7 +178,7 @@
 
 @code {
     private string Tab = "campionati";
-    private string ChampionshipName = ""; private string ChampionshipCategory = ""; private string ChampionshipGender = "";
+    private string ChampionshipName = ""; private string NewChampionshipName = ""; private string ChampionshipCategory = ""; private string ChampionshipGender = "";
     private string TeamName = ""; private string TeamShortName = "";
     private string SeasonName = ""; private DateTime SeasonStart = new(2027, 7, 1); private DateTime SeasonEnd = new(2028, 6, 30);
     private string PersonName = ""; private string PersonType = "PLAYER";
@@ -164,10 +193,23 @@
 
     private async Task AddChampionship()
     {
-        if (string.IsNullOrWhiteSpace(ChampionshipName)) return;
-        if (Archivio.Data.Championships.Any(x => ArchiveService.Same(x.Name, ChampionshipName))) { ImportMessage = "Il campionato esiste già."; return; }
-        Archivio.Data.Championships.Add(new ArchiveChampionship { Name = ChampionshipName.Trim(), Category = ChampionshipCategory.Trim(), Gender = ChampionshipGender });
-        ChampionshipName = ChampionshipCategory = ChampionshipGender = ""; await Archivio.SaveAsync();
+        if (ChampionshipName != "__new__" || string.IsNullOrWhiteSpace(NewChampionshipName)) return;
+        var name = NewChampionshipName.Trim();
+        if (Archivio.Data.Championships.Any(x => ArchiveService.Same(x.Name, name)))
+        {
+            ImportMessage = "Il campionato esiste già.";
+            return;
+        }
+        Archivio.Data.Championships.Add(new ArchiveChampionship
+        {
+            Name = name,
+            Category = ChampionshipCategory,
+            Gender = ChampionshipGender,
+            IsActive = true
+        });
+        ChampionshipName = NewChampionshipName = ChampionshipCategory = ChampionshipGender = "";
+        ImportMessage = "Nuovo campionato aggiunto all'elenco.";
+        await Archivio.SaveAsync();
     }
     private async Task ToggleChampionship(string id) { var x = Archivio.Data.Championships.FirstOrDefault(x => x.Id == id); if (x is not null) { x.IsActive = !x.IsActive; await Archivio.SaveAsync(); } }
     private async Task DeleteChampionship(string id) { var x = Archivio.Data.Championships.FirstOrDefault(x => x.Id == id); if (x is null) return; if (Archivio.Data.TeamEntries.Any(e => e.ChampionshipId == id)) { ImportMessage = "Non è possibile eliminare un campionato già utilizzato: archivialo per conservarne lo storico."; return; } Archivio.Data.Championships.Remove(x); await Archivio.SaveAsync(); }

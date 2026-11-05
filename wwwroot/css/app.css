@@ -7544,3 +7544,211 @@ button.toolbar-period.toolbar-period-ended:hover:not(:disabled) {
 .shootout-final-actions-row {
     margin-top: 18px !important;
 }
+
+/* =====================================================
+   MODULO ARCHIVIO – stile coordinato con Referto Pallamano
+   ===================================================== */
+.archive-app{min-height:100dvh;height:100dvh;overflow:auto;background:#eef2f7;color:#172033;padding:18px 22px;font-family:Arial,Helvetica,sans-serif}
+.archive-header{height:64px;display:flex;align-items:center;justify-content:space-between;background:#0b1220;color:#fff;border-radius:12px;padding:8px 16px;box-shadow:0 4px 14px #0b12201c}
+.archive-brand{display:flex;align-items:center;gap:11px}.archive-brand img{width:44px;height:44px;object-fit:contain}.archive-brand div{display:flex;flex-direction:column;gap:3px}.archive-brand strong{font-size:15px;letter-spacing:.5px}.archive-brand span{font-size:10px;color:#9fb5d0;font-weight:800;letter-spacing:1.2px}
+.archive-back{border:1px solid #64748b;background:#1e293b;color:#fff;border-radius:8px;padding:10px 14px;font-weight:900;cursor:pointer}
+.archive-intro{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:26px 4px 20px}.archive-eyebrow{font-size:10px;font-weight:900;letter-spacing:1.4px;color:#176b87}.archive-intro h1{margin:5px 0;font-size:27px;color:#123b5d}.archive-intro p{margin:0;color:#64748b;font-size:13px;font-weight:600}.archive-stats{display:flex;gap:10px}.archive-stats div{min-width:95px;background:#fff;border:1px solid #d8e0e9;border-radius:10px;padding:12px;text-align:center;display:flex;flex-direction:column;gap:4px}.archive-stats b{font-size:23px;color:#123b5d}.archive-stats span{font-size:10px;color:#64748b;font-weight:900;text-transform:uppercase}
+.archive-tabs{display:flex;gap:6px;border-bottom:2px solid #d7e0e9;margin-bottom:15px;overflow:auto}.archive-tabs button{border:0;background:transparent;padding:13px 16px;color:#64748b;font-size:11px;font-weight:900;white-space:nowrap;cursor:pointer;border-bottom:3px solid transparent}.archive-tabs button.active{color:#1557a6;border-color:#1557a6}
+.archive-card{background:#fff;border:1px solid #d8e0e9;border-radius:13px;padding:20px;box-shadow:0 4px 14px #0b12200a}.archive-card-title{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:17px}.archive-card-title h2{margin:0 0 5px;color:#123b5d;font-size:19px}.archive-card-title p{margin:0;color:#64748b;font-size:12px}.archive-count,.archive-excel{background:#e8f1f8;color:#1557a6;padding:8px 11px;border-radius:8px;font-weight:900;font-size:13px}.archive-form-grid{display:grid;grid-template-columns:2fr 1.3fr 1.1fr auto;gap:10px;align-items:end;padding:14px;background:#f5f8fb;border:1px solid #e0e8ef;border-radius:10px;margin-bottom:15px}.archive-form-grid label{display:flex;flex-direction:column;gap:6px;color:#475569;font-size:10px;font-weight:900;text-transform:uppercase}.archive-form-grid input,.archive-form-grid select{height:40px;border:1px solid #cbd5e1;border-radius:7px;padding:0 10px;background:#fff;color:#172033;font-size:13px;font-weight:600;min-width:0}.archive-primary{height:40px;padding:0 14px;border:0;border-radius:7px;background:#1557a6;color:#fff;font-size:10px;font-weight:900;white-space:nowrap;cursor:pointer}.archive-primary:hover{background:#0e468b}.people-form{grid-template-columns:2fr 1fr auto}
+.archive-list{display:flex;flex-direction:column;gap:6px}.archive-list-row{display:flex;align-items:center;gap:12px;padding:10px 11px;border:1px solid #e3eaf0;border-radius:9px;background:#fff;min-width:0}.archive-list-icon{width:34px;height:34px;display:grid;place-items:center;background:#f0f5f9;border-radius:8px;font-size:17px;flex-shrink:0}.archive-list-main{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}.archive-list-main strong{font-size:13px;color:#1e293b;overflow:hidden;text-overflow:ellipsis}.archive-list-main small{font-size:10px;color:#64748b}.archive-status{font-size:9px;font-weight:900;padding:5px 7px;border-radius:5px}.archive-status.on{background:#dcfce7;color:#166534}.archive-status.off{background:#e2e8f0;color:#475569}.archive-small{border:1px solid #cbd5e1;background:#fff;color:#334155;border-radius:6px;padding:7px 9px;font-size:9px;font-weight:900;cursor:pointer;white-space:nowrap}.archive-small.danger{color:#b91c1c;border-color:#fecaca}.archive-empty{padding:22px;text-align:center;color:#64748b;font-size:12px}
+.archive-import-box{display:flex;align-items:center;gap:16px;padding:20px;border:2px dashed #b7c9da;background:#f6f9fc;border-radius:12px}.archive-import-icon{width:52px;height:52px;border-radius:12px;background:#e3eef7;color:#1557a6;font-size:28px;font-weight:900;display:grid;place-items:center}.archive-import-box strong{color:#123b5d;font-size:15px}.archive-import-box p{color:#64748b;font-size:12px;max-width:760px;line-height:1.5}.archive-import-box input{font-size:12px}.archive-note{margin-top:17px;padding:15px 18px;background:#eef5fa;border-radius:9px;color:#334155;font-size:12px;line-height:1.6}.archive-note strong{color:#123b5d}.archive-note ul{margin:7px 0 0;padding-left:20px}.archive-message{margin-top:12px;padding:11px 13px;border-radius:8px;background:#e0f2fe;color:#075985;font-size:12px;font-weight:800}.archive-footer{display:flex;align-items:center;justify-content:space-between;padding:15px 3px;color:#64748b;font-size:10px}.archive-loading{padding:60px;text-align:center;font-weight:900;color:#475569}
+@media(max-width:850px){.archive-app{padding:10px}.archive-intro{align-items:flex-start;flex-direction:column}.archive-stats{width:100%}.archive-stats div{flex:1;min-width:0}.archive-form-grid,.people-form{grid-template-columns:1fr 1fr}.archive-primary{grid-column:1/-1}.archive-list-row{flex-wrap:wrap}.archive-list-main{flex-basis:calc(100% - 55px)}.archive-footer{gap:10px;flex-wrap:wrap}}
+@media(max-width:520px){.archive-header{height:auto;gap:8px}.archive-back{font-size:9px;padding:8px}.archive-intro h1{font-size:22px}.archive-form-grid,.people-form{grid-template-columns:1fr}.archive-primary{grid-column:auto}.archive-card{padding:12px}.archive-list-row{gap:7px}.archive-status{margin-left:auto}}
+.archive-form-grid.registration-form{grid-template-columns:repeat(4,minmax(130px,1fr)) auto;margin-top:12px}.archive-form-grid.registration-form label:nth-last-child(2){grid-column:auto}@media(max-width:850px){.archive-form-grid.registration-form{grid-template-columns:1fr 1fr}.archive-form-grid.registration-form .archive-primary{grid-column:1/-1}}@media(max-width:520px){.archive-form-grid.registration-form{grid-template-columns:1fr}}
+.archive-form-grid.season-form{grid-template-columns:1.5fr 1fr 1fr auto}
+@media(max-width:850px){.archive-form-grid.season-form{grid-template-columns:1fr 1fr}.archive-form-grid.season-form .archive-primary{grid-column:1/-1}}
+@media(max-width:520px){.archive-form-grid.season-form{grid-template-columns:1fr}}
+
+/* Archivio -> caricamento rose nella configurazione gara */
+.archive-match-picker{border:1px solid #cbd5e1;border-radius:10px;background:#f8fafc;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.archive-match-picker-heading{display:flex;flex-direction:column;gap:2px}
+.archive-match-picker-heading strong{font-size:12px;font-weight:900;color:#173f68;letter-spacing:.35px}
+.archive-match-picker-heading span{font-size:10px;color:#64748b}
+.archive-match-picker-grid{display:grid;grid-template-columns:minmax(150px,1.1fr) minmax(125px,.8fr) minmax(180px,1.2fr) auto minmax(180px,1.2fr) auto;gap:8px;align-items:end}
+.archive-match-picker-grid label{display:flex;flex-direction:column;gap:4px;font-size:10px;font-weight:800;color:#334155}
+.archive-match-picker-grid select{height:34px;min-width:0;border:1px solid #cbd5e1;border-radius:6px;background:#fff;padding:0 8px;color:#1e293b;font-size:11px}
+.archive-roster-load-button{height:34px;border:0;border-radius:6px;background:#1d4ed8;color:white;font-size:10px;font-weight:900;padding:0 12px;white-space:nowrap}
+.archive-roster-load-button:disabled{opacity:.45;cursor:not-allowed}
+.archive-roster-message{font-size:10px;font-weight:700;color:#155e75;background:#ecfeff;border:1px solid #a5f3fc;border-radius:6px;padding:6px 8px}
+@media(max-width:1100px){.archive-match-picker-grid{grid-template-columns:1fr 1fr}.archive-roster-load-button{width:100%}}
+@media(max-width:480px){.archive-match-picker-grid{grid-template-columns:1fr}.archive-match-picker{padding:8px}}
+
+.archive-roster-editor{margin-top:10px;padding:10px;border:1px solid #bfcee0;border-radius:9px;background:#fff}
+.archive-roster-editor-title{display:flex;justify-content:space-between;gap:10px;align-items:center;color:#173f68;font-size:11px;margin-bottom:8px}
+.archive-roster-editor-title span{font-size:10px;color:#475569}
+.archive-roster-columns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.archive-roster-list{border:1px solid #dbe3ed;border-radius:7px;padding:7px;max-height:230px;overflow:auto}
+.archive-roster-list h4{margin:0 0 6px;color:#17436c;font-size:10px;font-weight:900}
+.archive-roster-person{display:grid;grid-template-columns:18px minmax(0,1fr) 92px;align-items:center;gap:6px;padding:4px 2px;border-bottom:1px solid #eef2f6;font-size:10px}
+.archive-roster-person-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.archive-roster-person label{display:flex;align-items:center;gap:4px;font-size:9px;color:#475569}
+.archive-roster-number,.archive-roster-letter{width:48px;min-width:0;border:1px solid #cbd5e1;border-radius:4px;padding:3px;font-size:10px}
+.archive-roster-quickadd{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:9px;padding:8px;background:#f1f5f9;border-radius:7px}
+.archive-roster-quickadd strong{width:100%;font-size:10px;color:#173f68}
+.archive-roster-quickadd input,.archive-roster-quickadd select{height:30px;border:1px solid #cbd5e1;border-radius:5px;padding:0 7px;font-size:10px;min-width:100px}
+.archive-roster-quickadd button,.archive-roster-editor-actions button{height:31px;border:0;border-radius:5px;background:#1d4ed8;color:white;font-size:9px;font-weight:900;padding:0 10px}
+.archive-roster-editor-actions{display:flex;gap:7px;justify-content:flex-end;margin-top:8px}
+.archive-roster-editor-actions .archive-small{background:#64748b}
+@media(max-width:760px){.archive-roster-columns{grid-template-columns:1fr}.archive-roster-editor-title{align-items:flex-start;flex-direction:column}}
+
+.archive-team-setup-grid .manual-team-card{display:flex;flex-direction:column;gap:12px}
+.archive-roster-summary{display:flex;flex-direction:column;gap:6px;padding:14px;border:1px solid #cbd5e1;border-radius:9px;background:#f8fafc;color:#173f68;font-size:12px}
+.archive-roster-summary span{font-size:11px;color:#64748b}
+.archive-roster-page{position:fixed;inset:12px;z-index:1200;background:#f8fafc;border:1px solid #9fb2c8;border-radius:14px;box-shadow:0 18px 60px #0f172a66;display:flex;flex-direction:column;overflow:hidden}
+.archive-roster-page-header{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 18px;background:#173f68;color:white}
+.archive-roster-page-header span{font-size:10px;font-weight:900;letter-spacing:.7px;opacity:.85}
+.archive-roster-page-header h2{font-size:20px;margin:3px 0}
+.archive-roster-page-header p{font-size:11px;margin:0;opacity:.9}
+.archive-roster-page-content{padding:12px 16px;overflow:auto;flex:1;display:flex;flex-direction:column;gap:8px}
+.archive-roster-page-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.archive-roster-page-toolbar>div{display:flex;flex-direction:column;gap:2px}
+.archive-roster-page-toolbar strong{font-size:12px;color:#173f68}
+.archive-roster-page-toolbar span{font-size:10px;color:#64748b}
+.archive-roster-search{width:min(280px,45%);height:32px;border:1px solid #cbd5e1;border-radius:6px;padding:0 9px}
+.archive-roster-alphabet-list,.archive-roster-staff-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 10px}
+.archive-roster-alpha-row{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:38px;padding:4px 8px;background:white;border:1px solid #e2e8f0;border-radius:6px}
+.archive-roster-alpha-name{font-size:11px;font-weight:650;color:#1e293b;flex:1;min-width:0}
+.archive-roster-alpha-row>label{display:flex;align-items:center;gap:6px;font-size:9px;color:#64748b;white-space:nowrap}
+.archive-roster-number{width:55px;height:27px;text-align:center;font-weight:800;color:#173f68}
+.archive-roster-staff-toolbar{margin-top:8px;padding-top:8px;border-top:1px solid #cbd5e1}
+.archive-roster-staff-check{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
+.archive-roster-letter{width:55px;height:27px}
+.archive-roster-page-footer{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:10px 16px;background:white;border-top:1px solid #cbd5e1}
+.archive-roster-page-footer>span{margin-right:auto;font-size:11px;font-weight:800;color:#173f68}
+@media(max-width:760px){.archive-roster-alphabet-list,.archive-roster-staff-list{grid-template-columns:1fr}.archive-roster-page{inset:4px}.archive-roster-page-header h2{font-size:16px}}
+
+/* Visualizzazione a schermo intero: ottimizzata per tablet da 11 pollici */
+html:fullscreen, body:fullscreen{width:100%;height:100%;overflow:hidden}
+html:-webkit-full-screen, body:-webkit-full-screen{width:100%;height:100%;overflow:hidden}
+#fullscreen-toggle{
+  position:fixed;right:12px;bottom:12px;z-index:20000;
+  width:38px;height:38px;border:1px solid rgba(255,255,255,.65);
+  border-radius:9px;background:rgba(23,63,104,.88);color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-size:23px;font-weight:800;line-height:1;cursor:pointer;
+  box-shadow:0 2px 9px rgba(15,23,42,.28);
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation;
+}
+#fullscreen-toggle:active{transform:scale(.94)}
+#fullscreen-toggle.is-fullscreen{background:rgba(51,65,85,.82)}
+@media(max-width:1100px){
+  #fullscreen-toggle{right:8px;bottom:8px;width:34px;height:34px;font-size:21px}
+}
+/* In fullscreen sfrutta tutta l'area utile senza introdurre barre o margini del browser. */
+:fullscreen body{margin:0!important;width:100vw;height:100vh}
+
+/* Configurazione squadre: CASA e OSPITI sempre affiancate su tablet 11" */
+.archive-team-setup-grid,
+.manual-teams-grid.archive-team-setup-grid {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    align-items: stretch;
+    gap: 12px;
+    width: 100%;
+}
+.archive-team-setup-grid > .manual-team-card {
+    min-width: 0;
+    width: 100%;
+    height: 100%;
+}
+/* Il passaggio a una colonna avviene solo su telefoni stretti. */
+@media (max-width: 600px) {
+    .archive-team-setup-grid,
+    .manual-teams-grid.archive-team-setup-grid {
+        grid-template-columns: minmax(0, 1fr) !important;
+    }
+}
+
+/* Elenco squadre compatto: due colonne su schermi ampi */
+.archive-list.teams-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: 8px;
+}
+.archive-list.teams-grid .archive-list-row {
+    min-width: 0;
+    gap: 8px;
+    padding: 8px;
+}
+.archive-list.teams-grid .archive-list-main {
+    flex: 1 1 auto;
+}
+.archive-list.teams-grid .archive-status {
+    flex-shrink: 0;
+}
+.archive-list.teams-grid .archive-small {
+    flex-shrink: 0;
+    padding: 7px 8px;
+}
+@media (max-width: 900px) {
+    .archive-list.teams-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Campionati: inserimento compatto e schede in due colonne */
+.archive-form-grid.championship-form {
+    grid-template-columns: minmax(220px, 1.5fr) minmax(160px, 1fr);
+    gap: 9px 12px;
+    padding: 12px;
+}
+.archive-form-grid.championship-form .archive-primary {
+    justify-self: start;
+    min-width: 190px;
+}
+.archive-list.championship-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    align-items: start;
+}
+.archive-list.championship-grid .championship-row {
+    display: grid;
+    grid-template-columns: 30px minmax(90px, 1fr) auto auto auto;
+    gap: 7px;
+    padding: 8px;
+    align-items: center;
+}
+.archive-list.championship-grid .archive-list-icon {
+    width: 30px;
+    height: 30px;
+}
+.archive-list.championship-grid .archive-list-main strong {
+    white-space: normal;
+}
+.archive-list.championship-grid .archive-status {
+    margin-left: 0;
+    padding: 5px 7px;
+    font-size: 9px;
+}
+.archive-list.championship-grid .archive-small {
+    padding: 7px 8px;
+    font-size: 9px;
+    white-space: nowrap;
+}
+@media (max-width: 1050px) {
+    .archive-list.championship-grid {
+        grid-template-columns: 1fr;
+    }
+}
+@media (max-width: 650px) {
+    .archive-form-grid.championship-form {
+        grid-template-columns: 1fr;
+    }
+    .archive-list.championship-grid .championship-row {
+        grid-template-columns: 30px minmax(0, 1fr) auto;
+    }
+    .archive-list.championship-grid .archive-status {
+        grid-column: 2;
+        justify-self: start;
+    }
+    .archive-list.championship-grid .archive-small {
+        grid-row: 2;
+    }
+}
