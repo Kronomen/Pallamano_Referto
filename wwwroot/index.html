@@ -18,8 +18,8 @@
         <div class="home-bottom-shade" aria-hidden="true"></div>
         <div class="home-content">
             <div class="home-actions">
-                <button id="home-open-button" type="button" class="home-open-button">🏐&nbsp; APRI GESTIONE GARA</button>
-                <a id="home-archive-button" class="home-archive-button" href="archivio">GESTIONE ARCHIVIO</a>
+                <button id="home-open-button" type="button" class="home-open-button" onclick="this.blur(); document.getElementById('home-screen').style.display='none'; document.getElementById('home-screen').setAttribute('aria-hidden','true');">🏐&nbsp; APRI GESTIONE GARA</button>
+                <a id="home-archive-button" class="home-archive-button" href="archivio" onclick="window.location.href = new URL('archivio', document.baseURI).href; return false;">GESTIONE ARCHIVIO</a>
             </div>
             <div class="home-version">Kronoman V. 2.01 08/26</div>
         </div>
@@ -57,27 +57,24 @@
 
 <script>
 (function(){
-  function openGame(){
+  function hideHome(){
     var home=document.getElementById('home-screen');
     if(home){ home.style.display='none'; home.setAttribute('aria-hidden','true'); }
   }
   document.addEventListener('DOMContentLoaded',function(){
-    var btn=document.getElementById('home-open-button');
-    if(btn) btn.addEventListener('click',openGame);
-
-    // Su un percorso Blazor interno (es. /archivio), la schermata iniziale
-    // non deve coprire la pagina caricata tramite il fallback 404 di GitHub Pages.
+    // Se si apre direttamente una rotta interna (es. /archivio), non mostrare
+    // la schermata iniziale sopra la pagina richiesta.
     var base=document.querySelector('base');
     var basePath=base ? new URL(base.href, window.location.href).pathname : '/';
     var currentPath=window.location.pathname;
     var normalizedBase=basePath.endsWith('/') ? basePath : basePath + '/';
     if(currentPath !== basePath && currentPath !== normalizedBase){
-      openGame();
+      hideHome();
     }
   });
 })();
 </script>
-    <script src="_framework/blazor.webassembly.js"></script>
+
 
 
 
@@ -85,8 +82,7 @@
         onclick="window.pallamanoFullscreenToggle && window.pallamanoFullscreenToggle()">
   <span id="fullscreen-toggle-icon">⛶</span>
 </button>
-</body>
-</html>
+
 <script>
 window.refertoDownload = (filename, text) => {
   const blob = new Blob([text], {type:'application/json;charset=utf-8'});
@@ -375,3 +371,7 @@ window.archiveExcel = {
   }
 };
 </script>
+
+    <script src="_framework/blazor.webassembly.js"></script>
+</body>
+</html>
