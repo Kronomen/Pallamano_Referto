@@ -402,14 +402,12 @@
                 <div class="period-end-summary-title">@Game.PeriodEndSummaryTitle</div>
                 <p>@Game.PeriodEndSummary</p>
                 <p>Il cronometro resterà fermo. Premi OK per rivedere o correggere gli eventi del periodo. Al termine della revisione verrà avviato il periodo successivo, la serie dei rigori oppure verrà mostrato il risultato finale della gara.</p>
-                <div class="period-end-actions-top">
+                <div class="period-end-actions-row">
                     <button type="button" class="period-end-referto" @onclick="PrintReferto">▣&nbsp; REFERTO FIGH</button>
                     @if (Game.State.Phase > 1)
                     {
                         <button type="button" class="period-end-exit" @onclick="ExitApplication">⇱&nbsp; ESCI DAL PROGETTO</button>
                     }
-                </div>
-                <div class="period-end-actions-bottom">
                     <button type="button" class="period-end-close" @onclick="Game.ClosePeriodDialog">OK · RIVEDI EVENTI</button>
                     @if (Game.State.Phase is not (1 or 3 or 5))
                     {
