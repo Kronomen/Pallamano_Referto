@@ -399,29 +399,23 @@
                     <span>—</span>
                     <strong>@Game.State.ScoreB</strong>
                 </div>
-                <p>Il cronometro resterà fermo. Dopo l’OK potrai aggiungere o correggere gli eventi prima di passare al periodo successivo.</p>
+                <div class="period-end-summary-title">@Game.PeriodEndSummaryTitle</div>
+                <p>@Game.PeriodEndSummary</p>
+                <p>Il cronometro resterà fermo. Premi OK per rivedere o correggere gli eventi del periodo. Al termine della revisione verrà avviato il periodo successivo, la serie dei rigori oppure verrà mostrato il risultato finale della gara.</p>
                 <div class="period-end-actions-top">
                     <button type="button" class="period-end-referto" @onclick="PrintReferto">▣&nbsp; REFERTO FIGH</button>
-                    @if (Game.State.Phase == 1)
-                    {
-                        <button type="button" class="period-end-events" @onclick="Game.ClosePeriodDialog">EVENTI</button>
-                    }
-                    else if (Game.State.Phase > 1)
+                    @if (Game.State.Phase > 1)
                     {
                         <button type="button" class="period-end-exit" @onclick="ExitApplication">⇱&nbsp; ESCI DAL PROGETTO</button>
                     }
                 </div>
-                @if (Game.State.Phase == 1)
-                {
-                    <button type="button" class="period-end-prepare-next" @onclick="Game.PrepareSecondPeriodDirectly">▶&nbsp; PREPARA 2° TEMPO</button>
-                }
-                else
-                {
-                    <div class="period-end-actions-bottom">
-                        <button type="button" class="period-end-close" @onclick="Game.ClosePeriodDialog">OK · RIVEDI EVENTI</button>
+                <div class="period-end-actions-bottom">
+                    <button type="button" class="period-end-close" @onclick="Game.ClosePeriodDialog">OK · RIVEDI EVENTI</button>
+                    @if (Game.State.Phase is not (1 or 3 or 5))
+                    {
                         <button type="button" class="whatsapp-referto-button" @onclick="OpenWhatsAppDialogFromPeriod">CONDIVIDI PDF · WHATSAPP / EMAIL</button>
-                    </div>
-                }
+                    }
+                </div>
             </div>
         </div>
     </div>
@@ -445,7 +439,7 @@
                     <span>—</span>
                     <strong>@Game.State.ScoreB</strong>
                 </div>
-                <p>Gli eventi del periodo precedente sono stati rivisti. Conferma per passare al periodo successivo. Il cronometro resterà fermo fino alla pressione di START.</p>
+                <p>Gli eventi del periodo precedente sono stati rivisti. @Game.NextPeriodDescription Il cronometro resterà fermo fino alla pressione di START.</p>
                 <button type="button" class="period-end-close" @onclick="Game.ConfirmNextPeriod">OK · PREPARA @Game.NextPeriodName</button>
             </div>
         </div>
@@ -586,6 +580,7 @@
             <p>La serie dei rigori è terminata. Il risultato è stato registrato nel Registro Gara.</p>
             <div class="shootout-winner-actions">
                 <button type="button" class="primary" @onclick="PrintReferto">▣ APRI REFERTO FIGH</button>
+                <button type="button" class="whatsapp-referto-button" @onclick="OpenWhatsAppDialogFromPeriod">CONDIVIDI PDF · WHATSAPP / EMAIL</button>
                 <button type="button" @onclick="Game.CloseShootoutWinner">CHIUDI</button>
                 <button type="button" class="danger" @onclick="ExitApplication">⇱ ESCI DAL PROGETTO</button>
             </div>
@@ -678,10 +673,13 @@
     <div class="overlay ready-overlay">
         <div class="dialog-card ready-dialog" role="dialog" aria-modal="true" aria-labelledby="ready-title">
             <div class="dialog-kicker">REFerto GARA</div>
-            <h2 id="ready-title">Referto pronto</h2>
-            <p>La configurazione è completata. Premi START per avviare il cronometro; subito dopo ti verrà chiesto di indicare la squadra in possesso della palla.</p>
+            <h2 id="ready-title">Inizio @GameService.PhaseName(Game.State.Phase)</h2>
+            <p>Quando sei pronto, premi START per avviare il cronometro. Subito dopo ti verrà chiesto di indicare la squadra in possesso della palla.</p>
             <div class="ready-dialog-actions">
-                <button type="button" class="ready-config-button" @onclick="Game.ReturnToConfiguration">⚙ CONFIGURAZIONE</button>
+                @if (!Game.State.MatchStarted)
+                {
+                    <button type="button" class="ready-config-button" @onclick="Game.ReturnToConfiguration">⚙ CONFIGURAZIONE</button>
+                }
                 <button type="button" class="primary ready-start-button" @onclick="Game.StartStop">START</button>
             </div>
         </div>

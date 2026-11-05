@@ -17,6 +17,48 @@ public sealed class GameService : IAsyncDisposable
     public bool ShowPeriodEnd { get; private set; }
     public bool ShowNextPeriod { get; private set; }
     public string NextPeriodName => State.Phase switch { 1 => "2° TEMPO", 3 => "2° TEMPO SUPPLEMENTARE", 5 => "4° TEMPO SUPPLEMENTARE", _ => PhaseName(Math.Min(State.Phase + 1, 6)) };
+    public string PeriodEndSummaryTitle => State.Phase switch
+    {
+        2 when State.MatchMode == "STANDARD" => "GARA TERMINATA",
+        2 when State.ScoreA != State.ScoreB => "GARA TERMINATA",
+        2 when State.MatchMode == "RIGORI" => "SI PROCEDE AI RIGORI",
+        2 => "SI PROSEGUE CON I SUPPLEMENTARI",
+        4 when State.ScoreA != State.ScoreB => "GARA TERMINATA",
+        4 => "SI PROSEGUE CON ALTRI DUE SUPPLEMENTARI",
+        6 when State.ScoreA != State.ScoreB => "GARA TERMINATA",
+        6 => "SI PROCEDE AI RIGORI",
+        _ => "PROSEGUIMENTO DELLA GARA"
+    };
+    public string PeriodEndSummary => State.Phase switch
+    {
+        1 => "Il 1° tempo è terminato. La gara prosegue regolarmente con il 2° tempo.",
+        2 when State.MatchMode == "STANDARD" && State.ScoreA == State.ScoreB =>
+            $"La gara termina qui in parità tra {State.Casa.Name} e {State.Ospiti.Name}.",
+        2 when State.MatchMode == "STANDARD" =>
+            $"La gara termina qui. È vincitrice {(State.ScoreA > State.ScoreB ? State.Casa.Name : State.Ospiti.Name)}.",
+        2 when State.ScoreA != State.ScoreB =>
+            $"La gara termina qui. È vincitrice {(State.ScoreA > State.ScoreB ? State.Casa.Name : State.Ospiti.Name)}.",
+        2 when State.MatchMode == "RIGORI" =>
+            "Il risultato è ancora in parità: al termine della revisione degli eventi si procederà con i tiri di rigore.",
+        2 =>
+            "Il risultato è in parità: la gara prosegue con il 1° e il 2° tempo supplementare.",
+        3 => "Il 1° tempo supplementare è terminato. La gara prosegue con il 2° tempo supplementare.",
+        4 when State.ScoreA != State.ScoreB =>
+            $"La gara termina qui. È vincitrice {(State.ScoreA > State.ScoreB ? State.Casa.Name : State.Ospiti.Name)}.",
+        4 =>
+            "Il risultato è ancora in parità: sono previsti altri due tempi supplementari, il 3° e il 4°.",
+        5 => "Il 3° tempo supplementare è terminato. La gara prosegue con il 4° tempo supplementare.",
+        6 when State.ScoreA != State.ScoreB =>
+            $"La gara termina qui. È vincitrice {(State.ScoreA > State.ScoreB ? State.Casa.Name : State.Ospiti.Name)}.",
+        6 => "Il risultato è ancora in parità dopo il 4° tempo supplementare: si procederà con i tiri di rigore.",
+        _ => "Rivedi gli eventi del periodo prima di proseguire."
+    };
+    public string NextPeriodDescription => State.Phase switch
+    {
+        2 => "La gara è ancora in parità. Si disputeranno il 1° e il 2° tempo supplementare.",
+        4 => "La gara è ancora in parità. Si disputeranno il 3° e il 4° tempo supplementare.",
+        _ => $"Conferma per passare a {NextPeriodName}. Il cronometro resterà fermo fino alla pressione di START."
+    };
     public bool ShowShootoutStart { get; private set; }
     public bool ShowShootoutFirstTeam { get; private set; }
     public bool ShowShootoutWinner { get; private set; }
@@ -578,6 +620,8 @@ public sealed class GameService : IAsyncDisposable
         // viene mostrato il popup risultato finale (o quello dei rigori).
         if (IsFinalDecisionPoint())
         {
+            // Qualunque sia il periodo conclusivo (2° tempo o supplementari),
+            // il risultato passa sempre da FinishMatch e quindi dallo stesso popup finale.
             NextPeriod();
             return;
         }
