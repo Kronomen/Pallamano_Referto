@@ -726,6 +726,7 @@
 
 @code {
     private bool ShowWhatsAppDialog { get; set; }
+    private bool ReturnToFinalMatchPopupAfterShareCancel { get; set; }
     private List<string> WhatsAppPhones { get; set; } = [""];
     private List<string> EmailRecipients { get; set; } = [""];
     private bool ShowManualConfiguration { get; set; }
@@ -747,6 +748,10 @@
 
     private void OpenWhatsAppDialogFromPeriod()
     {
+        // Memorizza se la finestra di condivisione è stata aperta dal popup
+        // finale della gara, così da poterlo ripristinare in caso di annullamento.
+        ReturnToFinalMatchPopupAfterShareCancel = Game.ShowMatchEnd;
+
         // Chiude ogni popup di fine periodo/finale gara prima di mostrare
         // la finestra di scelta WhatsApp/email, evitando overlay sovrapposti.
         Game.ClosePeriodDialog();
@@ -761,7 +766,15 @@
         EmailRecipients = [""];
         ShowWhatsAppDialog = true;
     }
-    private void CloseWhatsAppDialog() => ShowWhatsAppDialog = false;
+    private void CloseWhatsAppDialog()
+    {
+        ShowWhatsAppDialog = false;
+        if (ReturnToFinalMatchPopupAfterShareCancel)
+        {
+            ReturnToFinalMatchPopupAfterShareCancel = false;
+            Game.ReopenFinalMatchPopup();
+        }
+    }
     private void AddWhatsAppPhone() { if (WhatsAppPhones.Count < 10) WhatsAppPhones.Add(""); }
     private void RemoveWhatsAppPhone(int index) { if (WhatsAppPhones.Count > 1 && index >= 0 && index < WhatsAppPhones.Count) WhatsAppPhones.RemoveAt(index); }
     private void AddEmailRecipient() { if (EmailRecipients.Count < 10) EmailRecipients.Add(""); }
