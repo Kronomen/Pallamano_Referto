@@ -56,5 +56,6 @@ public sealed class ArchiveTeamEntry
     public string EntryType { get; set; } = "PLAYER";
     public string ShirtNumber { get; set; } = "";
     public string OfficialLetter { get; set; } = "";
+    public bool IsSelected { get; set; } = true;
     public bool IsActive { get; set; } = true;
 }
