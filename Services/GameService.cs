@@ -1076,6 +1076,15 @@ public sealed class GameService : IAsyncDisposable
         Notify();
     }
 
+    public void ReopenFinalMatchPopup()
+    {
+        if (!State.MatchFinished) return;
+        State.Running = false;
+        State.MiniTimerRunning = false;
+        ShowMatchEnd = true;
+        Notify();
+    }
+
     public void ReopenFinalMatchReview()
     {
         if (!State.MatchFinished || State.Phase is < 1 or > 6 || State.ShootoutStarted) return;
