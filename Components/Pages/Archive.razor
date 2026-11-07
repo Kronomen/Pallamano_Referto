@@ -210,6 +210,30 @@
                                             </div>
                                         }
                                     </div>
+                                    @foreach (var op in Operators)
+                                    {
+                                        <div class="operator-device-block">
+                                            <button class="archive-small" @onclick="() => ToggleDeviceList(op.Id)">@(ExpandedOperatorId == op.Id ? "NASCONDI DISPOSITIVI" : "GESTISCI DISPOSITIVI") · @op.Name</button>
+                                            @if (ExpandedOperatorId == op.Id)
+                                            {
+                                                @if (OperatorDevices.Count == 0)
+                                                {
+                                                    <p class="operator-device-empty">Nessun dispositivo registrato.</p>
+                                                }
+                                                @foreach (var device in OperatorDevices)
+                                                {
+                                                    <div class="operator-device-row">
+                                                        <div><strong>@device.DeviceName</strong><small>Ultimo accesso: @(device.LastSeenAt ?? "mai")</small></div>
+                                                        <span class="archive-status @(device.IsRevoked ? "off" : "on")">@(device.IsRevoked ? "REVOCATO" : "ATTIVO")</span>
+                                                        @if (!device.IsRevoked)
+                                                        {
+                                                            <button class="archive-small danger" @onclick="() => RevokeOperatorDevice(device)">REVOCA</button>
+                                                        }
+                                                    </div>
+                                                }
+                                            }
+                                        </div>
+                                    }
                                 }
                                 <button class="archive-small" @onclick="LoadOperators" disabled="@CloudBusy">AGGIORNA ELENCO</button>
                                 @if (!string.IsNullOrWhiteSpace(OperatorMessage)) { <div class="archive-message">@OperatorMessage</div> }
@@ -259,6 +283,8 @@
     private string? CreatedOperatorCode;
     private string OperatorMessage = "";
     private List<OperatorInfo> Operators = new();
+    private List<OperatorDeviceInfo> OperatorDevices = new();
+    private string? ExpandedOperatorId;
     private string CloudMessage = "";
     private bool CloudBusy;
 
@@ -367,6 +393,34 @@
     {
         try { Operators = await Cloud.GetOperatorsAsync(); OperatorMessage = "Elenco aggiornato."; }
         catch (Exception ex) { OperatorMessage = ex.Message; }
+    }
+
+    private async Task ToggleDeviceList(string operatorId)
+    {
+        if (ExpandedOperatorId == operatorId) { ExpandedOperatorId = null; OperatorDevices.Clear(); return; }
+        ExpandedOperatorId = operatorId;
+        await LoadOperatorDevices(operatorId);
+    }
+
+    private async Task LoadOperatorDevices(string operatorId)
+    {
+        try { OperatorDevices = await Cloud.GetOperatorDevicesAsync(operatorId); }
+        catch (Exception ex) { OperatorMessage = ex.Message; }
+    }
+
+    private async Task RevokeOperatorDevice(OperatorDeviceInfo device)
+    {
+        if (!await JS.InvokeAsync<bool>("confirm", $"Vuoi revocare l'accesso del dispositivo {device.DeviceName}? L'app su quel dispositivo non potrà più sincronizzarsi.")) return;
+        CloudBusy = true;
+        try
+        {
+            await Cloud.RevokeDeviceAsync(device.Id);
+            if (ExpandedOperatorId is not null) await LoadOperatorDevices(ExpandedOperatorId);
+            await LoadOperators();
+            OperatorMessage = "Dispositivo revocato.";
+        }
+        catch (Exception ex) { OperatorMessage = ex.Message; }
+        finally { CloudBusy = false; }
     }
 
     private async Task CreateOperator()
