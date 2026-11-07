@@ -132,6 +132,46 @@ async function writeFile(path, data, expectedSha, token) {
   return { conflict: false, sha: result.content.sha, commit: result.commit.sha };
 }
 
+async function rateLimitState(env, key, limit = 8, windowSeconds = 900) {
+  const now = Math.floor(Date.now() / 1000);
+  const row = await env.DB.prepare(
+    'SELECT attempts, window_started_at, blocked_until FROM access_rate_limits WHERE rate_key = ?'
+  ).bind(key).first();
+  if (row?.blocked_until && row.blocked_until > now) {
+    return { blocked: true, retryAfter: row.blocked_until - now };
+  }
+  if (row?.window_started_at && now - row.window_started_at < windowSeconds && row.attempts >= limit) {
+    return { blocked: true, retryAfter: windowSeconds - (now - row.window_started_at) };
+  }
+  return { blocked: false, retryAfter: 0 };
+}
+async function recordFailedAttempt(env, key, limit = 8, windowSeconds = 900) {
+  const now = Math.floor(Date.now() / 1000);
+  const resetBefore = now - windowSeconds;
+  const blockedUntil = now + windowSeconds;
+  const row = await env.DB.prepare(
+    `INSERT INTO access_rate_limits (rate_key, attempts, window_started_at, blocked_until)
+     VALUES (?, 1, ?, NULL)
+     ON CONFLICT(rate_key) DO UPDATE SET
+       attempts = CASE WHEN access_rate_limits.window_started_at <= ? THEN 1 ELSE access_rate_limits.attempts + 1 END,
+       window_started_at = CASE WHEN access_rate_limits.window_started_at <= ? THEN excluded.window_started_at ELSE access_rate_limits.window_started_at END,
+       blocked_until = CASE
+         WHEN access_rate_limits.window_started_at <= ? THEN NULL
+         WHEN access_rate_limits.attempts + 1 >= ? THEN ?
+         ELSE access_rate_limits.blocked_until
+       END
+     RETURNING attempts, blocked_until`
+  ).bind(key, now, resetBefore, resetBefore, resetBefore, limit, blockedUntil).first();
+  return { blocked: Number(row?.attempts || 0) >= limit, retryAfter: row?.blocked_until ? windowSeconds : 0 };
+}
+async function clearRateLimit(env, key) {
+  await env.DB.prepare('DELETE FROM access_rate_limits WHERE rate_key = ?').bind(key).run();
+}
+async function rateKey(request, purpose) {
+  const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+  return purpose + ':' + await sha256Hex(ip);
+}
+
 async function authenticate(request, env) {
   const header = request.headers.get('Authorization') || '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : '';
@@ -188,22 +228,40 @@ export default {
 
     try {
       if (url.pathname === '/api/login' && request.method === 'POST') {
+        const key = await rateKey(request, 'admin-login');
+        const state = await rateLimitState(env, key, 8, 900);
+        if (state.blocked) return jsonResponse({ error: 'Troppi tentativi. Riprova tra qualche minuto.' }, 429, origin, { 'Retry-After': String(state.retryAfter) });
         const body = await readRequestJson(request);
-        if (typeof body.password !== 'string' || !constantTimeEqual(body.password, env.APP_PASSWORD))
+        if (typeof body.password !== 'string' || !constantTimeEqual(body.password, env.APP_PASSWORD)) {
+          const attempt = await recordFailedAttempt(env, key, 8, 900);
+          if (attempt.blocked) return jsonResponse({ error: 'Troppi tentativi. Accesso temporaneamente bloccato.' }, 429, origin, { 'Retry-After': '900' });
           return jsonResponse({ error: 'Password non corretta.' }, 401, origin);
+        }
+        await clearRateLimit(env, key);
         return jsonResponse({ token: await issueAdminJwt(env.ADMIN_JWT_SECRET), expiresIn: ADMIN_TOKEN_TTL_SECONDS, role: 'admin' }, 200, origin);
       }
 
       if (url.pathname === '/api/operator/activate' && request.method === 'POST') {
+        const key = await rateKey(request, 'operator-activate');
+        const state = await rateLimitState(env, key, 10, 900);
+        if (state.blocked) return jsonResponse({ error: 'Troppi tentativi di attivazione. Riprova tra qualche minuto.' }, 429, origin, { 'Retry-After': String(state.retryAfter) });
         const body = await readRequestJson(request);
         const code = typeof body.code === 'string' ? body.code.trim() : '';
         const deviceName = typeof body.deviceName === 'string' && body.deviceName.trim()
           ? body.deviceName.trim().slice(0, 100) : 'Dispositivo';
-        if (code.length < 12 || code.length > 100) return jsonResponse({ error: 'Codice personale non valido.' }, 400, origin);
+        if (code.length < 12 || code.length > 100) {
+          const attempt = await recordFailedAttempt(env, key, 10, 900);
+          return jsonResponse({ error: attempt.blocked ? 'Troppi tentativi di attivazione. Riprova tra qualche minuto.' : 'Codice personale non valido.' }, attempt.blocked ? 429 : 400, origin, attempt.blocked ? { 'Retry-After': '900' } : {});
+        }
         const operator = await env.DB.prepare(
           'SELECT id, name FROM operators WHERE code_hash = ? AND active = 1 LIMIT 1'
         ).bind(await sha256Hex(code)).first();
-        if (!operator) return jsonResponse({ error: 'Codice non riconosciuto oppure operatore disattivato.' }, 401, origin);
+        if (!operator) {
+          const attempt = await recordFailedAttempt(env, key, 10, 900);
+          if (attempt.blocked) return jsonResponse({ error: 'Troppi tentativi di attivazione. Accesso temporaneamente bloccato.' }, 429, origin, { 'Retry-After': '900' });
+          return jsonResponse({ error: 'Codice non riconosciuto oppure operatore disattivato.' }, 401, origin);
+        }
+        await clearRateLimit(env, key);
         const token = randomSecret(32);
         const deviceId = makeId('dev');
         await env.DB.prepare(
@@ -231,6 +289,7 @@ export default {
           const created = await createOperator(env, await readRequestJson(request));
           return jsonResponse(created, 201, origin);
         }
+        return jsonResponse({ error: 'Metodo non consentito.' }, 405, origin, { Allow: 'GET, POST, OPTIONS' });
       }
 
       const devicesMatch = url.pathname.match(/^\/api\/admin\/operators\/([A-Za-z0-9_-]+)\/devices$/);
