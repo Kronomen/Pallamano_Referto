@@ -107,17 +107,21 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
         try
         {
             await EnsureTokenAsync();
-            using var request = new HttpRequestMessage(HttpMethod.Get, ApiBase + "/api/archive");
+            using var request = new HttpRequestMessage(HttpMethod.Get, ApiBase + "/api/me");
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _token);
             using var response = await http.SendAsync(request);
             var body = await response.Content.ReadAsStringAsync();
             if (!response.IsSuccessStatusCode) throw new InvalidOperationException(ReadError(body, "Sessione non valida."));
-            IsAdmin = false;
-            OperatorName ??= "Operatore";
             using var document = JsonDocument.Parse(body);
-            HasRemoteArchive = document.RootElement.TryGetProperty("exists", out var exists) && exists.ValueKind == JsonValueKind.True;
-            _sha = ReadString(document.RootElement, "sha");
-            Status = HasRemoteArchive ? "Sessione ripristinata. Archivio cloud disponibile." : "Sessione ripristinata. Archivio cloud vuoto.";
+            var root = document.RootElement;
+            var role = ReadString(root, "role");
+            IsAdmin = string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase);
+            OperatorName = ReadString(root, "operatorName") ?? (IsAdmin ? "Amministratore" : "Operatore");
+            DeviceId = ReadString(root, "deviceId");
+            await RefreshRemoteAsync();
+            Status = IsAdmin
+                ? "Sessione amministratore ripristinata. Archivio cloud disponibile."
+                : $"Sessione ripristinata per {OperatorName}. Archivio cloud disponibile.";
             return true;
         }
         catch
@@ -125,7 +129,10 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
             _token = null;
             _autoSyncEnabled = false;
             IsAdmin = false;
+            OperatorName = null;
+            DeviceId = null;
             Status = "Sessione cloud non attiva. Effettua l'accesso o l'attivazione.";
+            try { await js.InvokeVoidAsync("localStorage.removeItem", TokenKey); } catch { }
             return false;
         }
     }
