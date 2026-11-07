@@ -40,6 +40,23 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
         await RefreshRemoteAsync();
     }
 
+    public async Task<bool> TryRestoreSessionAsync()
+    {
+        try
+        {
+            await EnsureTokenAsync();
+            await RefreshRemoteAsync();
+            return true;
+        }
+        catch
+        {
+            _token = null;
+            _autoSyncEnabled = false;
+            Status = "Sessione cloud non attiva. Effettua nuovamente l'accesso.";
+            return false;
+        }
+    }
+
     public async Task RefreshRemoteAsync()
     {
         await EnsureTokenAsync();
