@@ -203,7 +203,11 @@
     private string CloudMessage = "";
     private bool CloudBusy;
 
-    protected override async Task OnInitializedAsync() => await Archivio.InitializeAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        await Archivio.InitializeAsync();
+        await Cloud.TryRestoreSessionAsync();
+    }
     private void SetTab(string value) => Tab = value;
     private void BackToMatch() => Nav.NavigateTo("/");
 
