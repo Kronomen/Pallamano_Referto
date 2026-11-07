@@ -164,7 +164,7 @@ async function listOperators(env) {
   const result = await env.DB.prepare(
     `SELECT o.id, o.name, o.active, o.created_at,
        COUNT(d.id) AS device_count,
-       SUM(CASE WHEN d.revoked_at IS NULL THEN 1 ELSE 0 END) AS active_device_count
+       SUM(CASE WHEN d.id IS NOT NULL AND d.revoked_at IS NULL THEN 1 ELSE 0 END) AS active_device_count
      FROM operators o LEFT JOIN devices d ON d.operator_id = o.id
      GROUP BY o.id ORDER BY o.name COLLATE NOCASE`
   ).all();
