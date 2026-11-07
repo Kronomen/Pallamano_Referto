@@ -306,7 +306,8 @@
         {
             var remote = await Cloud.DownloadRemoteAsync();
             if (remote is null) { CloudMessage = "Nel cloud non è presente alcun archivio."; return; }
-            await Archivio.ReplaceFromJsonAsync(JsonSerializer.Serialize(remote));
+            await Archivio.ReplaceFromJsonAsync(JsonSerializer.Serialize(remote), syncCloud: false);
+            Cloud.EnableAutoSync();
             CloudMessage = "Archivio cloud copiato su questo dispositivo. Sincronizzazione automatica attiva.";
         }
         catch (Exception ex) { CloudMessage = ex.Message; }
