@@ -233,6 +233,17 @@ export default {
         }
       }
 
+      const devicesMatch = url.pathname.match(/^\/api\/admin\/operators\/([A-Za-z0-9_-]+)\/devices$/);
+      if (devicesMatch && request.method === 'GET') {
+        if (!requireAdmin(auth)) return jsonResponse({ error: 'Operazione riservata all’amministratore.' }, 403, origin);
+        const result = await env.DB.prepare(
+          `SELECT id, device_name, created_at, last_seen_at, revoked_at
+           FROM devices WHERE operator_id = ?
+           ORDER BY created_at DESC`
+        ).bind(devicesMatch[1]).all();
+        return jsonResponse({ devices: result.results || [] }, 200, origin);
+      }
+
       const operatorMatch = url.pathname.match(/^\/api\/admin\/operators\/([A-Za-z0-9_-]+)$/);
       if (operatorMatch && request.method === 'PATCH') {
         if (!requireAdmin(auth)) return jsonResponse({ error: 'Operazione riservata all’amministratore.' }, 403, origin);
