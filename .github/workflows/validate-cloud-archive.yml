@@ -1,4 +1,4 @@
-name: Validate cloud archive branch
+name: Validate and package cloud archive test build
 
 on:
   push:
@@ -19,3 +19,28 @@ jobs:
           dotnet-version: 10.0.x
       - run: dotnet restore RefertoPallamano_Blazor.csproj
       - run: dotnet build RefertoPallamano_Blazor.csproj --configuration Release --no-restore
+      - name: Publish test app
+        run: dotnet publish RefertoPallamano_Blazor.csproj --configuration Release --no-restore --output ./publish
+      - name: Prepare test package
+        run: |
+          cat > ./publish/ISTRUZIONI-PROVA.txt <<'EOF'
+          REFERTO PALLAMANO - PACCHETTO DI PROVA CLOUD
+          
+          Questa è una build separata dal sito pubblico.
+          Non contiene l'archivio reale e non modifica il Worker Cloudflare.
+          
+          Per provarla localmente occorre servirla tramite un server HTTP statico.
+          ATTENZIONE: il collegamento al Worker da localhost può essere bloccato da CORS,
+          perché il Worker è attualmente configurato per l'origine GitHub Pages ufficiale.
+          Non inserire dati reali finché non viene predisposta un'origine di test autorizzata.
+          
+          Il sito pubblico e il branch main non sono stati modificati.
+          EOF
+          cd publish
+          zip -r ../RefertoPallamano-PROVA-CLOUD.zip .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RefertoPallamano-PROVA-CLOUD
+          path: RefertoPallamano-PROVA-CLOUD.zip
+          if-no-files-found: error
+          retention-days: 14
