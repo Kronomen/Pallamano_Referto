@@ -1,0 +1,20 @@
+REFERTO PALLAMANO - PACCHETTO DI PROVA CLOUD
+
+AVVIO
+1. Estrai TUTTI i file dello ZIP in una cartella.
+2. Apri la cartella estratta.
+3. Fai doppio clic su Start-Prova.bat (non sul file .ps1).
+4. Il browser si aprira su http://localhost:8088/.
+
+La finestra PowerShell deve restare aperta mentre usi l'app.
+Per fermare il server premi CTRL+C nella finestra PowerShell.
+
+IMPORTANTE
+- Questa e una build di prova separata.
+- Non contiene l'archivio reale e non modifica il sito pubblico.
+- Il collegamento al Worker Cloudflare non e ancora attivo da localhost:
+  il Worker autorizza attualmente il dominio GitHub Pages ufficiale.
+- Non inserire dati reali e non modificare Cloudflare durante questa prova.
+
+Se compare un errore rosso, la finestra resta aperta: fotografa il messaggio
+e invialo in chat.
