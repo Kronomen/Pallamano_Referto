@@ -266,6 +266,7 @@
     {
         await Archivio.InitializeAsync();
         await Cloud.TryRestoreSessionAsync();
+        if (Cloud.IsAdmin) await LoadOperators();
     }
     private void SetTab(string value) => Tab = value;
     private void BackToMatch() => Nav.NavigateTo("/");
