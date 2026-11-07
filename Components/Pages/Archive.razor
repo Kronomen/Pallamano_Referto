@@ -1,5 +1,6 @@
 @page "/archivio"
 @using System.Text.Json
+@using RefertoPallamano_Blazor.Services
 @inject ArchiveService Archivio
 @inject CloudArchiveService Cloud
 @inject IJSRuntime JS
@@ -156,13 +157,65 @@
                 <div class="archive-note">
                     <strong>Sincronizzazione cloud privata</strong>
                     <p>Collega questo dispositivo al repository privato. Dopo aver scelto quale archivio utilizzare, le modifiche successive verranno salvate anche sul cloud. La copia locale continua a funzionare anche senza connessione.</p>
-                    <label>Password cloud
-                        <input type="password" @bind="CloudPassword" autocomplete="current-password" placeholder="Inserisci la password cloud" />
-                    </label>
-                    <button class="archive-primary" @onclick="ConnectCloud" disabled="@CloudBusy">@(CloudBusy ? "COLLEGAMENTO…" : "ACCEDI AL CLOUD")</button>
+                    @if (!Cloud.IsAuthenticated)
+                    {
+                        <div class="operator-access-panel">
+                            <h3>Accesso amministratore</h3>
+                            <label>Password amministratore
+                                <input type="password" @bind="CloudPassword" autocomplete="current-password" placeholder="Password amministratore" />
+                            </label>
+                            <button class="archive-primary" @onclick="ConnectCloud" disabled="@CloudBusy">ACCEDI COME AMMINISTRATORE</button>
+                            <hr />
+                            <h3>Attivazione operatore</h3>
+                            <p>Inserisci il codice personale ricevuto dall'amministratore. Il dispositivo resterà autorizzato anche dopo la chiusura del browser.</p>
+                            <label>Codice personale
+                                <input @bind="OperatorCode" autocomplete="one-time-code" placeholder="Inserisci il tuo codice personale" />
+                            </label>
+                            <label>Nome dispositivo
+                                <input @bind="DeviceName" placeholder="Es. Tablet segnapunti" />
+                            </label>
+                            <button class="archive-primary" @onclick="ActivateOperator" disabled="@CloudBusy">ATTIVA QUESTO DISPOSITIVO</button>
+                        </div>
+                    }
                     @if (Cloud.IsAuthenticated)
                     {
+                        <p><strong>Utente collegato:</strong> @(Cloud.IsAdmin ? "Amministratore" : Cloud.OperatorName)</p>
                         <p><strong>Stato:</strong> @Cloud.Status</p>
+                        @if (Cloud.IsAdmin)
+                        {
+                            <div class="operator-access-panel">
+                                <h3>Gestione operatori</h3>
+                                <div class="operator-create-row">
+                                    <input @bind="NewOperatorName" placeholder="Nome e cognome dell'operatore" />
+                                    <button class="archive-primary" @onclick="CreateOperator" disabled="@CloudBusy">CREA OPERATORE</button>
+                                </div>
+                                @if (CreatedOperatorCode is not null)
+                                {
+                                    <div class="operator-code-result">
+                                        <strong>Codice personale da comunicare all'operatore</strong>
+                                        <code>@CreatedOperatorCode</code>
+                                        <button class="archive-small" @onclick="CopyOperatorCode">COPIA CODICE</button>
+                                        <small>Conservalo: per sicurezza viene mostrato soltanto adesso.</small>
+                                    </div>
+                                }
+                                @if (Operators.Count > 0)
+                                {
+                                    <div class="operator-list">
+                                        @foreach (var op in Operators)
+                                        {
+                                            <div class="operator-row">
+                                                <div><strong>@op.Name</strong><small>@op.ActiveDeviceCount dispositivi attivi · @op.DeviceCount registrati</small></div>
+                                                <span class="archive-status @(op.Active ? "on" : "off")">@(op.Active ? "ATTIVO" : "DISATTIVATO")</span>
+                                                <button class="archive-small" @onclick="() => ToggleOperator(op)">@((op.Active) ? "DISATTIVA" : "RIATTIVA")</button>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                                <button class="archive-small" @onclick="LoadOperators" disabled="@CloudBusy">AGGIORNA ELENCO</button>
+                                @if (!string.IsNullOrWhiteSpace(OperatorMessage)) { <div class="archive-message">@OperatorMessage</div> }
+                            </div>
+                        }
+                        <button class="archive-small" @onclick="DisconnectCloud">ESCI DAL CLOUD</button>
                         @if (Cloud.HasRemoteArchive)
                         {
                             <button class="archive-primary" @onclick="DownloadCloudArchive" disabled="@CloudBusy">USA L'ARCHIVIO PRESENTE NEL CLOUD</button>
@@ -200,6 +253,12 @@
     private string PersonTypeForEntry => Archivio.Data.People.FirstOrDefault(x => x.Id == EntryPersonId)?.PersonType ?? "PLAYER";
     private string ImportMessage = "";
     private string CloudPassword = "";
+    private string OperatorCode = "";
+    private string DeviceName = "Tablet";
+    private string NewOperatorName = "";
+    private string? CreatedOperatorCode;
+    private string OperatorMessage = "";
+    private List<OperatorInfo> Operators = new();
     private string CloudMessage = "";
     private bool CloudBusy;
 
@@ -287,6 +346,62 @@
         }
         catch (Exception ex) { CloudMessage = ex.Message; }
         finally { CloudBusy = false; }
+    }
+
+    private async Task ActivateOperator()
+    {
+        CloudBusy = true; CloudMessage = "";
+        try
+        {
+            await Cloud.ActivateOperatorAsync(OperatorCode, DeviceName);
+            OperatorCode = "";
+            CloudMessage = Cloud.Status;
+        }
+        catch (Exception ex) { CloudMessage = ex.Message; }
+        finally { CloudBusy = false; }
+    }
+
+    private async Task LoadOperators()
+    {
+        try { Operators = await Cloud.GetOperatorsAsync(); OperatorMessage = "Elenco aggiornato."; }
+        catch (Exception ex) { OperatorMessage = ex.Message; }
+    }
+
+    private async Task CreateOperator()
+    {
+        if (string.IsNullOrWhiteSpace(NewOperatorName)) { OperatorMessage = "Inserisci il nominativo dell'operatore."; return; }
+        CloudBusy = true; OperatorMessage = ""; CreatedOperatorCode = null;
+        try
+        {
+            var created = await Cloud.CreateOperatorAsync(NewOperatorName);
+            NewOperatorName = "";
+            CreatedOperatorCode = created.Code;
+            await LoadOperators();
+            OperatorMessage = "Operatore creato. Copia e comunica il codice personale.";
+        }
+        catch (Exception ex) { OperatorMessage = ex.Message; }
+        finally { CloudBusy = false; }
+    }
+
+    private async Task ToggleOperator(OperatorInfo op)
+    {
+        var next = !op.Active;
+        if (!await JS.InvokeAsync<bool>("confirm", $"Vuoi {(next ? "riattivare" : "disattivare")} l'operatore {op.Name}?")) return;
+        CloudBusy = true;
+        try { await Cloud.SetOperatorActiveAsync(op.Id, next); await LoadOperators(); }
+        catch (Exception ex) { OperatorMessage = ex.Message; }
+        finally { CloudBusy = false; }
+    }
+
+    private async Task CopyOperatorCode()
+    {
+        if (CreatedOperatorCode is not null) await JS.InvokeVoidAsync("navigator.clipboard.writeText", CreatedOperatorCode);
+    }
+
+    private async Task DisconnectCloud()
+    {
+        await JS.InvokeVoidAsync("localStorage.removeItem", "pallamanoCloudApiToken");
+        Nav.NavigateTo("/archivio", forceLoad: true);
     }
 
     private async Task UploadLocalArchive()
