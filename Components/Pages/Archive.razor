@@ -1,6 +1,7 @@
 @page "/archivio"
 @using System.Text.Json
 @inject ArchiveService Archivio
+@inject CloudArchiveService Cloud
 @inject IJSRuntime JS
 @inject NavigationManager Nav
 
@@ -152,6 +153,31 @@
                     <div><b>@Archivio.Data.People.Count(x => x.PersonType == "PLAYER")</b><span>Atleti</span></div>
                     <div><b>@Archivio.Data.People.Count(x => x.PersonType == "OFFICIAL")</b><span>Dirigenti</span></div>
                 </div>
+                <div class="archive-note">
+                    <strong>Sincronizzazione cloud privata</strong>
+                    <p>Collega questo dispositivo al repository privato. Dopo aver scelto quale archivio utilizzare, le modifiche successive verranno salvate anche sul cloud. La copia locale continua a funzionare anche senza connessione.</p>
+                    <label>Password cloud
+                        <input type="password" @bind="CloudPassword" autocomplete="current-password" placeholder="Inserisci la password cloud" />
+                    </label>
+                    <button class="archive-primary" @onclick="ConnectCloud" disabled="@CloudBusy">@(CloudBusy ? "COLLEGAMENTO…" : "ACCEDI AL CLOUD")</button>
+                    @if (Cloud.IsAuthenticated)
+                    {
+                        <p><strong>Stato:</strong> @Cloud.Status</p>
+                        @if (Cloud.HasRemoteArchive)
+                        {
+                            <button class="archive-primary" @onclick="DownloadCloudArchive" disabled="@CloudBusy">USA L'ARCHIVIO PRESENTE NEL CLOUD</button>
+                        }
+                        else
+                        {
+                            <button class="archive-primary" @onclick="UploadLocalArchive" disabled="@CloudBusy">CARICA NEL CLOUD L'ARCHIVIO DI QUESTO DISPOSITIVO</button>
+                        }
+                    }
+                    else
+                    {
+                        <p><strong>Stato:</strong> @Cloud.Status</p>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(CloudMessage)) { <div class="archive-message">@CloudMessage</div> }
+                </div>
                 <div class="archive-note"><strong>Esporta archivio completo</strong><p>Scarica tutte le anagrafiche, le squadre, i campionati, le stagioni e le associazioni in un file JSON.</p><button class="archive-primary" @onclick="ExportBackup">ESPORTA ARCHIVIO JSON</button></div>
                 <div class="archive-note"><strong>Importa archivio da file JSON</strong><p>La sostituzione crea prima una copia di sicurezza dell'archivio attuale. Seleziona un file JSON esportato da Referto Pallamano.</p><InputFile OnChange="ImportArchiveJson" accept=".json,application/json" /></div>
                 <div class="archive-note"><strong>Ripristina ultima copia di sicurezza</strong><p>Ripristina la copia salvata automaticamente prima dell'ultima importazione.</p><button class="archive-small" @onclick="RestoreBackup">RIPRISTINA BACKUP</button></div>
@@ -173,6 +199,9 @@
     private string EntryPersonId = ""; private string EntryTeamId = ""; private string EntryChampionshipId = ""; private string EntrySeasonId = ""; private string EntryNumber = "";
     private string PersonTypeForEntry => Archivio.Data.People.FirstOrDefault(x => x.Id == EntryPersonId)?.PersonType ?? "PLAYER";
     private string ImportMessage = "";
+    private string CloudPassword = "";
+    private string CloudMessage = "";
+    private bool CloudBusy;
 
     protected override async Task OnInitializedAsync() => await Archivio.InitializeAsync();
     private void SetTab(string value) => Tab = value;
@@ -243,6 +272,47 @@
         }
         catch (Exception ex) { ImportMessage = "Importazione non completata: " + ex.Message; }
     }
+    private async Task ConnectCloud()
+    {
+        CloudBusy = true; CloudMessage = "";
+        try
+        {
+            await Cloud.LoginAsync(CloudPassword);
+            CloudPassword = "";
+            CloudMessage = Cloud.Status;
+        }
+        catch (Exception ex) { CloudMessage = ex.Message; }
+        finally { CloudBusy = false; }
+    }
+
+    private async Task UploadLocalArchive()
+    {
+        if (!await JS.InvokeAsync<bool>("confirm", "Vuoi caricare nel cloud l'archivio attualmente presente su questo dispositivo? Questa sarà la copia iniziale condivisa con gli altri dispositivi.")) return;
+        CloudBusy = true; CloudMessage = "";
+        try
+        {
+            await Cloud.UploadInitialAsync(Archivio.Data);
+            CloudMessage = Cloud.Status;
+        }
+        catch (Exception ex) { CloudMessage = ex.Message; }
+        finally { CloudBusy = false; }
+    }
+
+    private async Task DownloadCloudArchive()
+    {
+        if (!await JS.InvokeAsync<bool>("confirm", "L'archivio locale verrà prima salvato in un backup e poi sostituito con quello presente nel cloud. Vuoi continuare?")) return;
+        CloudBusy = true; CloudMessage = "";
+        try
+        {
+            var remote = await Cloud.DownloadRemoteAsync();
+            if (remote is null) { CloudMessage = "Nel cloud non è presente alcun archivio."; return; }
+            await Archivio.ReplaceFromJsonAsync(JsonSerializer.Serialize(remote));
+            CloudMessage = "Archivio cloud copiato su questo dispositivo. Sincronizzazione automatica attiva.";
+        }
+        catch (Exception ex) { CloudMessage = ex.Message; }
+        finally { CloudBusy = false; }
+    }
+
     private async Task ExportBackup()
     {
         var json = await Archivio.ExportJsonAsync();
