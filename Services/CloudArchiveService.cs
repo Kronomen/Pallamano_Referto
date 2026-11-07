@@ -58,22 +58,42 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
 
     public async Task<ArchiveDatabase?> DownloadRemoteAsync()
     {
-        await RefreshRemoteAsync();
-        if (!HasRemoteArchive) return null;
+        await EnsureTokenAsync();
+        _autoSyncEnabled = false;
+
+        // Legge dati e SHA dalla stessa risposta: devono identificare la medesima versione remota.
         using var request = new HttpRequestMessage(HttpMethod.Get, ApiBase + "/api/archive");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _token);
         using var response = await http.SendAsync(request);
         var body = await response.Content.ReadAsStringAsync();
         if (!response.IsSuccessStatusCode)
             throw new InvalidOperationException(ReadError(body, "Download dell'archivio cloud non riuscito."));
+
         using var document = JsonDocument.Parse(body);
-        if (!document.RootElement.TryGetProperty("data", out var data) || data.ValueKind == JsonValueKind.Null)
+        var root = document.RootElement;
+        HasRemoteArchive = root.TryGetProperty("exists", out var exists) && exists.ValueKind == JsonValueKind.True;
+        _sha = ReadString(root, "sha");
+
+        if (!HasRemoteArchive)
+        {
+            Status = "Archivio cloud vuoto.";
+            return null;
+        }
+
+        if (!root.TryGetProperty("data", out var data) || data.ValueKind == JsonValueKind.Null)
             throw new InvalidOperationException("Il server segnala un archivio esistente ma non restituisce i dati.");
+
         var archive = JsonSerializer.Deserialize<ArchiveDatabase>(data.GetRawText(), new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
         if (archive is null) throw new InvalidOperationException("I dati ricevuti dal cloud non sono un archivio valido.");
+
+        Status = "Archivio cloud scaricato. Conferma la sostituzione locale per attivare la sincronizzazione.";
+        return archive;
+    }
+
+    public void EnableAutoSync()
+    {
         _autoSyncEnabled = true;
         Status = "Archivio cloud caricato. Sincronizzazione automatica attiva.";
-        return archive;
     }
 
     public async Task UploadInitialAsync(ArchiveDatabase archive)
