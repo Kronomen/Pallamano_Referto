@@ -15,6 +15,8 @@ public class Program
         builder.RootComponents.Add<App>("#app");
         builder.RootComponents.Add<HeadOutlet>("head::after");
         builder.Services.AddSingleton<GameService>();
+        builder.Services.AddScoped(_ => new HttpClient());
+        builder.Services.AddScoped<CloudArchiveService>();
         builder.Services.AddSingleton<ArchiveService>();
         await builder.Build().RunAsync();
     }
