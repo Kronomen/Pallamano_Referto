@@ -119,9 +119,22 @@ public sealed class CloudArchiveService(HttpClient http, Microsoft.JSInterop.IJS
             }
             throw new InvalidOperationException(ReadError(body, "Salvataggio cloud non riuscito."));
         }
-        using var document = JsonDocument.Parse(body);
-        _sha = ReadString(document.RootElement, "sha") ?? ReadString(document.RootElement, "contentSha") ?? _sha;
+        if (!string.IsNullOrWhiteSpace(body))
+        {
+            try
+            {
+                using var document = JsonDocument.Parse(body);
+                _sha = ReadString(document.RootElement, "sha") ?? ReadString(document.RootElement, "contentSha") ?? _sha;
+            }
+            catch (JsonException) { /* Alcune risposte di successo possono non avere un corpo JSON. */ }
+        }
         HasRemoteArchive = true;
+        if (string.IsNullOrWhiteSpace(_sha))
+        {
+            await RefreshRemoteAsync();
+            if (string.IsNullOrWhiteSpace(_sha))
+                throw new InvalidOperationException("Il salvataggio è riuscito, ma il server non ha restituito la versione dell'archivio necessaria per proteggere le modifiche successive.");
+        }
     }
 
     private async Task EnsureTokenAsync()
