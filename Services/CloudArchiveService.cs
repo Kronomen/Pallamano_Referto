@@ -78,6 +78,26 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
         return list;
     }
 
+    public async Task<List<OperatorDeviceInfo>> GetOperatorDevicesAsync(string operatorId)
+    {
+        using var response = await SendAuthorizedAsync(HttpMethod.Get, "/api/admin/operators/" + Uri.EscapeDataString(operatorId) + "/devices");
+        var body = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode) throw new InvalidOperationException(ReadError(body, "Impossibile caricare i dispositivi."));
+        using var document = JsonDocument.Parse(body);
+        var list = new List<OperatorDeviceInfo>();
+        if (document.RootElement.TryGetProperty("devices", out var items) && items.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in items.EnumerateArray())
+                list.Add(new OperatorDeviceInfo(
+                    ReadString(item, "id") ?? "",
+                    ReadString(item, "device_name") ?? "Dispositivo",
+                    ReadString(item, "created_at"),
+                    ReadString(item, "last_seen_at"),
+                    ReadString(item, "revoked_at")));
+        }
+        return list;
+    }
+
     public async Task<CreatedOperator> CreateOperatorAsync(string name)
     {
         using var response = await SendAuthorizedAsync(HttpMethod.Post, "/api/admin/operators", new { name });
@@ -242,4 +262,4 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
 }
 
 public sealed record OperatorInfo(string Id, string Name, bool Active, int DeviceCount, int ActiveDeviceCount);
-public sealed record CreatedOperator(string Id, string Name, string Code);
+public sealed record CreatedOperator(string Id, string Name, string Code);\npublic sealed record OperatorDeviceInfo(string Id, string DeviceName, string? CreatedAt, string? LastSeenAt, string? RevokedAt)\n{ public bool IsRevoked => !string.IsNullOrWhiteSpace(RevokedAt); }
