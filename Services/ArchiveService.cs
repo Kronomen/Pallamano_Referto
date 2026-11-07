@@ -4,7 +4,7 @@ using RefertoPallamano_Blazor.Models;
 
 namespace RefertoPallamano_Blazor.Services;
 
-public sealed class ArchiveService(IJSRuntime js)
+public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
 {
     private const string StorageKey = "refertoPallamanoArchiveV1";
     private const string BackupKey = "refertoPallamanoArchiveBackupV1";
@@ -62,6 +62,9 @@ public sealed class ArchiveService(IJSRuntime js)
     {
         var json = JsonSerializer.Serialize(Data, JsonOptions);
         await js.InvokeVoidAsync("archiveStorage.set", StorageKey, json);
+        // Il salvataggio locale resta prioritario: il cloud viene aggiornato solo
+        // dopo un collegamento e una sincronizzazione iniziale scelti dall utente.
+        await cloud.TrySyncAsync(Data);
         Changed?.Invoke();
     }
 
