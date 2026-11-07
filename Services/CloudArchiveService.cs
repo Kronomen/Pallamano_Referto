@@ -1,11 +1,12 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.JSInterop;
 using RefertoPallamano_Blazor.Models;
 
 namespace RefertoPallamano_Blazor.Services;
 
-public sealed class CloudArchiveService(HttpClient http, Microsoft.JSInterop.IJSRuntime js)
+public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
 {
     private const string ApiBase = "https://pallamano-referto-api.kronomen.workers.dev";
     private const string TokenKey = "pallamanoCloudApiToken";
@@ -140,7 +141,7 @@ public sealed class CloudArchiveService(HttpClient http, Microsoft.JSInterop.IJS
     private async Task EnsureTokenAsync()
     {
         if (string.IsNullOrWhiteSpace(_token))
-            _token = await js.InvokeAsync<string?>("sessionStorage.getItem", TokenKey);
+            _token = await js.InvokeAsync<string?>("sessionStorage.getItem", new object?[] { TokenKey });
         if (string.IsNullOrWhiteSpace(_token))
             throw new InvalidOperationException("La sessione cloud è scaduta. Effettua nuovamente l'accesso.");
     }
