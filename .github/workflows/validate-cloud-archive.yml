@@ -36,8 +36,13 @@ jobs:
           
           Il sito pubblico e il branch main non sono stati modificati.
           EOF
-          cd publish
-          zip -r ../RefertoPallamano-PROVA-CLOUD.zip .
+          cp ./Start-Prova.ps1 ./publish/Start-Prova.ps1
+          cp ./Start-Prova.bat ./publish/Start-Prova.bat
+          cp ./ISTRUZIONI-PROVA.txt ./publish/ISTRUZIONI-PROVA.txt
+          cd publish/wwwroot
+          zip -r ../../RefertoPallamano-PROVA-CLOUD.zip .
+          cd ../..
+          zip -u RefertoPallamano-PROVA-CLOUD.zip Start-Prova.ps1 Start-Prova.bat ISTRUZIONI-PROVA.txt
       - uses: actions/upload-artifact@v4
         with:
           name: RefertoPallamano-PROVA-CLOUD
