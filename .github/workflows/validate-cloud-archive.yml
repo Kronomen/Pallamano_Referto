@@ -1,0 +1,21 @@
+name: Validate cloud archive branch
+
+on:
+  push:
+    branches:
+      - cloud-archive-sync
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet restore RefertoPallamano_Blazor.csproj
+      - run: dotnet build RefertoPallamano_Blazor.csproj --configuration Release --no-restore
