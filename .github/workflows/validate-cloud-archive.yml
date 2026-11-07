@@ -3,7 +3,8 @@ name: Validate and package cloud archive test build
 on:
   push:
     branches:
-      - cloud-archive-sync\n      - operator-access
+      - cloud-archive-sync
+      - operator-access
   workflow_dispatch:
 
 permissions:
