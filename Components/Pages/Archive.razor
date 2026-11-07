@@ -343,6 +343,7 @@
             await Cloud.LoginAsync(CloudPassword);
             CloudPassword = "";
             CloudMessage = Cloud.Status;
+            await LoadOperators();
         }
         catch (Exception ex) { CloudMessage = ex.Message; }
         finally { CloudBusy = false; }
