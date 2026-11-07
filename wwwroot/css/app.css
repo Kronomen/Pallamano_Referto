@@ -7813,3 +7813,27 @@ html:-webkit-full-screen, body:-webkit-full-screen{width:100%;height:100%;overfl
 .archive-roster-letter.archive-roster-duplicate { border: 2px solid #dc2626 !important; background: #fee2e2 !important; color: #991b1b !important; }
 .archive-roster-player-check input:disabled,
 .archive-roster-staff-check input:disabled { cursor: not-allowed; opacity: .45; }
+
+/* Accesso operatori e gestione dispositivi: layout adattivo per tablet */
+.operator-access-panel{display:flex;flex-direction:column;gap:10px;margin-top:14px;padding:16px;background:#f8fafc;border:1px solid #d7e1eb;border-radius:10px}
+.operator-access-panel h3{margin:0;color:#173f68;font-size:15px}
+.operator-access-panel p{margin:0;color:#64748b;font-size:12px;line-height:1.5}
+.operator-access-panel label{display:flex;flex-direction:column;gap:5px;color:#475569;font-size:11px;font-weight:800}
+.operator-access-panel input{width:100%;max-width:520px;min-width:0;height:40px;padding:0 11px;border:1px solid #cbd5e1;border-radius:7px;background:#fff;color:#172033;font-size:14px}
+.operator-access-panel hr{width:100%;border:0;border-top:1px solid #dbe3ed;margin:8px 0}
+.operator-create-row{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.operator-create-row input{flex:1 1 240px}
+.operator-code-result{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px;background:#eaf4ff;border:1px solid #bfdbfe;border-radius:8px}
+.operator-code-result strong,.operator-code-result small{width:100%;color:#1e3a5f}
+.operator-code-result code{font-size:15px;font-weight:900;letter-spacing:.5px;overflow-wrap:anywhere}
+.operator-code-result small{font-size:11px}
+.operator-list{display:flex;flex-direction:column;gap:6px}
+.operator-row,.operator-device-row{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:10px;background:#fff;border:1px solid #e2e8f0;border-radius:8px}
+.operator-row>div,.operator-device-row>div{display:flex;flex:1 1 180px;min-width:0;flex-direction:column;gap:3px}
+.operator-row strong,.operator-device-row strong{font-size:12px;color:#1e293b}
+.operator-row small,.operator-device-row small{font-size:10px;color:#64748b}
+.operator-device-block{display:flex;flex-direction:column;gap:6px;padding:8px 10px;background:#f1f5f9;border-radius:8px}
+.operator-device-block>.archive-small{align-self:flex-start}
+.operator-device-empty{font-size:11px;color:#64748b;margin:3px}
+.operator-device-row{padding:8px}
+@media(max-width:650px){.operator-access-panel{padding:11px}.operator-create-row{align-items:stretch;flex-direction:column}.operator-create-row input,.operator-create-row button{width:100%}.operator-row,.operator-device-row{align-items:flex-start}.operator-row .archive-status,.operator-device-row .archive-status{margin-left:auto}}
