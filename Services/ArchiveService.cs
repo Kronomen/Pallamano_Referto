@@ -58,13 +58,13 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
         }
     }
 
-    public async Task SaveAsync()
+    public async Task SaveAsync(bool syncCloud = true)
     {
         var json = JsonSerializer.Serialize(Data, JsonOptions);
         await js.InvokeVoidAsync("archiveStorage.set", StorageKey, json);
         // Il salvataggio locale resta prioritario: il cloud viene aggiornato solo
         // dopo un collegamento e una sincronizzazione iniziale scelti dall utente.
-        await cloud.TrySyncAsync(Data);
+        if (syncCloud) await cloud.TrySyncAsync(Data);
         Changed?.Invoke();
     }
 
@@ -81,7 +81,7 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
         return json;
     }
 
-    public async Task ReplaceFromJsonAsync(string json)
+    public async Task ReplaceFromJsonAsync(string json, bool syncCloud = true)
     {
         var imported = JsonSerializer.Deserialize<ArchiveDatabase>(json, JsonOptions)
             ?? throw new InvalidOperationException("Il file JSON non contiene un archivio valido.");
@@ -101,7 +101,7 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
         await CreateBackupAsync();
         Data = imported;
         IsLoaded = true;
-        await SaveAsync();
+        await SaveAsync(syncCloud);
     }
 
     public async Task<bool> RestoreBackupAsync()
