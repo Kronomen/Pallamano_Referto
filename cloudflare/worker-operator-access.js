@@ -215,6 +215,15 @@ export default {
       const auth = await authenticate(request, env);
       if (!auth) return jsonResponse({ error: 'Accesso non autorizzato. Effettua nuovamente l’attivazione.' }, 401, origin);
 
+      if (url.pathname === '/api/me' && request.method === 'GET') {
+        return jsonResponse({
+          role: auth.role,
+          operatorId: auth.operatorId || null,
+          operatorName: auth.operatorName || (auth.role === 'admin' ? 'Amministratore' : null),
+          deviceId: auth.deviceId || null
+        }, 200, origin);
+      }
+
       if (url.pathname === '/api/admin/operators') {
         if (!requireAdmin(auth)) return jsonResponse({ error: 'Operazione riservata all’amministratore.' }, 403, origin);
         if (request.method === 'GET') return jsonResponse({ operators: await listOperators(env) }, 200, origin);
