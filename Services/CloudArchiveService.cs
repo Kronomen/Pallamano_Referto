@@ -12,6 +12,7 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
     private const string TokenKey = "pallamanoCloudApiToken";
     private const string PendingKey = "pallamanoCloudPendingArchiveV1";
     private const string AutoSyncKey = "pallamanoCloudAutoSyncEnabled";
+    private const string ConflictKey = "pallamanoCloudSyncConflict";
     private string? _token;
     private string? _sha;
     private bool _autoSyncEnabled;
@@ -243,13 +244,15 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
         var pending = await js.InvokeAsync<string?>("localStorage.getItem", PendingKey);
         HasPendingChanges = !string.IsNullOrWhiteSpace(pending);
         var autoSync = await js.InvokeAsync<string?>("localStorage.getItem", AutoSyncKey);
-        _autoSyncEnabled = string.Equals(autoSync, "true", StringComparison.OrdinalIgnoreCase) || HasPendingChanges;
+        var conflict = await js.InvokeAsync<string?>("localStorage.getItem", ConflictKey);
+        HasSyncConflict = string.Equals(conflict, "true", StringComparison.OrdinalIgnoreCase);
+        _autoSyncEnabled = (string.Equals(autoSync, "true", StringComparison.OrdinalIgnoreCase) || HasPendingChanges) && !HasSyncConflict;
     }
 
     private async Task SavePendingAsync(ArchiveDatabase archive)
     { await js.InvokeVoidAsync("localStorage.setItem", PendingKey, JsonSerializer.Serialize(archive)); HasPendingChanges = true; }
     private async Task ClearPendingAsync()
-    { await js.InvokeVoidAsync("localStorage.removeItem", PendingKey); HasPendingChanges = false; }
+    { await js.InvokeVoidAsync("localStorage.removeItem", PendingKey); await js.InvokeVoidAsync("localStorage.removeItem", ConflictKey); HasPendingChanges = false; HasSyncConflict = false; }
     private async Task PutAsync(ArchiveDatabase archive, string? expectedSha)
     {
         var payload = new Dictionary<string, object?> { ["data"] = archive };
@@ -258,7 +261,7 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
         var body = await response.Content.ReadAsStringAsync();
         if (!response.IsSuccessStatusCode)
         {
-            if ((int)response.StatusCode == 409) { _autoSyncEnabled = false; HasSyncConflict = true; Status = "Conflitto: archivio cloud modificato da un altro dispositivo. Sincronizzazione sospesa."; }
+            if ((int)response.StatusCode == 409) { _autoSyncEnabled = false; HasSyncConflict = true; await js.InvokeVoidAsync("localStorage.setItem", ConflictKey, "true"); Status = "Conflitto: archivio cloud modificato da un altro dispositivo. Sincronizzazione sospesa."; }
             throw new InvalidOperationException(ReadError(body, "Salvataggio cloud non riuscito."));
         }
         using var document = JsonDocument.Parse(body);
