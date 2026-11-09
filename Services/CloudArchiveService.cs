@@ -10,6 +10,7 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
 {
     private const string ApiBase = "https://pallamano-referto-api-test.kronomen.workers.dev";
     private const string TokenKey = "pallamanoCloudApiToken";
+    private const string PendingKey = "pallamanoCloudPendingArchiveV1";
     private string? _token;
     private string? _sha;
     private bool _autoSyncEnabled;
@@ -23,6 +24,8 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
     public bool HasRemoteArchive { get; private set; }
     public string Status { get; private set; } = "Non collegato al cloud.";
     public string? RemoteSha => _sha;
+    public bool HasPendingChanges { get; private set; }
+    public bool HasSyncConflict { get; private set; }
 
     public async Task LoginAsync(string password)
     {
@@ -147,32 +150,30 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _token);
             using var response = await http.SendAsync(request);
             var body = await response.Content.ReadAsStringAsync();
-            if (!response.IsSuccessStatusCode) throw new InvalidOperationException(ReadError(body, "Sessione non valida."));
+            if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+            { await ClearSessionAsync(); Status = "Sessione cloud non valida o revocata. Effettua nuovamente l accesso."; return false; }
+            if (!response.IsSuccessStatusCode) { Status = "Server cloud temporaneamente non disponibile. La sessione è stata conservata."; return false; }
             using var document = JsonDocument.Parse(body);
             var root = document.RootElement;
             var role = ReadString(root, "role");
             IsAdmin = string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase);
             OperatorName = ReadString(root, "operatorName") ?? (IsAdmin ? "Amministratore" : "Operatore");
             DeviceId = ReadString(root, "deviceId");
+            var pending = await js.InvokeAsync<string?>("localStorage.getItem", PendingKey);
+            HasPendingChanges = !string.IsNullOrWhiteSpace(pending);
+            if (HasPendingChanges) _autoSyncEnabled = true;
             await RefreshRemoteAsync();
-            Status = IsAdmin
-                ? "Sessione amministratore ripristinata. Archivio cloud disponibile."
-                : $"Sessione ripristinata per {OperatorName}. Archivio cloud disponibile.";
+            Status = HasPendingChanges ? "Modifiche locali in attesa di sincronizzazione. Non sostituire l archivio con la copia cloud." : IsAdmin ? "Sessione amministratore ripristinata. Archivio cloud disponibile." : $"Sessione ripristinata per {OperatorName}. Archivio cloud disponibile.";
             return true;
         }
-        catch
-        {
-            _token = null;
-            _autoSyncEnabled = false;
-            IsAdmin = false;
-            OperatorName = null;
-            DeviceId = null;
-            Status = "Sessione cloud non attiva. Effettua l'accesso o l'attivazione.";
-            try { await js.InvokeVoidAsync("localStorage.removeItem", TokenKey); } catch { }
-            return false;
-        }
+        catch (Exception ex) { Status = "Connessione cloud non disponibile. La sessione locale è stata conservata. " + ex.Message; return false; }
     }
 
+    private async Task ClearSessionAsync()
+    {
+        _token = null; _autoSyncEnabled = false; IsAdmin = false; OperatorName = null; DeviceId = null;
+        try { await js.InvokeVoidAsync("localStorage.removeItem", TokenKey); } catch { }
+    }
     public async Task RefreshRemoteAsync()
     {
         using var response = await SendAuthorizedAsync(HttpMethod.Get, "/api/archive");
@@ -188,6 +189,7 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
 
     public async Task<ArchiveDatabase?> DownloadRemoteAsync()
     {
+        if (HasPendingChanges) throw new InvalidOperationException("Esistono modifiche locali non sincronizzate. Sincronizzale prima di scaricare il cloud.");
         _autoSyncEnabled = false;
         using var response = await SendAuthorizedAsync(HttpMethod.Get, "/api/archive");
         var body = await response.Content.ReadAsStringAsync();
@@ -206,7 +208,7 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
         return archive;
     }
 
-    public void EnableAutoSync() { _autoSyncEnabled = true; Status = "Archivio cloud caricato. Sincronizzazione automatica attiva."; }
+    public void EnableAutoSync() { _autoSyncEnabled = true; Status = HasPendingChanges ? "Modifiche locali in attesa di sincronizzazione." : "Archivio cloud caricato. Sincronizzazione automatica attiva."; }
 
     public async Task UploadInitialAsync(ArchiveDatabase archive)
     {
@@ -220,11 +222,24 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
     {
         if (!_autoSyncEnabled || !IsAuthenticated) return;
         await _syncLock.WaitAsync();
-        try { await PutAsync(archive, _sha); Status = "Archivio salvato anche nel cloud."; }
-        catch (Exception ex) { Status = "Salvataggio locale eseguito; cloud non aggiornato: " + ex.Message; }
+        try { await SavePendingAsync(archive); await PutAsync(archive, _sha); await ClearPendingAsync(); HasSyncConflict = false; Status = "Archivio salvato anche nel cloud."; }
+        catch (Exception ex) { Status = HasSyncConflict ? "Conflitto cloud: modifiche locali conservate, sincronizzazione sospesa." : "Modifiche locali conservate in attesa del cloud: " + ex.Message; }
         finally { _syncLock.Release(); }
     }
 
+    public async Task RetryPendingSyncAsync(ArchiveDatabase archive)
+    {
+        if (!HasPendingChanges || !_autoSyncEnabled || !IsAuthenticated || HasSyncConflict) return;
+        await _syncLock.WaitAsync();
+        try { await SavePendingAsync(archive); await PutAsync(archive, _sha); await ClearPendingAsync(); HasSyncConflict = false; Status = "Connessione ripristinata: archivio locale sincronizzato con il cloud."; }
+        catch (Exception ex) { Status = HasSyncConflict ? "Conflitto cloud: modifiche locali conservate e sincronizzazione sospesa." : "Modifiche locali conservate. Nuovo tentativo automatico in attesa della connessione: " + ex.Message; }
+        finally { _syncLock.Release(); }
+    }
+
+    private async Task SavePendingAsync(ArchiveDatabase archive)
+    { await js.InvokeVoidAsync("localStorage.setItem", PendingKey, JsonSerializer.Serialize(archive)); HasPendingChanges = true; }
+    private async Task ClearPendingAsync()
+    { await js.InvokeVoidAsync("localStorage.removeItem", PendingKey); HasPendingChanges = false; }
     private async Task PutAsync(ArchiveDatabase archive, string? expectedSha)
     {
         var payload = new Dictionary<string, object?> { ["data"] = archive };
@@ -233,7 +248,7 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
         var body = await response.Content.ReadAsStringAsync();
         if (!response.IsSuccessStatusCode)
         {
-            if ((int)response.StatusCode == 409) { _autoSyncEnabled = false; Status = "Conflitto: archivio cloud modificato da un altro dispositivo. Sincronizzazione sospesa."; }
+            if ((int)response.StatusCode == 409) { _autoSyncEnabled = false; HasSyncConflict = true; Status = "Conflitto: archivio cloud modificato da un altro dispositivo. Sincronizzazione sospesa."; }
             throw new InvalidOperationException(ReadError(body, "Salvataggio cloud non riuscito."));
         }
         using var document = JsonDocument.Parse(body);
