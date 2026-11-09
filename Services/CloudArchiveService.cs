@@ -59,8 +59,7 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
         IsAdmin = false;
         await PersistTokenAsync();
         _autoSyncEnabled = false;
-        await LoadPendingStateAsync();
-        if (HasPendingChanges) _autoSyncEnabled = true;
+        await LoadSyncPreferencesAsync();
         Status = $"Dispositivo attivato per {OperatorName}.";
         await RefreshRemoteAsync();
     }
