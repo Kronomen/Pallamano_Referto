@@ -108,6 +108,22 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
         return new CreatedOperator(ReadString(root, "id") ?? "", ReadString(root, "name") ?? name, ReadString(root, "code") ?? "");
     }
 
+    public async Task<string> RotateOperatorCodeAsync(string operatorId)
+    {
+        using var response = await SendAuthorizedAsync(
+            HttpMethod.Post,
+            "/api/admin/operators/" + Uri.EscapeDataString(operatorId) + "/rotate-code",
+            new { });
+
+        var body = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+            throw new InvalidOperationException(ReadError(body, "Rigenerazione del codice non riuscita."));
+
+        using var document = JsonDocument.Parse(body);
+        return ReadString(document.RootElement, "code")
+            ?? throw new InvalidOperationException("Il server non ha restituito il nuovo codice.");
+    }
+
     public async Task SetOperatorActiveAsync(string id, bool active)
     {
         using var response = await SendAuthorizedAsync(HttpMethod.Patch, "/api/admin/operators/" + Uri.EscapeDataString(id), new { active });
