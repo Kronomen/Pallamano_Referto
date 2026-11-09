@@ -247,13 +247,6 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
         _autoSyncEnabled = string.Equals(autoSync, "true", StringComparison.OrdinalIgnoreCase) || HasPendingChanges;
     }
 
-    private async Task LoadPendingStateAsync()
-    {
-        var pending = await js.InvokeAsync<string?>("localStorage.getItem", PendingKey);
-        HasPendingChanges = !string.IsNullOrWhiteSpace(pending);
-        HasSyncConflict = false;
-    }
-
     private async Task SavePendingAsync(ArchiveDatabase archive)
     { await js.InvokeVoidAsync("localStorage.setItem", PendingKey, JsonSerializer.Serialize(archive)); HasPendingChanges = true; }
     private async Task ClearPendingAsync()
