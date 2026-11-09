@@ -37,6 +37,8 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
         OperatorName = "Amministratore";
         await PersistTokenAsync();
         _autoSyncEnabled = false;
+        await LoadPendingStateAsync();
+        if (HasPendingChanges) _autoSyncEnabled = true;
         Status = "Accesso amministratore effettuato. Verifico l'archivio remoto…";
         await RefreshRemoteAsync();
     }
@@ -57,6 +59,8 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
         IsAdmin = false;
         await PersistTokenAsync();
         _autoSyncEnabled = false;
+        await LoadPendingStateAsync();
+        if (HasPendingChanges) _autoSyncEnabled = true;
         Status = $"Dispositivo attivato per {OperatorName}.";
         await RefreshRemoteAsync();
     }
@@ -146,6 +150,9 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
         try
         {
             await EnsureTokenAsync();
+            var pending = await js.InvokeAsync<string?>("localStorage.getItem", PendingKey);
+            HasPendingChanges = !string.IsNullOrWhiteSpace(pending);
+            if (HasPendingChanges) _autoSyncEnabled = true;
             using var request = new HttpRequestMessage(HttpMethod.Get, ApiBase + "/api/me");
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _token);
             using var response = await http.SendAsync(request);
@@ -159,9 +166,6 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
             IsAdmin = string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase);
             OperatorName = ReadString(root, "operatorName") ?? (IsAdmin ? "Amministratore" : "Operatore");
             DeviceId = ReadString(root, "deviceId");
-            var pending = await js.InvokeAsync<string?>("localStorage.getItem", PendingKey);
-            HasPendingChanges = !string.IsNullOrWhiteSpace(pending);
-            if (HasPendingChanges) _autoSyncEnabled = true;
             await RefreshRemoteAsync();
             Status = HasPendingChanges ? "Modifiche locali in attesa di sincronizzazione. Non sostituire l archivio con la copia cloud." : IsAdmin ? "Sessione amministratore ripristinata. Archivio cloud disponibile." : $"Sessione ripristinata per {OperatorName}. Archivio cloud disponibile.";
             return true;
@@ -234,6 +238,13 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
         try { await SavePendingAsync(archive); await PutAsync(archive, _sha); await ClearPendingAsync(); HasSyncConflict = false; Status = "Connessione ripristinata: archivio locale sincronizzato con il cloud."; }
         catch (Exception ex) { Status = HasSyncConflict ? "Conflitto cloud: modifiche locali conservate e sincronizzazione sospesa." : "Modifiche locali conservate. Nuovo tentativo automatico in attesa della connessione: " + ex.Message; }
         finally { _syncLock.Release(); }
+    }
+
+    private async Task LoadPendingStateAsync()
+    {
+        var pending = await js.InvokeAsync<string?>("localStorage.getItem", PendingKey);
+        HasPendingChanges = !string.IsNullOrWhiteSpace(pending);
+        HasSyncConflict = false;
     }
 
     private async Task SavePendingAsync(ArchiveDatabase archive)
