@@ -312,8 +312,8 @@
         await Archivio.InitializeAsync();
         await Cloud.TryRestoreSessionAsync();
         if (Cloud.IsAdmin) await LoadOperators();
-        if (Cloud.HasPendingChanges)
-        { _syncMonitorCts = new CancellationTokenSource(); _ = MonitorPendingSyncAsync(_syncMonitorCts.Token); }
+        _syncMonitorCts = new CancellationTokenSource();
+        _ = MonitorPendingSyncAsync(_syncMonitorCts.Token);
     }
 
     private async Task MonitorPendingSyncAsync(CancellationToken cancellationToken)
