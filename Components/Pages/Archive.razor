@@ -198,6 +198,15 @@
                                         <small>Conservalo: per sicurezza viene mostrato soltanto adesso.</small>
                                     </div>
                                 }
+                                @if (RotatedOperatorCode is not null)
+                                {
+                                    <div class="operator-code-result">
+                                        <strong>Nuovo codice personale per @RotatedOperatorName</strong>
+                                        <code>@RotatedOperatorCode</code>
+                                        <button class="archive-small" @onclick="CopyRotatedOperatorCode">COPIA CODICE</button>
+                                        <small>Il codice precedente non è più valido. I dispositivi già attivati restano autorizzati.</small>
+                                    </div>
+                                }
                                 @if (Operators.Count > 0)
                                 {
                                     <div class="operator-list">
@@ -207,6 +216,7 @@
                                                 <div><strong>@op.Name</strong><small>@op.ActiveDeviceCount dispositivi attivi · @op.DeviceCount registrati</small></div>
                                                 <span class="archive-status @(op.Active ? "on" : "off")">@(op.Active ? "ATTIVO" : "DISATTIVATO")</span>
                                                 <button class="archive-small" @onclick="() => ToggleOperator(op)">@((op.Active) ? "DISATTIVA" : "RIATTIVA")</button>
+                                                <button class="archive-small" @onclick="() => RotateOperatorCode(op)" disabled="@CloudBusy">RIGENERA CODICE</button>
                                             </div>
                                         }
                                     </div>
@@ -281,6 +291,8 @@
     private string DeviceName = "Tablet";
     private string NewOperatorName = "";
     private string? CreatedOperatorCode;
+    private string? RotatedOperatorCode;
+    private string RotatedOperatorName = "";
     private string OperatorMessage = "";
     private List<OperatorInfo> Operators = new();
     private List<OperatorDeviceInfo> OperatorDevices = new();
@@ -437,6 +449,28 @@
         }
         catch (Exception ex) { OperatorMessage = ex.Message; }
         finally { CloudBusy = false; }
+    }
+
+    private async Task RotateOperatorCode(OperatorInfo op)
+    {
+        if (!await JS.InvokeAsync<bool>("confirm", $"Vuoi rigenerare il codice personale di {op.Name}? Il codice precedente non sarà più valido. I dispositivi già attivati continueranno a funzionare.")) return;
+        CloudBusy = true;
+        OperatorMessage = "";
+        RotatedOperatorCode = null;
+        try
+        {
+            RotatedOperatorCode = await Cloud.RotateOperatorCodeAsync(op.Id);
+            RotatedOperatorName = op.Name;
+            OperatorMessage = "Nuovo codice generato. Copialo e comunicalo all'operatore.";
+        }
+        catch (Exception ex) { OperatorMessage = ex.Message; }
+        finally { CloudBusy = false; }
+    }
+
+    private async Task CopyRotatedOperatorCode()
+    {
+        if (RotatedOperatorCode is not null)
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", RotatedOperatorCode);
     }
 
     private async Task ToggleOperator(OperatorInfo op)
