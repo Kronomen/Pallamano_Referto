@@ -11,6 +11,7 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
     private const string ApiBase = "https://pallamano-referto-api-test.kronomen.workers.dev";
     private const string TokenKey = "pallamanoCloudApiToken";
     private const string PendingKey = "pallamanoCloudPendingArchiveV1";
+    private const string AutoSyncKey = "pallamanoCloudAutoSyncEnabled";
     private string? _token;
     private string? _sha;
     private bool _autoSyncEnabled;
@@ -37,8 +38,7 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
         OperatorName = "Amministratore";
         await PersistTokenAsync();
         _autoSyncEnabled = false;
-        await LoadPendingStateAsync();
-        if (HasPendingChanges) _autoSyncEnabled = true;
+        await LoadSyncPreferencesAsync();
         Status = "Accesso amministratore effettuato. Verifico l'archivio remoto…";
         await RefreshRemoteAsync();
     }
@@ -150,9 +150,7 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
         try
         {
             await EnsureTokenAsync();
-            var pending = await js.InvokeAsync<string?>("localStorage.getItem", PendingKey);
-            HasPendingChanges = !string.IsNullOrWhiteSpace(pending);
-            if (HasPendingChanges) _autoSyncEnabled = true;
+            await LoadSyncPreferencesAsync();
             using var request = new HttpRequestMessage(HttpMethod.Get, ApiBase + "/api/me");
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _token);
             using var response = await http.SendAsync(request);
@@ -212,13 +210,14 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
         return archive;
     }
 
-    public void EnableAutoSync() { _autoSyncEnabled = true; Status = HasPendingChanges ? "Modifiche locali in attesa di sincronizzazione." : "Archivio cloud caricato. Sincronizzazione automatica attiva."; }
+    public async Task EnableAutoSyncAsync() { _autoSyncEnabled = true; await js.InvokeVoidAsync("localStorage.setItem", AutoSyncKey, "true"); Status = HasPendingChanges ? "Modifiche locali in attesa di sincronizzazione." : "Archivio cloud caricato. Sincronizzazione automatica attiva."; }
 
     public async Task UploadInitialAsync(ArchiveDatabase archive)
     {
         if (HasRemoteArchive) throw new InvalidOperationException("Nel cloud esiste già un archivio. Per evitare sovrascritture, il caricamento iniziale è bloccato.");
         await PutAsync(archive, null);
         _autoSyncEnabled = true;
+        await js.InvokeVoidAsync("localStorage.setItem", AutoSyncKey, "true");
         Status = "Archivio locale caricato nel cloud. Sincronizzazione automatica attiva.";
     }
 
@@ -238,6 +237,14 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
         try { await SavePendingAsync(archive); await PutAsync(archive, _sha); await ClearPendingAsync(); HasSyncConflict = false; Status = "Connessione ripristinata: archivio locale sincronizzato con il cloud."; }
         catch (Exception ex) { Status = HasSyncConflict ? "Conflitto cloud: modifiche locali conservate e sincronizzazione sospesa." : "Modifiche locali conservate. Nuovo tentativo automatico in attesa della connessione: " + ex.Message; }
         finally { _syncLock.Release(); }
+    }
+
+    private async Task LoadSyncPreferencesAsync()
+    {
+        var pending = await js.InvokeAsync<string?>("localStorage.getItem", PendingKey);
+        HasPendingChanges = !string.IsNullOrWhiteSpace(pending);
+        var autoSync = await js.InvokeAsync<string?>("localStorage.getItem", AutoSyncKey);
+        _autoSyncEnabled = string.Equals(autoSync, "true", StringComparison.OrdinalIgnoreCase) || HasPendingChanges;
     }
 
     private async Task LoadPendingStateAsync()
