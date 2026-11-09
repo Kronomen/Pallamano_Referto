@@ -1,4 +1,5 @@
 @page "/archivio"
+@implements IAsyncDisposable
 @using System.Text.Json
 @using RefertoPallamano_Blazor.Services
 @inject ArchiveService Archivio
@@ -181,6 +182,11 @@
                     {
                         <p><strong>Utente collegato:</strong> @(Cloud.IsAdmin ? "Amministratore" : Cloud.OperatorName)</p>
                         <p><strong>Stato:</strong> @Cloud.Status</p>
+                        @if (Cloud.HasPendingChanges)
+                        {
+                            <div class="archive-message">ATTENZIONE: ci sono modifiche locali non ancora presenti nel cloud. Non sostituire l archivio cloud. Le modifiche restano salvate su questo dispositivo.</div>
+                            <button class="archive-primary" @onclick="RetryCloudSync" disabled="@CloudBusy">RIPROVA SINCRONIZZAZIONE</button>
+                        }
                         @if (Cloud.IsAdmin)
                         {
                             <div class="operator-access-panel">
@@ -252,7 +258,7 @@
                         <button class="archive-small" @onclick="DisconnectCloud">ESCI DAL CLOUD</button>
                         @if (Cloud.HasRemoteArchive)
                         {
-                            <button class="archive-primary" @onclick="DownloadCloudArchive" disabled="@CloudBusy">USA L'ARCHIVIO PRESENTE NEL CLOUD</button>
+                            <button class="archive-primary" @onclick="DownloadCloudArchive" disabled="@(CloudBusy || Cloud.HasPendingChanges)">USA L'ARCHIVIO PRESENTE NEL CLOUD</button>
                         }
                         else
                         {
@@ -299,13 +305,42 @@
     private string? ExpandedOperatorId;
     private string CloudMessage = "";
     private bool CloudBusy;
+    private CancellationTokenSource? _syncMonitorCts;
 
     protected override async Task OnInitializedAsync()
     {
         await Archivio.InitializeAsync();
         await Cloud.TryRestoreSessionAsync();
         if (Cloud.IsAdmin) await LoadOperators();
+        if (Cloud.HasPendingChanges)
+        { _syncMonitorCts = new CancellationTokenSource(); _ = MonitorPendingSyncAsync(_syncMonitorCts.Token); }
     }
+
+    private async Task MonitorPendingSyncAsync(CancellationToken cancellationToken)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(15));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(cancellationToken))
+            {
+                if (!Cloud.HasPendingChanges || !Cloud.IsAuthenticated) continue;
+                await Cloud.RetryPendingSyncAsync(Archivio.Data);
+                await InvokeAsync(StateHasChanged);
+                if (!Cloud.HasPendingChanges) break;
+            }
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private async Task RetryCloudSync()
+    {
+        CloudBusy = true;
+        try { await Cloud.RetryPendingSyncAsync(Archivio.Data); CloudMessage = Cloud.Status; }
+        finally { CloudBusy = false; StateHasChanged(); }
+    }
+
+    public ValueTask DisposeAsync()
+    { _syncMonitorCts?.Cancel(); _syncMonitorCts?.Dispose(); return ValueTask.CompletedTask; }
     private void SetTab(string value) => Tab = value;
     private void BackToMatch() => Nav.NavigateTo("/");
 
