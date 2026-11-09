@@ -13,6 +13,7 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
     private const string PendingKey = "pallamanoCloudPendingArchiveV1";
     private const string AutoSyncKey = "pallamanoCloudAutoSyncEnabled";
     private const string ConflictKey = "pallamanoCloudSyncConflict";
+    private const string ShaKey = "pallamanoCloudArchiveShaV1";
     private string? _token;
     private string? _sha;
     private bool _autoSyncEnabled;
@@ -186,6 +187,10 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
         var root = document.RootElement;
         HasRemoteArchive = root.TryGetProperty("exists", out var exists) && exists.ValueKind == JsonValueKind.True;
         _sha = ReadString(root, "sha");
+        if (!string.IsNullOrWhiteSpace(_sha))
+            await js.InvokeVoidAsync("localStorage.setItem", ShaKey, _sha);
+        else
+            await js.InvokeVoidAsync("localStorage.removeItem", ShaKey);
         Status = HasRemoteArchive ? "Archivio cloud trovato. Scegli se caricarlo su questo dispositivo." : "Archivio cloud vuoto. Puoi caricare la copia locale iniziale.";
     }
 
@@ -201,6 +206,10 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
         var root = document.RootElement;
         HasRemoteArchive = root.TryGetProperty("exists", out var exists) && exists.ValueKind == JsonValueKind.True;
         _sha = ReadString(root, "sha");
+        if (!string.IsNullOrWhiteSpace(_sha))
+            await js.InvokeVoidAsync("localStorage.setItem", ShaKey, _sha);
+        else
+            await js.InvokeVoidAsync("localStorage.removeItem", ShaKey);
         if (!HasRemoteArchive) { Status = "Archivio cloud vuoto."; return null; }
         if (!root.TryGetProperty("data", out var data) || data.ValueKind == JsonValueKind.Null)
             throw new InvalidOperationException("Il server segnala un archivio esistente ma non restituisce i dati.");
@@ -245,6 +254,7 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
         HasPendingChanges = !string.IsNullOrWhiteSpace(pending);
         var autoSync = await js.InvokeAsync<string?>("localStorage.getItem", AutoSyncKey);
         var conflict = await js.InvokeAsync<string?>("localStorage.getItem", ConflictKey);
+        _sha = await js.InvokeAsync<string?>("localStorage.getItem", ShaKey);
         HasSyncConflict = string.Equals(conflict, "true", StringComparison.OrdinalIgnoreCase);
         _autoSyncEnabled = (string.Equals(autoSync, "true", StringComparison.OrdinalIgnoreCase) || HasPendingChanges) && !HasSyncConflict;
     }
@@ -266,6 +276,8 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
         }
         using var document = JsonDocument.Parse(body);
         _sha = ReadString(document.RootElement, "sha") ?? _sha;
+        if (!string.IsNullOrWhiteSpace(_sha))
+            await js.InvokeVoidAsync("localStorage.setItem", ShaKey, _sha);
         HasRemoteArchive = true;
         if (string.IsNullOrWhiteSpace(_sha)) { await RefreshRemoteAsync(); if (string.IsNullOrWhiteSpace(_sha)) throw new InvalidOperationException("Versione archivio non restituita dal server."); }
     }
