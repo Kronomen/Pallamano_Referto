@@ -57,7 +57,15 @@ try {
                 }
             }
             $context.Response.ContentLength64 = $bytes.Length
-            $context.Response.OutputStream.Write($bytes,0,$bytes.Length)
+            try {
+                $context.Response.OutputStream.Write($bytes,0,$bytes.Length)
+            } catch [System.IO.IOException] {
+                # Il browser ha interrotto la richiesta durante refresh o navigazione.
+            } catch [System.Net.Sockets.SocketException] {
+                # Connessione client chiusa durante l'invio della risposta.
+            } catch [System.Net.HttpListenerException] {
+                # Il client ha chiuso la connessione mentre il server inviava i dati.
+            }
         } catch {
             Write-Host ("Richiesta non riuscita: " + $_.Exception.Message) -ForegroundColor Red
             try { $context.Response.StatusCode = 500 } catch {}
