@@ -54,10 +54,9 @@ jobs:
 
           Il pacchetto non contiene credenziali o token segreti.
           EOF
-          cd ./publish/wwwroot
-          zip -r ../../RefertoPallamano-DEFINITIVO.zip .
-          cd ../..
-          zip -u RefertoPallamano-DEFINITIVO.zip ISTRUZIONI-RILASCIO.txt
+          cd ./publish
+          zip -r ../RefertoPallamano-DEFINITIVO.zip wwwroot
+          zip -u ../RefertoPallamano-DEFINITIVO.zip ISTRUZIONI-RILASCIO.txt
 
       - name: Upload definitive artifact
         uses: actions/upload-artifact@v4
