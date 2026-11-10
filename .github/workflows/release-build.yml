@@ -58,6 +58,33 @@ jobs:
           zip -r ../RefertoPallamano-DEFINITIVO.zip wwwroot
           zip -u ../RefertoPallamano-DEFINITIVO.zip ISTRUZIONI-RILASCIO.txt
 
+      - name: Prepare complete source project package
+        shell: bash
+        run: |
+          set -euo pipefail
+          git archive --format=zip --output=RefertoPallamano-PROGETTO-COMPLETO.zip HEAD
+          cat > SOURCE-PACKAGE-README.txt <<'EOF'
+          REFERTO PALLAMANO - PROGETTO COMPLETO
+          
+          Questo archivio contiene il codice sorgente versionato del branch
+          versione-definitiva, inclusi i file C#, Razor, configurazioni,
+          workflow e codice Worker Cloudflare.
+          
+          Per modificare e ricompilare il progetto è necessario .NET SDK 10.
+          Il pacchetto non contiene .git, credenziali, password o token segreti.
+          Non distribuire il Worker o applicare migrazioni senza una verifica
+          esplicita dell'ambiente Cloudflare di destinazione.
+          EOF
+          zip -u RefertoPallamano-PROGETTO-COMPLETO.zip SOURCE-PACKAGE-README.txt
+
+      - name: Upload complete source project
+        uses: actions/upload-artifact@v4
+        with:
+          name: RefertoPallamano-PROGETTO-COMPLETO
+          path: RefertoPallamano-PROGETTO-COMPLETO.zip
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Upload definitive artifact
         uses: actions/upload-artifact@v4
         with:
