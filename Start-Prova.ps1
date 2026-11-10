@@ -3,6 +3,7 @@ $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $prefix = 'http://localhost:8088/'
 $listener = [System.Net.HttpListener]::new()
 $listener.Prefixes.Add($prefix)
+$shutdownRequested = $false
 $mime = @{
     '.html'='text/html; charset=utf-8'; '.js'='application/javascript; charset=utf-8'
     '.css'='text/css; charset=utf-8'; '.json'='application/json; charset=utf-8'
@@ -24,6 +25,16 @@ try {
     while ($listener.IsListening) {
         $context = $listener.GetContext()
         try {
+            if ($context.Request.Url.AbsolutePath -eq '/__shutdown' -and $context.Request.HttpMethod -eq 'POST') {
+                $shutdownRequested = $true
+                $context.Response.StatusCode = 200
+                $context.Response.ContentType = 'text/plain; charset=utf-8'
+                $bytes = [Text.Encoding]::UTF8.GetBytes('Applicazione in chiusura.')
+                $context.Response.ContentLength64 = $bytes.Length
+                $context.Response.OutputStream.Write($bytes,0,$bytes.Length)
+                $listener.Stop()
+                continue
+            }
             $relative = [Uri]::UnescapeDataString($context.Request.Url.AbsolutePath.TrimStart('/'))
             if ([string]::IsNullOrWhiteSpace($relative)) { $relative = 'index.html' }
             $candidate = [IO.Path]::GetFullPath((Join-Path $root $relative))
@@ -81,6 +92,8 @@ try {
 } finally {
     if ($listener.IsListening) { $listener.Stop() }
     $listener.Close()
-    Write-Host ''
-    Read-Host 'Premi INVIO per chiudere questa finestra'
+    if (-not $shutdownRequested) {
+        Write-Host ''
+        Read-Host 'Premi INVIO per chiudere questa finestra'
+    }
 }
