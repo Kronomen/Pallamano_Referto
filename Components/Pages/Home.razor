@@ -1469,6 +1469,10 @@
             // cronometro.
             _selfRef ??= DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("avviaAutoRecovery", _selfRef);
+
+            // Segnala alla pagina iniziale che Blazor ha completato il primo
+            // render: il pulsante di ingresso viene abilitato solo adesso.
+            await JS.InvokeVoidAsync("refertoAppReady");
         }
     }
 
