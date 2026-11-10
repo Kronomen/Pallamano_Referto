@@ -8,7 +8,7 @@ namespace RefertoPallamano_Blazor.Services;
 
 public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
 {
-    private const string ApiBase = "https://pallamano-referto-api-test.kronomen.workers.dev";
+    private const string ApiBase = "https://pallamano-referto-api.kronomen.workers.dev";
     private const string TokenKey = "pallamanoCloudApiToken";
     private const string PendingKey = "pallamanoCloudPendingArchiveV1";
     private const string AutoSyncKey = "pallamanoCloudAutoSyncEnabled";
