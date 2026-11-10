@@ -299,7 +299,7 @@ export default {
         return jsonResponse({ devices: result.results || [] }, 200, origin);
       }
 
-      const rotateMatch = url.pathname.match(/^\\/api\\/admin\\/operators\\/([A-Za-z0-9_-]+)\\/rotate-code$/);
+      const rotateMatch = url.pathname.match(/^\/api\/admin\/operators\/([A-Za-z0-9_-]+)\/rotate-code$/);
       if (rotateMatch && request.method === 'POST') {
         if (!requireAdmin(auth)) return jsonResponse({ error: 'Operazione riservata all’amministratore.' }, 403, origin);
         const operatorId = rotateMatch[1];
