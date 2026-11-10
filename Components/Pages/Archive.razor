@@ -329,15 +329,29 @@
 
     private async Task MonitorPendingSyncAsync(CancellationToken cancellationToken)
     {
-        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(15));
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
         try
         {
             while (await timer.WaitForNextTickAsync(cancellationToken))
             {
-                if (!Cloud.HasPendingChanges || !Cloud.IsAuthenticated) continue;
-                await Cloud.RetryPendingSyncAsync(Archivio.Data);
+                if (!Cloud.IsAuthenticated) continue;
+
+                if (Cloud.HasPendingChanges)
+                {
+                    await Cloud.RetryPendingSyncAsync(Archivio.Data);
+                }
+                else
+                {
+                    var update = await Cloud.CheckRemoteUpdateAsync();
+                    if (update is not null)
+                    {
+                        var applied = await Archivio.ApplyRemoteUpdateAsync(update);
+                        if (applied)
+                            CloudMessage = "Nuove modifiche ricevute dal cloud e applicate automaticamente.";
+                    }
+                }
+
                 await InvokeAsync(StateHasChanged);
-                if (!Cloud.HasPendingChanges) break;
             }
         }
         catch (OperationCanceledException) { }
