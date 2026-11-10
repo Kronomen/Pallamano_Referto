@@ -18,8 +18,8 @@
         <div class="home-bottom-shade" aria-hidden="true"></div>
         <div class="home-content">
             <div class="home-actions">
-                <button id="home-open-button" type="button" class="home-open-button" onclick="this.blur(); document.getElementById('home-screen').style.display='none'; document.getElementById('home-screen').setAttribute('aria-hidden','true');">🏐&nbsp; APRI GESTIONE GARA</button>
-                <a id="home-archive-button" class="home-archive-button" href="archivio" onclick="var home=document.getElementById(\'home-screen\'); if(home){home.style.display=\'none\'; home.setAttribute(\'aria-hidden\',\'true\');}">GESTIONE ARCHIVIO</a>
+                <button id="home-open-button" type="button" class="home-open-button" disabled aria-disabled="true" onclick="window.apriGestioneGara()">CARICAMENTO APPLICAZIONE…</button>
+                <a id="home-archive-button" class="home-archive-button" href="archivio" onclick="var home=document.getElementById('home-screen'); if(home){home.style.display='none'; home.setAttribute('aria-hidden','true');}">GESTIONE ARCHIVIO</a>
             </div>
             <div class="home-version">Kronoman V. 2.01 08/26</div>
         </div>
@@ -32,6 +32,8 @@
       .home-actions{position:absolute;left:50%;bottom:max(34px,6.5vh);transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:10px;width:min(380px,78vw);}
       .home-open-button,.home-archive-button{display:flex;align-items:center;justify-content:center;width:100%;height:clamp(48px,6.5vh,60px);box-sizing:border-box;border:0;border-radius:10px;color:#fff;font-size:clamp(15px,1.8vw,21px);font-weight:900;letter-spacing:.4px;text-decoration:none;box-shadow:0 6px 18px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.18);touch-action:manipulation;-webkit-user-select:none;user-select:none;cursor:pointer;}
       .home-open-button{background:#1557a6;}
+      .home-open-button:disabled{opacity:.72;cursor:wait;filter:saturate(.65);}
+      .home-open-button:not(:disabled){cursor:pointer;}
       .home-archive-button{background:#14745e;border:1px solid rgba(255,255,255,.3);}
       .home-open-button:active,.home-archive-button:active{transform:scale(.985);filter:brightness(.92);}
       .home-version{position:absolute;right:max(10px,env(safe-area-inset-right));bottom:max(7px,env(safe-area-inset-bottom));color:rgba(255,255,255,.72);font-size:8px;text-shadow:0 2px 6px rgba(0,0,0,.9);}
@@ -57,6 +59,21 @@
 
 <script>
 (function(){
+  var appReady = false;
+  window.refertoAppReady = function(){
+    appReady = true;
+    var button = document.getElementById('home-open-button');
+    if(button){
+      button.disabled = false;
+      button.setAttribute('aria-disabled','false');
+      button.textContent = '🏐  APRI GESTIONE GARA';
+    }
+  };
+  window.apriGestioneGara = function(){
+    if(!appReady) return;
+    var home = document.getElementById('home-screen');
+    if(home){ home.style.display='none'; home.setAttribute('aria-hidden','true'); }
+  };
   function hideHome(){
     var home=document.getElementById('home-screen');
     if(home){ home.style.display='none'; home.setAttribute('aria-hidden','true'); }
