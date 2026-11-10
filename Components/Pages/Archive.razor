@@ -15,7 +15,17 @@
         <button class="archive-back" @onclick="BackToMatch">← TORNA ALLA GARA</button>
     </header>
 
-    @if (!Archivio.IsLoaded)
+    @if (!string.IsNullOrWhiteSpace(Archivio.LoadError))
+    {
+        <section class="archive-card import-card">
+            <h1>Archivio locale non caricato</h1>
+            <p>@Archivio.LoadError</p>
+            <p><strong>Non cancellare i dati del browser e non reinstallare l'applicazione.</strong> Puoi tentare di esportare il contenuto locale originale prima di qualsiasi ripristino.</p>
+            <button class="archive-primary" @onclick="ExportStoredArchive">ESPORTA CONTENUTO LOCALE PER RECUPERO</button>
+            <button class="archive-small" @onclick="RetryArchiveLoad">RIPROVA CARICAMENTO</button>
+        </section>
+    }
+    else if (!Archivio.IsLoaded)
     {
         <div class="archive-loading">Caricamento archivio…</div>
     }
@@ -310,6 +320,7 @@
     protected override async Task OnInitializedAsync()
     {
         await Archivio.InitializeAsync();
+        if (!Archivio.IsLoaded) return;
         await Cloud.TryRestoreSessionAsync();
         if (Cloud.IsAdmin) await LoadOperators();
         _syncMonitorCts = new CancellationTokenSource();
@@ -589,4 +600,22 @@
         }
         catch (Exception ex) { ImportMessage = "Ripristino non completato: " + ex.Message; }
     }
+
+    private async Task ExportStoredArchive()
+    {
+        try
+        {
+            var raw = await Archivio.ExportStoredArchiveRawAsync();
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                CloudMessage = "Non è stato trovato un contenuto locale da esportare.";
+                return;
+            }
+            await JS.InvokeVoidAsync("refertoDownload", $"Archivio_Locale_Recupero_{DateTime.Now:yyyyMMdd_HHmm}.json", raw);
+            CloudMessage = "Contenuto locale originale esportato. Conservalo senza modificarlo.";
+        }
+        catch (Exception ex) { CloudMessage = "Esportazione del contenuto locale non riuscita: " + ex.Message; }
+    }
+
+    private void RetryArchiveLoad() => Nav.NavigateTo(Nav.Uri, forceLoad: true);
 }
