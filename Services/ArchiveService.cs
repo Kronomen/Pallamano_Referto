@@ -12,6 +12,7 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
     public ArchiveDatabase Data { get; private set; } = new();
     public bool IsLoaded { get; private set; }
     public event Action? Changed;
+    private readonly SemaphoreSlim _saveLock = new(1, 1);
 
     public string? LoadError { get; private set; }
 
@@ -78,12 +79,49 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
 
     public async Task SaveAsync(bool syncCloud = true)
     {
-        var json = JsonSerializer.Serialize(Data, JsonOptions);
-        await js.InvokeVoidAsync("archiveStorage.saveArchive", StorageKey, BackupKey, json);
-        // Il salvataggio locale resta prioritario: il cloud viene aggiornato solo
-        // dopo un collegamento e una sincronizzazione iniziale scelti dall utente.
-        if (syncCloud) await cloud.TrySyncAsync(Data);
-        Changed?.Invoke();
+        await _saveLock.WaitAsync();
+        try
+        {
+            var json = JsonSerializer.Serialize(Data, JsonOptions);
+            await js.InvokeVoidAsync("archiveStorage.saveArchive", StorageKey, BackupKey, json);
+            // Il salvataggio locale resta prioritario; il cloud viene aggiornato solo
+            // dopo il collegamento e la sincronizzazione iniziale scelti dall'utente.
+            if (syncCloud) await cloud.TrySyncAsync(Data);
+            Changed?.Invoke();
+        }
+        finally { _saveLock.Release(); }
+    }
+
+    public async Task<bool> ApplyRemoteUpdateAsync(RemoteArchiveUpdate update)
+    {
+        await _saveLock.WaitAsync();
+        try
+        {
+            // Non sostituire mai dati locali che nel frattempo sono diventati pendenti
+            // o una versione cloud diversa da quella appena controllata.
+            if (LoadError is not null || !IsLoaded || cloud.HasPendingChanges ||
+                !string.Equals(cloud.RemoteSha, update.PreviousSha, StringComparison.Ordinal))
+                return false;
+
+            var backup = JsonSerializer.Serialize(Data, JsonOptions);
+            await js.InvokeVoidAsync("archiveStorage.set", BackupKey, backup);
+
+            var remote = update.Data;
+            remote.Championships ??= [];
+            remote.Seasons ??= [];
+            remote.Teams ??= [];
+            remote.People ??= [];
+            remote.TeamEntries ??= [];
+            Data = remote;
+            UpgradeSchema();
+
+            var json = JsonSerializer.Serialize(Data, JsonOptions);
+            await js.InvokeVoidAsync("archiveStorage.saveArchive", StorageKey, BackupKey, json);
+            await cloud.AcceptRemoteUpdateAsync(update.Sha);
+            Changed?.Invoke();
+            return true;
+        }
+        finally { _saveLock.Release(); }
     }
 
 
