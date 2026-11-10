@@ -425,5 +425,19 @@ window.archiveExcel = {
 </script>
 
     <script src="_framework/blazor.webassembly.js"></script>
+<script>
+window.closeProvaApp = async function () {
+  if (!window.confirm('Vuoi arrestare completamente Referto Pallamano su questo computer?')) return false;
+  try {
+    const response = await fetch('/__shutdown', { method: 'POST', cache: 'no-store' });
+    if (!response.ok) throw new Error('Il server locale non ha confermato la chiusura.');
+    document.body.innerHTML = '<main style="min-height:100vh;display:grid;place-items:center;background:#eef2f7;font-family:Arial,sans-serif;color:#172033;text-align:center"><div><h2>Referto Pallamano chiuso</h2><p>Il processo locale è stato arrestato. Puoi chiudere questa finestra.</p></div></main>';
+    return true;
+  } catch (error) {
+    alert(error && error.message ? error.message : 'Non è stato possibile arrestare il processo locale.');
+    return false;
+  }
+};
+</script>
 </body>
 </html>
