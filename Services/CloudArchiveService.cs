@@ -367,6 +367,7 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
     }
 }
 
+public sealed record RemoteArchiveUpdate(ArchiveDatabase Data, string Sha, string PreviousSha);
 public sealed record OperatorInfo(string Id, string Name, bool Active, int DeviceCount, int ActiveDeviceCount);
 public sealed record CreatedOperator(string Id, string Name, string Code);
 public sealed record OperatorDeviceInfo(string Id, string DeviceName, string? CreatedAt, string? LastSeenAt, string? RevokedAt)
