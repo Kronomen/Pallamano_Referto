@@ -1,0 +1,68 @@
+name: Build definitive release package
+
+on:
+  push:
+    branches:
+      - versione-definitiva
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout release branch
+        uses: actions/checkout@v4
+        with:
+          ref: versione-definitiva
+
+      - name: Validate production Worker JavaScript syntax
+        run: node --check cloudflare/worker-operator-access.js
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore RefertoPallamano_Blazor.csproj
+
+      - name: Build
+        run: dotnet build RefertoPallamano_Blazor.csproj --configuration Release --no-restore
+
+      - name: Publish
+        run: dotnet publish RefertoPallamano_Blazor.csproj --configuration Release --no-restore --output ./publish
+
+      - name: Prepare GitHub Pages package
+        shell: bash
+        run: |
+          set -euo pipefail
+          sed -i 's|<base href="/" />|<base href="/Pallamano_Referto/" />|' ./publish/wwwroot/index.html
+          cat > ./publish/ISTRUZIONI-RILASCIO.txt <<'EOF'
+          REFERTO PALLAMANO - PACCHETTO DEFINITIVO
+
+          Pacchetto generato dal branch versione-definitiva.
+          L'applicazione è configurata per il Worker Cloudflare di produzione:
+          https://pallamano-referto-api.kronomen.workers.dev
+
+          Questo archivio contiene i file statici pubblicabili su GitHub Pages.
+          Non caricare i file su main e non sovrascrivere l'archivio dati.
+          La pubblicazione sul sito ufficiale deve essere eseguita separatamente
+          dopo il completamento dei controlli e l'autorizzazione finale.
+
+          Il pacchetto non contiene credenziali o token segreti.
+          EOF
+          cd ./publish/wwwroot
+          zip -r ../../RefertoPallamano-DEFINITIVO.zip .
+          cd ../..
+          zip -u RefertoPallamano-DEFINITIVO.zip ISTRUZIONI-RILASCIO.txt
+
+      - name: Upload definitive artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: RefertoPallamano-DEFINITIVO
+          path: RefertoPallamano-DEFINITIVO.zip
+          if-no-files-found: error
+          retention-days: 30
