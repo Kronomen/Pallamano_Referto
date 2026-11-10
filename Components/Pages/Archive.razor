@@ -337,25 +337,39 @@
             {
                 if (!Cloud.IsAuthenticated) continue;
 
-                if (Cloud.HasPendingChanges)
+                try
                 {
-                    await Cloud.RetryPendingSyncAsync(Archivio.Data);
-                }
-                else
-                {
-                    var update = await Cloud.CheckRemoteUpdateAsync();
-                    if (update is not null)
+                    if (Cloud.HasPendingChanges)
                     {
-                        var applied = await Archivio.ApplyRemoteUpdateAsync(update);
-                        if (applied)
-                            CloudMessage = "Nuove modifiche ricevute dal cloud e applicate automaticamente.";
+                        await Cloud.RetryPendingSyncAsync(Archivio.Data);
                     }
-                }
+                    else
+                    {
+                        var update = await Cloud.CheckRemoteUpdateAsync();
+                        if (update is not null)
+                        {
+                            var applied = await Archivio.ApplyRemoteUpdateAsync(update);
+                            if (applied)
+                                CloudMessage = "Nuove modifiche ricevute dal cloud e applicate automaticamente.";
+                        }
+                    }
 
-                await InvokeAsync(StateHasChanged);
+                    await InvokeAsync(StateHasChanged);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    // Un errore temporaneo di rete o una risposta non valida non deve
+                    // terminare definitivamente il monitor: il controllo riparte al tick successivo.
+                    CloudMessage = "Controllo sincronizzazione non riuscito. Nuovo tentativo automatico tra 5 secondi. Dettaglio: " + ex.Message;
+                    await InvokeAsync(StateHasChanged);
+                }
             }
         }
-        catch (OperationCanceledException) { }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
     }
 
     private async Task RetryCloudSync()
