@@ -5,6 +5,7 @@
 @implements IDisposable
 @inject GameService Game
 @inject ArchiveService Archivio
+@inject RefertoPallamano_Blazor.Services.CloudArchiveService Cloud
 @inject IJSRuntime JS
 @inject NavigationManager Nav
 
@@ -122,6 +123,13 @@
     {
         <header class="topbar">
             <div class="brand"><img src="images/FIGH.png" alt="FIGH" /><div><div class="federation">FEDERAZIONE ITALIANA GIUOCO HANDBALL</div><div class="app-title">REFERTO PALLAMANO</div></div></div>
+            @if (Cloud.IsAuthenticated && Cloud.IsOperator)
+            {
+                <div style="display:flex;flex-direction:column;align-items:flex-end;justify-content:center;padding:6px 12px;border-radius:8px;background:#eaf2ff;color:#173b70;min-width:150px;">
+                    <span style="font-size:10px;font-weight:700;letter-spacing:.06em;">OPERATORE COLLEGATO</span>
+                    <strong style="font-size:14px;">@Cloud.OperatorName</strong>
+                </div>
+            }
             <div class="phase-box">@GameService.PhaseName(Game.State.Phase)</div>
         </header>
 
@@ -1453,6 +1461,11 @@
     {
         if (firstRender)
         {
+            // Ripristina la sessione cloud anche nella pagina principale,
+            // così il nominativo dell'operatore resta visibile durante la gara.
+            await Cloud.TryRestoreSessionAsync();
+            StateHasChanged();
+
             // Leggiamo prima il recovery esistente. L'app non deve mai
             // sovrascriverlo all'avvio con una gara vuota.
             var existingRecovery = await JS.InvokeAsync<string?>("recuperaPartitaLocale");
