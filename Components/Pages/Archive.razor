@@ -12,7 +12,8 @@
 <div class="archive-app">
     <header class="archive-header">
         <div class="archive-brand"><img src="images/FIGH.png" alt="FIGH" /><div><strong>REFERTO PALLAMANO</strong><span>GESTIONE ARCHIVIO</span></div></div>
-        <button class="archive-back" @onclick="BackToMatch">← TORNA ALLA GARA</button>
+        <div class="archive-header-actions"><button class="archive-back" @onclick="BackToMatch">← TORNA ALLA GARA</button>
+            @if (IsLocalRunner) { <button type="button" class="archive-close-app" @onclick="CloseApplication" title="Arresta l’applicazione locale" aria-label="Chiudi applicazione">×</button> }</div>
     </header>
 
     @if (!string.IsNullOrWhiteSpace(Archivio.LoadError))
@@ -366,6 +367,8 @@
 
     public ValueTask DisposeAsync()
     { _syncMonitorCts?.Cancel(); _syncMonitorCts?.Dispose(); return ValueTask.CompletedTask; }
+    private bool IsLocalRunner => Uri.TryCreate(Nav.BaseUri, UriKind.Absolute, out var baseUri) && (baseUri.Host is "localhost" or "127.0.0.1") && baseUri.Port == 8088;
+    private async Task CloseApplication() => await JS.InvokeAsync<bool>("closeProvaApp");
     private void SetTab(string value) => Tab = value;
     private void BackToMatch() => Nav.NavigateTo("/");
 
