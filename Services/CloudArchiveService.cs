@@ -165,7 +165,7 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
             IsAdmin = string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase);
             OperatorName = ReadString(root, "operatorName") ?? (IsAdmin ? "Amministratore" : "Operatore");
             DeviceId = ReadString(root, "deviceId");
-            await RefreshRemoteAsync();
+            await RefreshRemoteAsync(preserveKnownSha: true);
             Status = HasPendingChanges ? "Modifiche locali in attesa di sincronizzazione. Non sostituire l archivio con la copia cloud." : IsAdmin ? "Sessione amministratore ripristinata. Archivio cloud disponibile." : $"Sessione ripristinata per {OperatorName}. Archivio cloud disponibile.";
             return true;
         }
@@ -177,7 +177,7 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
         _token = null; _autoSyncEnabled = false; IsAdmin = false; OperatorName = null; DeviceId = null;
         try { await js.InvokeVoidAsync("localStorage.removeItem", TokenKey); } catch { }
     }
-    public async Task RefreshRemoteAsync()
+    public async Task RefreshRemoteAsync(bool preserveKnownSha = false)
     {
         using var response = await SendAuthorizedAsync(HttpMethod.Get, "/api/archive");
         var body = await response.Content.ReadAsStringAsync();
@@ -186,7 +186,9 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
         using var document = JsonDocument.Parse(body);
         var root = document.RootElement;
         HasRemoteArchive = root.TryGetProperty("exists", out var exists) && exists.ValueKind == JsonValueKind.True;
-        _sha = ReadString(root, "sha");
+        var fetchedSha = ReadString(root, "sha");
+        if (!preserveKnownSha || string.IsNullOrWhiteSpace(_sha))
+            _sha = fetchedSha;
         if (!string.IsNullOrWhiteSpace(_sha))
             await js.InvokeVoidAsync("localStorage.setItem", ShaKey, _sha);
         else
@@ -246,6 +248,54 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
         try { await SavePendingAsync(archive); await PutAsync(archive, _sha); await ClearPendingAsync(); HasSyncConflict = false; Status = "Connessione ripristinata: archivio locale sincronizzato con il cloud."; }
         catch (Exception ex) { Status = HasSyncConflict ? "Conflitto cloud: modifiche locali conservate e sincronizzazione sospesa." : "Modifiche locali conservate. Nuovo tentativo automatico in attesa della connessione: " + ex.Message; }
         finally { _syncLock.Release(); }
+    }
+
+    public async Task<RemoteArchiveUpdate?> CheckRemoteUpdateAsync()
+    {
+        if (!_autoSyncEnabled || !IsAuthenticated || HasPendingChanges || HasSyncConflict) return null;
+        await _syncLock.WaitAsync();
+        try
+        {
+            if (!_autoSyncEnabled || HasPendingChanges || HasSyncConflict) return null;
+            using var response = await SendAuthorizedAsync(HttpMethod.Get, "/api/archive");
+            var body = await response.Content.ReadAsStringAsync();
+            if (!response.IsSuccessStatusCode)
+                throw new InvalidOperationException(ReadError(body, "Controllo aggiornamenti cloud non riuscito."));
+            using var document = JsonDocument.Parse(body);
+            var root = document.RootElement;
+            HasRemoteArchive = root.TryGetProperty("exists", out var exists) && exists.ValueKind == JsonValueKind.True;
+            var fetchedSha = ReadString(root, "sha");
+            if (!HasRemoteArchive || string.IsNullOrWhiteSpace(fetchedSha)) return null;
+
+            // Se questo dispositivo non ha ancora una versione di riferimento,
+            // registra quella corrente senza sostituire automaticamente i dati locali.
+            if (string.IsNullOrWhiteSpace(_sha))
+            {
+                _sha = fetchedSha;
+                await js.InvokeVoidAsync("localStorage.setItem", ShaKey, _sha);
+                return null;
+            }
+            if (string.Equals(fetchedSha, _sha, StringComparison.Ordinal)) return null;
+            if (!root.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Object)
+                throw new InvalidOperationException("Il server ha una nuova versione ma non ha restituito un archivio valido.");
+
+            var archive = JsonSerializer.Deserialize<ArchiveDatabase>(
+                data.GetRawText(), new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            if (archive is null)
+                throw new InvalidOperationException("La nuova versione cloud non è un archivio valido.");
+
+            Status = "Nuova versione cloud rilevata. Aggiornamento del dispositivo…";
+            return new RemoteArchiveUpdate(archive, fetchedSha, _sha);
+        }
+        finally { _syncLock.Release(); }
+    }
+
+    public async Task AcceptRemoteUpdateAsync(string sha)
+    {
+        _sha = sha;
+        await js.InvokeVoidAsync("localStorage.setItem", ShaKey, _sha);
+        HasRemoteArchive = true;
+        Status = "Archivio aggiornato automaticamente dal cloud.";
     }
 
     private async Task LoadSyncPreferencesAsync()
