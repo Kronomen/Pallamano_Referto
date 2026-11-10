@@ -1,6 +1,9 @@
 @page "/archivio"
+@implements IAsyncDisposable
 @using System.Text.Json
+@using RefertoPallamano_Blazor.Services
 @inject ArchiveService Archivio
+@inject CloudArchiveService Cloud
 @inject IJSRuntime JS
 @inject NavigationManager Nav
 
@@ -9,17 +12,28 @@
 <div class="archive-app">
     <header class="archive-header">
         <div class="archive-brand"><img src="images/FIGH.png" alt="FIGH" /><div><strong>REFERTO PALLAMANO</strong><span>GESTIONE ARCHIVIO</span></div></div>
-        <button class="archive-back" @onclick="BackToMatch">← TORNA ALLA GARA</button>
+        <div class="archive-header-actions"><button class="archive-back" @onclick="BackToMatch">← TORNA ALLA GARA</button>
+            @if (IsLocalRunner) { <button type="button" class="archive-close-app" @onclick="CloseApplication" title="Arresta l’applicazione locale" aria-label="Chiudi applicazione">×</button> }</div>
     </header>
 
-    @if (!Archivio.IsLoaded)
+    @if (!string.IsNullOrWhiteSpace(Archivio.LoadError))
+    {
+        <section class="archive-card import-card">
+            <h1>Archivio locale non caricato</h1>
+            <p>@Archivio.LoadError</p>
+            <p><strong>Non cancellare i dati del browser e non reinstallare l'applicazione.</strong> Puoi tentare di esportare il contenuto locale originale prima di qualsiasi ripristino.</p>
+            <button class="archive-primary" @onclick="ExportStoredArchive">ESPORTA CONTENUTO LOCALE PER RECUPERO</button>
+            <button class="archive-small" @onclick="RetryArchiveLoad">RIPROVA CARICAMENTO</button>
+        </section>
+    }
+    else if (!Archivio.IsLoaded)
     {
         <div class="archive-loading">Caricamento archivio…</div>
     }
     else
     {
         <section class="archive-intro">
-            <div><span class="archive-eyebrow">MODULO GESTIONALE</span><h1>Campionati, squadre e rose</h1><p>Gestisci gli archivi in modo dinamico: puoi aggiungere campionati e squadre senza modificare il programma.</p></div>
+            <div><span class="archive-eyebrow">MODULO GESTIONALE</span><h1>CAMPIONATI, SQUADRE E ATLETI</h1><p>Gestisci gli archivi in modo dinamico: puoi aggiungere campionati e squadre senza modificare il programma.</p></div>
             <div class="archive-stats"><div><b>@Archivio.Data.Championships.Count</b><span>Campionati</span></div><div><b>@Archivio.Data.Teams.Count</b><span>Squadre</span></div><div><b>@Archivio.Data.People.Count</b><span>Persone</span></div></div>
         </section>
 
@@ -152,6 +166,122 @@
                     <div><b>@Archivio.Data.People.Count(x => x.PersonType == "PLAYER")</b><span>Atleti</span></div>
                     <div><b>@Archivio.Data.People.Count(x => x.PersonType == "OFFICIAL")</b><span>Dirigenti</span></div>
                 </div>
+                <div class="archive-note">
+                    <strong>Sincronizzazione cloud privata</strong>
+                    <p>Collega questo dispositivo al repository privato. Dopo aver scelto quale archivio utilizzare, le modifiche successive verranno salvate anche sul cloud. La copia locale continua a funzionare anche senza connessione.</p>
+                    @if (!Cloud.IsAuthenticated)
+                    {
+                        <div class="operator-access-panel">
+                            <h3>Accesso amministratore</h3>
+                            <label>Password amministratore
+                                <input type="password" @bind="CloudPassword" autocomplete="current-password" placeholder="Password amministratore" />
+                            </label>
+                            <button class="archive-primary" @onclick="ConnectCloud" disabled="@CloudBusy">ACCEDI COME AMMINISTRATORE</button>
+                            <hr />
+                            <h3>Attivazione operatore</h3>
+                            <p>Inserisci il codice personale ricevuto dall'amministratore. Il dispositivo resterà autorizzato anche dopo la chiusura del browser.</p>
+                            <label>Codice personale
+                                <input @bind="OperatorCode" autocomplete="one-time-code" placeholder="Inserisci il tuo codice personale" />
+                            </label>
+                            <label>Nome dispositivo
+                                <input @bind="DeviceName" placeholder="Es. Tablet segnapunti" />
+                            </label>
+                            <button class="archive-primary" @onclick="ActivateOperator" disabled="@CloudBusy">ATTIVA QUESTO DISPOSITIVO</button>
+                        </div>
+                    }
+                    @if (Cloud.IsAuthenticated)
+                    {
+                        <p><strong>Utente collegato:</strong> @(Cloud.IsAdmin ? "Amministratore" : Cloud.OperatorName)</p>
+                        <p><strong>Stato:</strong> @Cloud.Status</p>
+                        @if (Cloud.HasPendingChanges)
+                        {
+                            <div class="archive-message">ATTENZIONE: ci sono modifiche locali non ancora presenti nel cloud. Non sostituire l archivio cloud. Le modifiche restano salvate su questo dispositivo.</div>
+                            <button class="archive-primary" @onclick="RetryCloudSync" disabled="@CloudBusy">RIPROVA SINCRONIZZAZIONE</button>
+                        }
+                        @if (Cloud.IsAdmin)
+                        {
+                            <div class="operator-access-panel">
+                                <h3>Gestione operatori</h3>
+                                <div class="operator-create-row">
+                                    <input @bind="NewOperatorName" placeholder="Nome e cognome dell'operatore" />
+                                    <button class="archive-primary" @onclick="CreateOperator" disabled="@CloudBusy">CREA OPERATORE</button>
+                                </div>
+                                @if (CreatedOperatorCode is not null)
+                                {
+                                    <div class="operator-code-result">
+                                        <strong>Codice personale da comunicare all'operatore</strong>
+                                        <code>@CreatedOperatorCode</code>
+                                        <button class="archive-small" @onclick="CopyOperatorCode">COPIA CODICE</button>
+                                        <small>Conservalo: per sicurezza viene mostrato soltanto adesso.</small>
+                                    </div>
+                                }
+                                @if (RotatedOperatorCode is not null)
+                                {
+                                    <div class="operator-code-result">
+                                        <strong>Nuovo codice personale per @RotatedOperatorName</strong>
+                                        <code>@RotatedOperatorCode</code>
+                                        <button class="archive-small" @onclick="CopyRotatedOperatorCode">COPIA CODICE</button>
+                                        <small>Il codice precedente non è più valido. I dispositivi già attivati restano autorizzati.</small>
+                                    </div>
+                                }
+                                @if (Operators.Count > 0)
+                                {
+                                    <div class="operator-list">
+                                        @foreach (var op in Operators)
+                                        {
+                                            <div class="operator-row">
+                                                <div><strong>@op.Name</strong><small>@op.ActiveDeviceCount dispositivi attivi · @op.DeviceCount registrati</small></div>
+                                                <span class="archive-status @(op.Active ? "on" : "off")">@(op.Active ? "ATTIVO" : "DISATTIVATO")</span>
+                                                <button class="archive-small" @onclick="() => ToggleOperator(op)">@((op.Active) ? "DISATTIVA" : "RIATTIVA")</button>
+                                                <button class="archive-small" @onclick="() => RotateOperatorCode(op)" disabled="@CloudBusy">RIGENERA CODICE</button>
+                                            </div>
+                                        }
+                                    </div>
+                                    @foreach (var op in Operators)
+                                    {
+                                        <div class="operator-device-block">
+                                            <button class="archive-small" @onclick="() => ToggleDeviceList(op.Id)">@(ExpandedOperatorId == op.Id ? "NASCONDI DISPOSITIVI" : "GESTISCI DISPOSITIVI") · @op.Name</button>
+                                            @if (ExpandedOperatorId == op.Id)
+                                            {
+                                                @if (OperatorDevices.Count == 0)
+                                                {
+                                                    <p class="operator-device-empty">Nessun dispositivo registrato.</p>
+                                                }
+                                                @foreach (var device in OperatorDevices)
+                                                {
+                                                    <div class="operator-device-row">
+                                                        <div><strong>@device.DeviceName</strong><small>Ultimo accesso: @(device.LastSeenAt ?? "mai")</small></div>
+                                                        <span class="archive-status @(device.IsRevoked ? "off" : "on")">@(device.IsRevoked ? "REVOCATO" : "ATTIVO")</span>
+                                                        @if (!device.IsRevoked)
+                                                        {
+                                                            <button class="archive-small danger" @onclick="() => RevokeOperatorDevice(device)">REVOCA</button>
+                                                        }
+                                                    </div>
+                                                }
+                                            }
+                                        </div>
+                                    }
+                                }
+                                <button class="archive-small" @onclick="LoadOperators" disabled="@CloudBusy">AGGIORNA ELENCO</button>
+                                @if (!string.IsNullOrWhiteSpace(OperatorMessage)) { <div class="archive-message">@OperatorMessage</div> }
+                            </div>
+                        }
+                        <button class="archive-small" @onclick="DisconnectCloud">ESCI DAL CLOUD</button>
+                        @if (Cloud.HasRemoteArchive)
+                        {
+                            <button class="archive-primary" @onclick="DownloadCloudArchive" disabled="@(CloudBusy || Cloud.HasPendingChanges)">USA L'ARCHIVIO PRESENTE NEL CLOUD</button>
+                        }
+                        else
+                        {
+                            <button class="archive-primary" @onclick="UploadLocalArchive" disabled="@CloudBusy">CARICA NEL CLOUD L'ARCHIVIO DI QUESTO DISPOSITIVO</button>
+                        }
+                    }
+                    else
+                    {
+                        <p><strong>Stato:</strong> @Cloud.Status</p>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(CloudMessage)) { <div class="archive-message">@CloudMessage</div> }
+                </div>
                 <div class="archive-note"><strong>Esporta archivio completo</strong><p>Scarica tutte le anagrafiche, le squadre, i campionati, le stagioni e le associazioni in un file JSON.</p><button class="archive-primary" @onclick="ExportBackup">ESPORTA ARCHIVIO JSON</button></div>
                 <div class="archive-note"><strong>Importa archivio da file JSON</strong><p>La sostituzione crea prima una copia di sicurezza dell'archivio attuale. Seleziona un file JSON esportato da Referto Pallamano.</p><InputFile OnChange="ImportArchiveJson" accept=".json,application/json" /></div>
                 <div class="archive-note"><strong>Ripristina ultima copia di sicurezza</strong><p>Ripristina la copia salvata automaticamente prima dell'ultima importazione.</p><button class="archive-small" @onclick="RestoreBackup">RIPRISTINA BACKUP</button></div>
@@ -173,8 +303,86 @@
     private string EntryPersonId = ""; private string EntryTeamId = ""; private string EntryChampionshipId = ""; private string EntrySeasonId = ""; private string EntryNumber = "";
     private string PersonTypeForEntry => Archivio.Data.People.FirstOrDefault(x => x.Id == EntryPersonId)?.PersonType ?? "PLAYER";
     private string ImportMessage = "";
+    private string CloudPassword = "";
+    private string OperatorCode = "";
+    private string DeviceName = "Tablet";
+    private string NewOperatorName = "";
+    private string? CreatedOperatorCode;
+    private string? RotatedOperatorCode;
+    private string RotatedOperatorName = "";
+    private string OperatorMessage = "";
+    private List<OperatorInfo> Operators = new();
+    private List<OperatorDeviceInfo> OperatorDevices = new();
+    private string? ExpandedOperatorId;
+    private string CloudMessage = "";
+    private bool CloudBusy;
+    private CancellationTokenSource? _syncMonitorCts;
 
-    protected override async Task OnInitializedAsync() => await Archivio.InitializeAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        await Archivio.InitializeAsync();
+        if (!Archivio.IsLoaded) return;
+        await Cloud.TryRestoreSessionAsync();
+        if (Cloud.IsAdmin) await LoadOperators();
+        _syncMonitorCts = new CancellationTokenSource();
+        _ = MonitorPendingSyncAsync(_syncMonitorCts.Token);
+    }
+
+    private async Task MonitorPendingSyncAsync(CancellationToken cancellationToken)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(cancellationToken))
+            {
+                if (!Cloud.IsAuthenticated) continue;
+
+                try
+                {
+                    if (Cloud.HasPendingChanges)
+                    {
+                        await Cloud.RetryPendingSyncAsync(Archivio.Data);
+                    }
+                    else
+                    {
+                        var update = await Cloud.CheckRemoteUpdateAsync();
+                        if (update is not null)
+                        {
+                            var applied = await Archivio.ApplyRemoteUpdateAsync(update);
+                            if (applied)
+                                CloudMessage = "Nuove modifiche ricevute dal cloud e applicate automaticamente.";
+                        }
+                    }
+
+                    await InvokeAsync(StateHasChanged);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    // Un errore temporaneo di rete o una risposta non valida non deve
+                    // terminare definitivamente il monitor: il controllo riparte al tick successivo.
+                    CloudMessage = "Controllo sincronizzazione non riuscito. Nuovo tentativo automatico tra 5 secondi. Dettaglio: " + ex.Message;
+                    await InvokeAsync(StateHasChanged);
+                }
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+    }
+
+    private async Task RetryCloudSync()
+    {
+        CloudBusy = true;
+        try { await Cloud.RetryPendingSyncAsync(Archivio.Data); CloudMessage = Cloud.Status; }
+        finally { CloudBusy = false; StateHasChanged(); }
+    }
+
+    public ValueTask DisposeAsync()
+    { _syncMonitorCts?.Cancel(); _syncMonitorCts?.Dispose(); return ValueTask.CompletedTask; }
+    private bool IsLocalRunner => Uri.TryCreate(Nav.BaseUri, UriKind.Absolute, out var baseUri) && (baseUri.Host is "localhost" or "127.0.0.1") && baseUri.Port == 8088;
+    private async Task CloseApplication() => await JS.InvokeAsync<bool>("closeProvaApp");
     private void SetTab(string value) => Tab = value;
     private void BackToMatch() => Nav.NavigateTo("/");
 
@@ -243,6 +451,155 @@
         }
         catch (Exception ex) { ImportMessage = "Importazione non completata: " + ex.Message; }
     }
+    private async Task ConnectCloud()
+    {
+        CloudBusy = true; CloudMessage = "";
+        try
+        {
+            await Cloud.LoginAsync(CloudPassword);
+            CloudPassword = "";
+            CloudMessage = Cloud.Status;
+            await LoadOperators();
+        }
+        catch (Exception ex) { CloudMessage = ex.Message; }
+        finally { CloudBusy = false; }
+    }
+
+    private async Task ActivateOperator()
+    {
+        CloudBusy = true; CloudMessage = "";
+        try
+        {
+            await Cloud.ActivateOperatorAsync(OperatorCode, DeviceName);
+            OperatorCode = "";
+            CloudMessage = Cloud.Status;
+        }
+        catch (Exception ex) { CloudMessage = ex.Message; }
+        finally { CloudBusy = false; }
+    }
+
+    private async Task LoadOperators()
+    {
+        try { Operators = await Cloud.GetOperatorsAsync(); OperatorMessage = "Elenco aggiornato."; }
+        catch (Exception ex) { OperatorMessage = ex.Message; }
+    }
+
+    private async Task ToggleDeviceList(string operatorId)
+    {
+        if (ExpandedOperatorId == operatorId) { ExpandedOperatorId = null; OperatorDevices.Clear(); return; }
+        ExpandedOperatorId = operatorId;
+        await LoadOperatorDevices(operatorId);
+    }
+
+    private async Task LoadOperatorDevices(string operatorId)
+    {
+        try { OperatorDevices = await Cloud.GetOperatorDevicesAsync(operatorId); }
+        catch (Exception ex) { OperatorMessage = ex.Message; }
+    }
+
+    private async Task RevokeOperatorDevice(OperatorDeviceInfo device)
+    {
+        if (!await JS.InvokeAsync<bool>("confirm", $"Vuoi revocare l'accesso del dispositivo {device.DeviceName}? L'app su quel dispositivo non potrà più sincronizzarsi.")) return;
+        CloudBusy = true;
+        try
+        {
+            await Cloud.RevokeDeviceAsync(device.Id);
+            if (ExpandedOperatorId is not null) await LoadOperatorDevices(ExpandedOperatorId);
+            await LoadOperators();
+            OperatorMessage = "Dispositivo revocato.";
+        }
+        catch (Exception ex) { OperatorMessage = ex.Message; }
+        finally { CloudBusy = false; }
+    }
+
+    private async Task CreateOperator()
+    {
+        if (string.IsNullOrWhiteSpace(NewOperatorName)) { OperatorMessage = "Inserisci il nominativo dell'operatore."; return; }
+        CloudBusy = true; OperatorMessage = ""; CreatedOperatorCode = null;
+        try
+        {
+            var created = await Cloud.CreateOperatorAsync(NewOperatorName);
+            NewOperatorName = "";
+            CreatedOperatorCode = created.Code;
+            await LoadOperators();
+            OperatorMessage = "Operatore creato. Copia e comunica il codice personale.";
+        }
+        catch (Exception ex) { OperatorMessage = ex.Message; }
+        finally { CloudBusy = false; }
+    }
+
+    private async Task RotateOperatorCode(OperatorInfo op)
+    {
+        if (!await JS.InvokeAsync<bool>("confirm", $"Vuoi rigenerare il codice personale di {op.Name}? Il codice precedente non sarà più valido. I dispositivi già attivati continueranno a funzionare.")) return;
+        CloudBusy = true;
+        OperatorMessage = "";
+        RotatedOperatorCode = null;
+        try
+        {
+            RotatedOperatorCode = await Cloud.RotateOperatorCodeAsync(op.Id);
+            RotatedOperatorName = op.Name;
+            OperatorMessage = "Nuovo codice generato. Copialo e comunicalo all'operatore.";
+        }
+        catch (Exception ex) { OperatorMessage = ex.Message; }
+        finally { CloudBusy = false; }
+    }
+
+    private async Task CopyRotatedOperatorCode()
+    {
+        if (RotatedOperatorCode is not null)
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", RotatedOperatorCode);
+    }
+
+    private async Task ToggleOperator(OperatorInfo op)
+    {
+        var next = !op.Active;
+        if (!await JS.InvokeAsync<bool>("confirm", $"Vuoi {(next ? "riattivare" : "disattivare")} l'operatore {op.Name}?")) return;
+        CloudBusy = true;
+        try { await Cloud.SetOperatorActiveAsync(op.Id, next); await LoadOperators(); }
+        catch (Exception ex) { OperatorMessage = ex.Message; }
+        finally { CloudBusy = false; }
+    }
+
+    private async Task CopyOperatorCode()
+    {
+        if (CreatedOperatorCode is not null) await JS.InvokeVoidAsync("navigator.clipboard.writeText", CreatedOperatorCode);
+    }
+
+    private async Task DisconnectCloud()
+    {
+        await JS.InvokeVoidAsync("localStorage.removeItem", "pallamanoCloudApiToken");
+        Nav.NavigateTo("/archivio", forceLoad: true);
+    }
+
+    private async Task UploadLocalArchive()
+    {
+        if (!await JS.InvokeAsync<bool>("confirm", "Vuoi caricare nel cloud l'archivio attualmente presente su questo dispositivo? Questa sarà la copia iniziale condivisa con gli altri dispositivi.")) return;
+        CloudBusy = true; CloudMessage = "";
+        try
+        {
+            await Cloud.UploadInitialAsync(Archivio.Data);
+            CloudMessage = Cloud.Status;
+        }
+        catch (Exception ex) { CloudMessage = ex.Message; }
+        finally { CloudBusy = false; }
+    }
+
+    private async Task DownloadCloudArchive()
+    {
+        if (!await JS.InvokeAsync<bool>("confirm", "L'archivio locale verrà prima salvato in un backup e poi sostituito con quello presente nel cloud. Vuoi continuare?")) return;
+        CloudBusy = true; CloudMessage = "";
+        try
+        {
+            var remote = await Cloud.DownloadRemoteAsync();
+            if (remote is null) { CloudMessage = "Nel cloud non è presente alcun archivio."; return; }
+            await Archivio.ReplaceFromJsonAsync(JsonSerializer.Serialize(remote), syncCloud: false);
+            await Cloud.EnableAutoSyncAsync();
+            CloudMessage = "Archivio cloud copiato su questo dispositivo. Sincronizzazione automatica attiva.";
+        }
+        catch (Exception ex) { CloudMessage = ex.Message; }
+        finally { CloudBusy = false; }
+    }
+
     private async Task ExportBackup()
     {
         var json = await Archivio.ExportJsonAsync();
@@ -274,4 +631,22 @@
         }
         catch (Exception ex) { ImportMessage = "Ripristino non completato: " + ex.Message; }
     }
+
+    private async Task ExportStoredArchive()
+    {
+        try
+        {
+            var raw = await Archivio.ExportStoredArchiveRawAsync();
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                CloudMessage = "Non è stato trovato un contenuto locale da esportare.";
+                return;
+            }
+            await JS.InvokeVoidAsync("refertoDownload", $"Archivio_Locale_Recupero_{DateTime.Now:yyyyMMdd_HHmm}.json", raw);
+            CloudMessage = "Contenuto locale originale esportato. Conservalo senza modificarlo.";
+        }
+        catch (Exception ex) { CloudMessage = "Esportazione del contenuto locale non riuscita: " + ex.Message; }
+    }
+
+    private void RetryArchiveLoad() => Nav.NavigateTo(Nav.Uri, forceLoad: true);
 }

@@ -18,8 +18,8 @@
         <div class="home-bottom-shade" aria-hidden="true"></div>
         <div class="home-content">
             <div class="home-actions">
-                <button id="home-open-button" type="button" class="home-open-button" onclick="this.blur(); document.getElementById('home-screen').style.display='none'; document.getElementById('home-screen').setAttribute('aria-hidden','true');">🏐&nbsp; APRI GESTIONE GARA</button>
-                <a id="home-archive-button" class="home-archive-button" href="archivio">GESTIONE ARCHIVIO</a>
+                <button id="home-open-button" type="button" class="home-open-button" disabled aria-disabled="true" onclick="window.apriGestioneGara()">CARICAMENTO APPLICAZIONE…</button>
+                <a id="home-archive-button" class="home-archive-button" href="archivio" onclick="var home=document.getElementById('home-screen'); if(home){home.style.display='none'; home.setAttribute('aria-hidden','true');}">GESTIONE ARCHIVIO</a>
             </div>
             <div class="home-version">Kronoman V. 2.01 08/26</div>
         </div>
@@ -32,6 +32,8 @@
       .home-actions{position:absolute;left:50%;bottom:max(34px,6.5vh);transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:10px;width:min(380px,78vw);}
       .home-open-button,.home-archive-button{display:flex;align-items:center;justify-content:center;width:100%;height:clamp(48px,6.5vh,60px);box-sizing:border-box;border:0;border-radius:10px;color:#fff;font-size:clamp(15px,1.8vw,21px);font-weight:900;letter-spacing:.4px;text-decoration:none;box-shadow:0 6px 18px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.18);touch-action:manipulation;-webkit-user-select:none;user-select:none;cursor:pointer;}
       .home-open-button{background:#1557a6;}
+      .home-open-button:disabled{opacity:.72;cursor:wait;filter:saturate(.65);}
+      .home-open-button:not(:disabled){cursor:pointer;}
       .home-archive-button{background:#14745e;border:1px solid rgba(255,255,255,.3);}
       .home-open-button:active,.home-archive-button:active{transform:scale(.985);filter:brightness(.92);}
       .home-version{position:absolute;right:max(10px,env(safe-area-inset-right));bottom:max(7px,env(safe-area-inset-bottom));color:rgba(255,255,255,.72);font-size:8px;text-shadow:0 2px 6px rgba(0,0,0,.9);}
@@ -57,6 +59,21 @@
 
 <script>
 (function(){
+  var appReady = false;
+  window.refertoAppReady = function(){
+    appReady = true;
+    var button = document.getElementById('home-open-button');
+    if(button){
+      button.disabled = false;
+      button.setAttribute('aria-disabled','false');
+      button.textContent = '🏐  APRI GESTIONE GARA';
+    }
+  };
+  window.apriGestioneGara = function(){
+    if(!appReady) return;
+    var home = document.getElementById('home-screen');
+    if(home){ home.style.display='none'; home.setAttribute('aria-hidden','true'); }
+  };
   function hideHome(){
     var home=document.getElementById('home-screen');
     if(home){ home.style.display='none'; home.setAttribute('aria-hidden','true'); }
@@ -290,24 +307,59 @@ window.archiveStorage = (() => {
       } catch { return null; }
     },
     get: async key => {
+      if (!window.indexedDB) return localStorage.getItem(key);
+      const db = await openDb();
       try {
-        const db = await openDb();
-        return await new Promise((resolve, reject) => {
+        const value = await new Promise((resolve, reject) => {
           const request = db.transaction('records', 'readonly').objectStore('records').get(key);
           request.onsuccess = () => resolve(request.result ? request.result.value : null);
-          request.onerror = () => reject(request.error);
+          request.onerror = () => reject(request.error || new Error('Lettura IndexedDB non riuscita.'));
         });
-      } catch { return localStorage.getItem(key); }
+        // Recupera anche i dati creati da una vecchia versione che usava localStorage
+        // come ripiego, ma non nasconde gli errori reali di IndexedDB.
+        return value ?? localStorage.getItem(key);
+      } finally { db.close(); }
     },
     set: async (key, value) => {
+      if (!window.indexedDB) { localStorage.setItem(key, value); return true; }
+      const db = await openDb();
       try {
-        const db = await openDb();
-        return await new Promise((resolve, reject) => {
-          const request = db.transaction('records', 'readwrite').objectStore('records').put({ key, value });
-          request.onsuccess = () => resolve(true);
-          request.onerror = () => reject(request.error);
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction('records', 'readwrite');
+          tx.objectStore('records').put({ key, value });
+          tx.oncomplete = () => resolve(true);
+          tx.onerror = () => reject(tx.error || new Error('Salvataggio IndexedDB non riuscito.'));
+          tx.onabort = () => reject(tx.error || new Error('Salvataggio IndexedDB annullato.'));
         });
-      } catch { localStorage.setItem(key, value); return true; }
+        return true;
+      } finally { db.close(); }
+    },
+    saveArchive: async (key, backupKey, value) => {
+      if (!window.indexedDB) {
+        const previous = localStorage.getItem(key);
+        if (previous) localStorage.setItem(backupKey, previous);
+        localStorage.setItem(key, value);
+        return true;
+      }
+      const db = await openDb();
+      try {
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction('records', 'readwrite');
+          const store = tx.objectStore('records');
+          const read = store.get(key);
+          read.onsuccess = () => {
+            const previous = read.result ? read.result.value : localStorage.getItem(key);
+            if (typeof previous === 'string' && previous.length > 0)
+              store.put({ key: backupKey, value: previous });
+            store.put({ key, value });
+          };
+          read.onerror = () => { try { tx.abort(); } catch {} };
+          tx.oncomplete = () => resolve(true);
+          tx.onerror = () => reject(tx.error || new Error('Salvataggio protetto IndexedDB non riuscito.'));
+          tx.onabort = () => reject(tx.error || new Error('Salvataggio protetto IndexedDB annullato.'));
+        });
+        return true;
+      } finally { db.close(); }
     }
   };
 })();
@@ -373,5 +425,19 @@ window.archiveExcel = {
 </script>
 
     <script src="_framework/blazor.webassembly.js"></script>
+<script>
+window.closeProvaApp = async function () {
+  if (!window.confirm('Vuoi arrestare completamente Referto Pallamano su questo computer?')) return false;
+  try {
+    const response = await fetch('/__shutdown', { method: 'POST', cache: 'no-store' });
+    if (!response.ok) throw new Error('Il server locale non ha confermato la chiusura.');
+    document.body.innerHTML = '<main style="min-height:100vh;display:grid;place-items:center;background:#eef2f7;font-family:Arial,sans-serif;color:#172033;text-align:center"><div><h2>Referto Pallamano chiuso</h2><p>Il processo locale è stato arrestato. Puoi chiudere questa finestra.</p></div></main>';
+    return true;
+  } catch (error) {
+    alert(error && error.message ? error.message : 'Non è stato possibile arrestare il processo locale.');
+    return false;
+  }
+};
+</script>
 </body>
 </html>

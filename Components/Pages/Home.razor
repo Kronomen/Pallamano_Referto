@@ -5,6 +5,7 @@
 @implements IDisposable
 @inject GameService Game
 @inject ArchiveService Archivio
+@inject RefertoPallamano_Blazor.Services.CloudArchiveService Cloud
 @inject IJSRuntime JS
 @inject NavigationManager Nav
 
@@ -122,6 +123,13 @@
     {
         <header class="topbar">
             <div class="brand"><img src="images/FIGH.png" alt="FIGH" /><div><div class="federation">FEDERAZIONE ITALIANA GIUOCO HANDBALL</div><div class="app-title">REFERTO PALLAMANO</div></div></div>
+            @if (Cloud.IsAuthenticated && Cloud.IsOperator)
+            {
+                <div style="display:flex;flex-direction:column;align-items:flex-end;justify-content:center;padding:6px 12px;border-radius:8px;background:#eaf2ff;color:#173b70;min-width:150px;">
+                    <span style="font-size:10px;font-weight:700;letter-spacing:.06em;">OPERATORE COLLEGATO</span>
+                    <strong style="font-size:15px;font-weight:900 !important;letter-spacing:.02em;">@Cloud.OperatorName</strong>
+                </div>
+            }
             <div class="phase-box">@GameService.PhaseName(Game.State.Phase)</div>
         </header>
 
@@ -197,7 +205,7 @@
         </main>
 
         <footer class="bottom-bar">
-            <button class="toolbar-save" @onclick="SaveGame">💾 SALVA GARA</button><button class="toolbar-config" @onclick='() => Nav.NavigateTo("archivio")'>📚 ARCHIVIO</button><button class="toolbar-restore" @onclick="RestoreRecovery">↶ RIPRISTINA</button><button class="toolbar-referto" @onclick="PrintReferto">📄 REFERTO</button><button class="toolbar-config" @onclick="Game.OpenConfiguration" disabled="@Game.State.MatchStarted">⚙ CONFIGURAZIONE</button><button class="toolbar-period @(Game.IsPeriodStoppedAtEnd ? "toolbar-period-ended" : string.Empty)" @onclick="Game.FinishCurrentPeriod" disabled="@(Game.State.MatchFinished || Game.State.ShootoutStarted)">@(Game.State.PeriodEndAcknowledged && !Game.ShowNextPeriod ? "CONTINUA" : "FINE PERIODO")</button>        <div class="mini-timer-card mini-timer-toolbar">
+            <button class="toolbar-save" @onclick="SaveGame">💾 SALVA GARA</button><button type="button" class="toolbar-config" @onclick="OpenArchivePage">📚 ARCHIVIO</button><button class="toolbar-restore" @onclick="RestoreRecovery">↶ RIPRISTINA</button><button class="toolbar-referto" @onclick="PrintReferto">📄 REFERTO</button><button class="toolbar-config" @onclick="Game.OpenConfiguration" disabled="@Game.State.MatchStarted">⚙ CONFIGURAZIONE</button><button class="toolbar-period @(Game.IsPeriodStoppedAtEnd ? "toolbar-period-ended" : string.Empty)" @onclick="Game.FinishCurrentPeriod" disabled="@(Game.State.MatchFinished || Game.State.ShootoutStarted)">@(Game.State.PeriodEndAcknowledged && !Game.ShowNextPeriod ? "CONTINUA" : "FINE PERIODO")</button>        <div class="mini-timer-card mini-timer-toolbar">
             <div class="mini-timer-label">CRONOMETRO</div>
             <div class="mini-timer-display">@GameService.FormatTime(Game.GetMiniTimerSeconds())</div>
         </div>
@@ -281,6 +289,7 @@
                 <button type="button" class="config-back-action" @onclick="CloseConfigWithoutStarting">← TORNA AL REFERTO</button>
                 <button type="button" class="config-save-action" @onclick="SaveConfiguration">▣ REFERTO GARA</button>
                 <button type="button" class="config-manual-action" @onclick="OpenManualConfiguration">✎ CONFIGURAZIONE SQUADRE</button>
+                <button type="button" class="config-manual-action" @onclick="OpenArchivePage">📚 GESTIONE ARCHIVIO</button>
                 <button type="button" class="config-reset-action" @onclick="Game.Reset">↻ RESET</button>
                 <button type="button" class="config-exit-action" @onclick="ExitApplication">⇱ ESCI</button>
             </div>
@@ -831,6 +840,8 @@
     private string ArchiveSelectedHomeTeamId = "";
     private string ArchiveSelectedAwayTeamId = "";
     private string ArchiveRosterMessage = "";
+
+    private void OpenArchivePage() => Nav.NavigateTo("/archivio", forceLoad: true);
 
     private async Task OpenManualConfiguration()
     {
@@ -1450,6 +1461,11 @@
     {
         if (firstRender)
         {
+            // Ripristina la sessione cloud anche nella pagina principale,
+            // così il nominativo dell'operatore resta visibile durante la gara.
+            await Cloud.TryRestoreSessionAsync();
+            StateHasChanged();
+
             // Leggiamo prima il recovery esistente. L'app non deve mai
             // sovrascriverlo all'avvio con una gara vuota.
             var existingRecovery = await JS.InvokeAsync<string?>("recuperaPartitaLocale");
@@ -1467,6 +1483,10 @@
             // cronometro.
             _selfRef ??= DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("avviaAutoRecovery", _selfRef);
+
+            // Segnala alla pagina iniziale che Blazor ha completato il primo
+            // render: il pulsante di ingresso viene abilitato solo adesso.
+            await JS.InvokeVoidAsync("refertoAppReady");
         }
     }
 

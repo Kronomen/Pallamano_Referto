@@ -4,7 +4,7 @@ using RefertoPallamano_Blazor.Models;
 
 namespace RefertoPallamano_Blazor.Services;
 
-public sealed class ArchiveService(IJSRuntime js)
+public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
 {
     private const string StorageKey = "refertoPallamanoArchiveV1";
     private const string BackupKey = "refertoPallamanoArchiveBackupV1";
@@ -12,26 +12,42 @@ public sealed class ArchiveService(IJSRuntime js)
     public ArchiveDatabase Data { get; private set; } = new();
     public bool IsLoaded { get; private set; }
     public event Action? Changed;
+    private readonly SemaphoreSlim _saveLock = new(1, 1);
+
+    public string? LoadError { get; private set; }
 
     public async Task InitializeAsync()
     {
-        if (IsLoaded) return;
+        if (IsLoaded || !string.IsNullOrWhiteSpace(LoadError)) return;
         try
         {
             var json = await js.InvokeAsync<string?>("archiveStorage.get", StorageKey);
             if (!string.IsNullOrWhiteSpace(json))
-                Data = JsonSerializer.Deserialize<ArchiveDatabase>(json, JsonOptions) ?? new ArchiveDatabase();
-
-            // Se l'archivio locale non esiste ancora (o contiene soltanto le voci
-            // iniziali senza squadre), carica il catalogo ricavato dal modello Excel.
-            if (Data.Teams.Count == 0)
+            {
+                // Un archivio locale presente ma non leggibile non deve mai essere
+                // sostituito con i dati iniziali: si interrompe il caricamento.
+                Data = JsonSerializer.Deserialize<ArchiveDatabase>(json, JsonOptions)
+                    ?? throw new InvalidOperationException("Il contenuto locale è vuoto o non rappresenta un archivio valido.");
+                Data.Championships ??= [];
+                Data.Seasons ??= [];
+                Data.Teams ??= [];
+                Data.People ??= [];
+                Data.TeamEntries ??= [];
+            }
+            else
             {
                 var seedJson = await js.InvokeAsync<string?>("archiveStorage.getSeed");
                 if (!string.IsNullOrWhiteSpace(seedJson))
-                    Data = JsonSerializer.Deserialize<ArchiveDatabase>(seedJson, JsonOptions) ?? Data;
+                    Data = JsonSerializer.Deserialize<ArchiveDatabase>(seedJson, JsonOptions)
+                        ?? throw new InvalidOperationException("Il catalogo iniziale non è valido.");
             }
         }
-        catch { Data = new ArchiveDatabase(); }
+        catch (Exception ex)
+        {
+            LoadError = "L'archivio locale non è stato modificato. Per evitare perdite di dati, il caricamento e il salvataggio automatico sono stati bloccati. Dettaglio: " + ex.Message;
+            return;
+        }
+
         UpgradeSchema();
         if (Data.Seasons.Count == 0)
             Data.Seasons.Add(new ArchiveSeason { Name = "2026/2027", StartDate = new DateOnly(2026, 7, 1), EndDate = new DateOnly(2027, 6, 30), IsActive = true });
@@ -42,8 +58,11 @@ public sealed class ArchiveService(IJSRuntime js)
             Data.Championships.Add(new ArchiveChampionship { Name = "Serie Giovanile", Category = "Giovanile", Gender = "" });
         }
         IsLoaded = true;
-        await SaveAsync();
+        await SaveAsync(syncCloud: false);
     }
+
+    public async Task<string?> ExportStoredArchiveRawAsync()
+        => await js.InvokeAsync<string?>("archiveStorage.get", StorageKey);
 
 
     private void UpgradeSchema()
@@ -58,11 +77,51 @@ public sealed class ArchiveService(IJSRuntime js)
         }
     }
 
-    public async Task SaveAsync()
+    public async Task SaveAsync(bool syncCloud = true)
     {
-        var json = JsonSerializer.Serialize(Data, JsonOptions);
-        await js.InvokeVoidAsync("archiveStorage.set", StorageKey, json);
-        Changed?.Invoke();
+        await _saveLock.WaitAsync();
+        try
+        {
+            var json = JsonSerializer.Serialize(Data, JsonOptions);
+            await js.InvokeVoidAsync("archiveStorage.saveArchive", StorageKey, BackupKey, json);
+            // Il salvataggio locale resta prioritario; il cloud viene aggiornato solo
+            // dopo il collegamento e la sincronizzazione iniziale scelti dall'utente.
+            if (syncCloud) await cloud.TrySyncAsync(Data);
+            Changed?.Invoke();
+        }
+        finally { _saveLock.Release(); }
+    }
+
+    public async Task<bool> ApplyRemoteUpdateAsync(RemoteArchiveUpdate update)
+    {
+        await _saveLock.WaitAsync();
+        try
+        {
+            // Non sostituire mai dati locali che nel frattempo sono diventati pendenti
+            // o una versione cloud diversa da quella appena controllata.
+            if (LoadError is not null || !IsLoaded || cloud.HasPendingChanges ||
+                !string.Equals(cloud.RemoteSha, update.PreviousSha, StringComparison.Ordinal))
+                return false;
+
+            var backup = JsonSerializer.Serialize(Data, JsonOptions);
+            await js.InvokeVoidAsync("archiveStorage.set", BackupKey, backup);
+
+            var remote = update.Data;
+            remote.Championships ??= [];
+            remote.Seasons ??= [];
+            remote.Teams ??= [];
+            remote.People ??= [];
+            remote.TeamEntries ??= [];
+            Data = remote;
+            UpgradeSchema();
+
+            var json = JsonSerializer.Serialize(Data, JsonOptions);
+            await js.InvokeVoidAsync("archiveStorage.saveArchive", StorageKey, BackupKey, json);
+            await cloud.AcceptRemoteUpdateAsync(update.Sha);
+            Changed?.Invoke();
+            return true;
+        }
+        finally { _saveLock.Release(); }
     }
 
 
@@ -78,7 +137,7 @@ public sealed class ArchiveService(IJSRuntime js)
         return json;
     }
 
-    public async Task ReplaceFromJsonAsync(string json)
+    public async Task ReplaceFromJsonAsync(string json, bool syncCloud = true)
     {
         var imported = JsonSerializer.Deserialize<ArchiveDatabase>(json, JsonOptions)
             ?? throw new InvalidOperationException("Il file JSON non contiene un archivio valido.");
@@ -98,7 +157,7 @@ public sealed class ArchiveService(IJSRuntime js)
         await CreateBackupAsync();
         Data = imported;
         IsLoaded = true;
-        await SaveAsync();
+        await SaveAsync(syncCloud);
     }
 
     public async Task<bool> RestoreBackupAsync()

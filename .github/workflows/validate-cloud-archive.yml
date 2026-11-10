@@ -1,0 +1,54 @@
+name: Validate and package cloud archive test build
+
+on:
+  push:
+    branches:
+      - cloud-archive-sync
+      - operator-access
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate test Worker JavaScript syntax
+        run: node --check cloudflare/worker-operator-access-test.js
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet restore RefertoPallamano_Blazor.csproj
+      - run: dotnet build RefertoPallamano_Blazor.csproj --configuration Release --no-restore
+      - name: Publish test app
+        run: dotnet publish RefertoPallamano_Blazor.csproj --configuration Release --no-restore --output ./publish
+      - name: Prepare test package
+        run: |
+          cat > ./publish/ISTRUZIONI-PROVA.txt <<'EOF'
+          REFERTO PALLAMANO - PACCHETTO DI PROVA CLOUD
+          
+          Questa è una build separata dal sito pubblico.
+          Non contiene l'archivio reale e non modifica il Worker Cloudflare.
+          
+          Per provarla localmente occorre servirla tramite un server HTTP statico.
+          ATTENZIONE: il collegamento al Worker da localhost può essere bloccato da CORS,
+          perché il Worker è attualmente configurato per l'origine GitHub Pages ufficiale.
+          Non inserire dati reali finché non viene predisposta un'origine di test autorizzata.
+          
+          Il sito pubblico e il branch main non sono stati modificati.
+          EOF
+          cp ./Start-Prova.ps1 ./publish/Start-Prova.ps1
+          cp ./Start-Prova.bat ./publish/Start-Prova.bat
+          cp ./ISTRUZIONI-PROVA.txt ./publish/ISTRUZIONI-PROVA.txt
+          cd publish/wwwroot
+          zip -r ../../RefertoPallamano-PROVA-CLOUD.zip .
+          cd ../..
+          zip -u RefertoPallamano-PROVA-CLOUD.zip Start-Prova.ps1 Start-Prova.bat ISTRUZIONI-PROVA.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RefertoPallamano-PROVA-CLOUD
+          path: RefertoPallamano-PROVA-CLOUD.zip
+          if-no-files-found: error
+          retention-days: 14
