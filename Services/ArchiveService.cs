@@ -13,25 +13,40 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
     public bool IsLoaded { get; private set; }
     public event Action? Changed;
 
+    public string? LoadError { get; private set; }
+
     public async Task InitializeAsync()
     {
-        if (IsLoaded) return;
+        if (IsLoaded || !string.IsNullOrWhiteSpace(LoadError)) return;
         try
         {
             var json = await js.InvokeAsync<string?>("archiveStorage.get", StorageKey);
             if (!string.IsNullOrWhiteSpace(json))
-                Data = JsonSerializer.Deserialize<ArchiveDatabase>(json, JsonOptions) ?? new ArchiveDatabase();
-
-            // Se l'archivio locale non esiste ancora (o contiene soltanto le voci
-            // iniziali senza squadre), carica il catalogo ricavato dal modello Excel.
-            if (Data.Teams.Count == 0)
+            {
+                // Un archivio locale presente ma non leggibile non deve mai essere
+                // sostituito con i dati iniziali: si interrompe il caricamento.
+                Data = JsonSerializer.Deserialize<ArchiveDatabase>(json, JsonOptions)
+                    ?? throw new InvalidOperationException("Il contenuto locale è vuoto o non rappresenta un archivio valido.");
+                Data.Championships ??= [];
+                Data.Seasons ??= [];
+                Data.Teams ??= [];
+                Data.People ??= [];
+                Data.TeamEntries ??= [];
+            }
+            else
             {
                 var seedJson = await js.InvokeAsync<string?>("archiveStorage.getSeed");
                 if (!string.IsNullOrWhiteSpace(seedJson))
-                    Data = JsonSerializer.Deserialize<ArchiveDatabase>(seedJson, JsonOptions) ?? Data;
+                    Data = JsonSerializer.Deserialize<ArchiveDatabase>(seedJson, JsonOptions)
+                        ?? throw new InvalidOperationException("Il catalogo iniziale non è valido.");
             }
         }
-        catch { Data = new ArchiveDatabase(); }
+        catch (Exception ex)
+        {
+            LoadError = "L'archivio locale non è stato modificato. Per evitare perdite di dati, il caricamento e il salvataggio automatico sono stati bloccati. Dettaglio: " + ex.Message;
+            return;
+        }
+
         UpgradeSchema();
         if (Data.Seasons.Count == 0)
             Data.Seasons.Add(new ArchiveSeason { Name = "2026/2027", StartDate = new DateOnly(2026, 7, 1), EndDate = new DateOnly(2027, 6, 30), IsActive = true });
@@ -42,8 +57,11 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
             Data.Championships.Add(new ArchiveChampionship { Name = "Serie Giovanile", Category = "Giovanile", Gender = "" });
         }
         IsLoaded = true;
-        await SaveAsync();
+        await SaveAsync(syncCloud: false);
     }
+
+    public async Task<string?> ExportStoredArchiveRawAsync()
+        => await js.InvokeAsync<string?>("archiveStorage.get", StorageKey);
 
 
     private void UpgradeSchema()
@@ -61,7 +79,7 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
     public async Task SaveAsync(bool syncCloud = true)
     {
         var json = JsonSerializer.Serialize(Data, JsonOptions);
-        await js.InvokeVoidAsync("archiveStorage.set", StorageKey, json);
+        await js.InvokeVoidAsync("archiveStorage.saveArchive", StorageKey, BackupKey, json);
         // Il salvataggio locale resta prioritario: il cloud viene aggiornato solo
         // dopo un collegamento e una sincronizzazione iniziale scelti dall utente.
         if (syncCloud) await cloud.TrySyncAsync(Data);
