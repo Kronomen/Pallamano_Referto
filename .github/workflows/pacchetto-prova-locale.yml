@@ -27,7 +27,7 @@ jobs:
           cp Start-Prova.ps1 ./publish/wwwroot/Start-Prova.ps1
           cp Start-Prova.bat ./publish/wwwroot/Start-Prova.bat
           cd ./publish/wwwroot
-          zip -r ../../Referto_Pallamano_TEST.zip .
+          zip -r ../Referto_Pallamano_TEST.zip .
       - name: Upload test package
         uses: actions/upload-artifact@v4
         with:
