@@ -841,7 +841,7 @@
     private string ArchiveSelectedAwayTeamId = "";
     private string ArchiveRosterMessage = "";
 
-    private void OpenArchivePage() => Nav.NavigateTo("/archivio", forceLoad: true);
+    private void OpenArchivePage() => Nav.NavigateTo(new Uri(new Uri(Nav.BaseUri), "archivio").ToString(), forceLoad: true);
 
     private async Task OpenManualConfiguration()
     {
