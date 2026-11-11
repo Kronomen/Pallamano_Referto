@@ -1,5 +1,9 @@
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
+$wwwroot = Join-Path $root 'wwwroot'
+if (-not (Test-Path -LiteralPath (Join-Path $root 'index.html')) -and (Test-Path -LiteralPath (Join-Path $wwwroot 'index.html'))) {
+    $root = $wwwroot
+}
 $prefix = 'http://localhost:8088/'
 $listener = [System.Net.HttpListener]::new()
 $listener.Prefixes.Add($prefix)
