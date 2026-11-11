@@ -1,0 +1,25 @@
+name: Validate archive deletion
+
+on:
+  push:
+    branches:
+      - sviluppo/solo-eliminazioni-main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Restore
+        run: dotnet restore RefertoPallamano_Blazor.csproj
+      - name: Build Release
+        run: dotnet build RefertoPallamano_Blazor.csproj --configuration Release --no-restore
+      - name: Publish test package
+        run: dotnet publish RefertoPallamano_Blazor.csproj --configuration Release --no-restore --output ./publish
