@@ -1,6 +1,9 @@
 name: Pacchetto prova locale
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - operator-access
 permissions:
   contents: read
 jobs:
