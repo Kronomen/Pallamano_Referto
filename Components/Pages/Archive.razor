@@ -384,7 +384,7 @@
     private bool IsLocalRunner => Uri.TryCreate(Nav.BaseUri, UriKind.Absolute, out var baseUri) && (baseUri.Host is "localhost" or "127.0.0.1") && baseUri.Port == 8088;
     private async Task CloseApplication() => await JS.InvokeAsync<bool>("closeProvaApp");
     private void SetTab(string value) => Tab = value;
-    private void BackToMatch() => Nav.NavigateTo("/");
+    private void BackToMatch() => Nav.NavigateTo(Nav.BaseUri);
 
     private async Task AddChampionship()
     {
