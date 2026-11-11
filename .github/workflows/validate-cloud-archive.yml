@@ -5,6 +5,7 @@ on:
     branches:
       - cloud-archive-sync
       - operator-access
+      - sviluppo/cancellazione-archivi
   workflow_dispatch:
 
 permissions:
