@@ -234,6 +234,7 @@
                                                 <span class="archive-status @(op.Active ? "on" : "off")">@(op.Active ? "ATTIVO" : "DISATTIVATO")</span>
                                                 <button class="archive-small" @onclick="() => ToggleOperator(op)">@((op.Active) ? "DISATTIVA" : "RIATTIVA")</button>
                                                 <button class="archive-small" @onclick="() => RotateOperatorCode(op)" disabled="@CloudBusy">RIGENERA CODICE</button>
+                                                <button class="archive-small danger" @onclick="() => DeleteOperator(op)" disabled="@CloudBusy">ELIMINA DEFINITIVAMENTE</button>
                                             </div>
                                         }
                                     </div>
@@ -596,6 +597,40 @@
         if (!await JS.InvokeAsync<bool>("confirm", $"Vuoi {(next ? "riattivare" : "disattivare")} l'operatore {op.Name}?")) return;
         CloudBusy = true;
         try { await Cloud.SetOperatorActiveAsync(op.Id, next); await LoadOperators(); }
+        catch (Exception ex) { OperatorMessage = ex.Message; }
+        finally { CloudBusy = false; }
+    }
+
+    private async Task DeleteOperator(OperatorInfo op)
+    {
+        var warning = $"ATTENZIONE: stai per eliminare DEFINITIVAMENTE l'operatore {op.Name} e tutti i suoi {op.DeviceCount} dispositivi registrati. L'operazione è irreversibile e tutti i relativi accessi saranno revocati. Referti e archivio gare non verranno modificati.\n\nPer una sospensione temporanea usa DISATTIVA. Vuoi continuare?";
+        if (!await JS.InvokeAsync<bool>("confirm", warning)) return;
+
+        var typedName = await JS.InvokeAsync<string?>("prompt", $"Per confermare, digita esattamente il nominativo dell'operatore:\n{op.Name}");
+        if (!string.Equals(typedName?.Trim(), op.Name, StringComparison.Ordinal))
+        {
+            OperatorMessage = "Cancellazione annullata: il nominativo non corrisponde.";
+            return;
+        }
+
+        CloudBusy = true;
+        OperatorMessage = "";
+        try
+        {
+            await Cloud.DeleteOperatorAsync(op.Id);
+            if (ExpandedOperatorId == op.Id)
+            {
+                ExpandedOperatorId = null;
+                OperatorDevices.Clear();
+            }
+            if (string.Equals(RotatedOperatorName, op.Name, StringComparison.Ordinal))
+            {
+                RotatedOperatorCode = null;
+                RotatedOperatorName = "";
+            }
+            await LoadOperators();
+            OperatorMessage = $"Operatore {op.Name} e relativi dispositivi eliminati definitivamente.";
+        }
         catch (Exception ex) { OperatorMessage = ex.Message; }
         finally { CloudBusy = false; }
     }
