@@ -16,7 +16,7 @@ const decoder = new TextDecoder();
 function corsHeaders(origin) {
   return {
     'Access-Control-Allow-Origin': ALLOWED_ORIGINS.has(origin) ? origin : 'null',
-    'Access-Control-Allow-Methods': 'GET, PUT, POST, PATCH, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, PUT, POST, PATCH, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Max-Age': '86400',
     'Vary': 'Origin'
@@ -311,6 +311,21 @@ export default {
         const result = await env.DB.prepare('UPDATE operators SET active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
           .bind(body.active ? 1 : 0, operatorMatch[1]).run();
         if (!result.meta?.changes) return jsonResponse({ error: 'Operatore non trovato.' }, 404, origin);
+        return jsonResponse({ ok: true }, 200, origin);
+      }
+
+      if (operatorMatch && request.method === 'DELETE') {
+        if (!requireAdmin(auth)) return jsonResponse({ error: 'Operazione riservata all’amministratore.' }, 403, origin);
+        const operator = await env.DB.prepare('SELECT id FROM operators WHERE id = ? LIMIT 1')
+          .bind(operatorMatch[1]).first();
+        if (!operator) return jsonResponse({ error: 'Operatore non trovato.' }, 404, origin);
+
+        // D1 batch esegue le istruzioni in una singola transazione: prima i dispositivi,
+        // poi l'operatore. Nessun dato dell'archivio gare viene coinvolto.
+        await env.DB.batch([
+          env.DB.prepare('DELETE FROM devices WHERE operator_id = ?').bind(operatorMatch[1]),
+          env.DB.prepare('DELETE FROM operators WHERE id = ?').bind(operatorMatch[1])
+        ]);
         return jsonResponse({ ok: true }, 200, origin);
       }
 
