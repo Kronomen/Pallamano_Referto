@@ -1,0 +1,34 @@
+name: Pacchetto prova locale
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  publish-test-package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: operator-access
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Publish Blazor WebAssembly
+        run: dotnet publish RefertoPallamano_Blazor.csproj -c Release -o ./publish
+      - name: Prepare standalone test folder
+        run: |
+          test -f ./publish/wwwroot/index.html
+          test -f ./publish/wwwroot/_framework/blazor.webassembly.js
+          cp Start-Prova.ps1 ./publish/wwwroot/Start-Prova.ps1
+          cp Start-Prova.bat ./publish/wwwroot/Start-Prova.bat
+          cd ./publish/wwwroot
+          zip -r ../../Referto_Pallamano_TEST.zip .
+      - name: Upload test package
+        uses: actions/upload-artifact@v4
+        with:
+          name: Referto_Pallamano_TEST
+          path: ./publish/Referto_Pallamano_TEST.zip
+          if-no-files-found: error
+          retention-days: 7
