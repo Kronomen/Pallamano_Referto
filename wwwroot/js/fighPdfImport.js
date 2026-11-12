@@ -35,7 +35,7 @@ window.fighPdfImport = {
           const yn = line.y / H;
           if (yn < yMin || yn > yMax) continue;
           const left = line.words.filter(w => w.bbox.x0 / W < 0.15);
-          const nameWords = line.words.filter(w => w.bbox.x0 / W >= 0.15 && w.bbox.x0 / W < 0.49);
+          const nameWords = line.words.filter(w => (w.bbox.x0 + w.bbox.x1) / (2 * W) >= 0.15 && w.bbox.x0 / W < 0.49);
           if (!left.length || !nameWords.length) continue;
           const first = left.map(w => w.text).join('').replace(/[^A-Z0-9.]/gi,'').toUpperCase();
           const name = nameWords.map(w => w.text).join(' ').replace(/\\s+/g,' ').trim();
@@ -49,10 +49,10 @@ window.fighPdfImport = {
         }
       };
       // Le coordinate seguono la gabbia del referto FIGH A4: due rose verticali.
-      addBand(0, 0.145, 0.465, 'PLAYER');
-      addBand(0, 0.465, 0.515, 'OFFICIAL');
-      addBand(1, 0.55, 0.80, 'PLAYER');
-      addBand(1, 0.80, 0.875, 'OFFICIAL');
+      addBand(0, 0.145, 0.415, 'PLAYER');
+      addBand(0, 0.42, 0.49, 'OFFICIAL');
+      addBand(1, 0.56, 0.785, 'PLAYER');
+      addBand(1, 0.83, 0.875, 'OFFICIAL');
       const teamNameAt = (yTarget) => {
         const line = lines.reduce((best,l) => {
           const yn=l.y/H; return Math.abs(yn-yTarget)<Math.abs(best.y/H-yTarget)?l:best;
