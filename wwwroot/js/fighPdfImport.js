@@ -34,8 +34,8 @@ window.fighPdfImport = {
         for (const line of lines) {
           const yn = line.y / H;
           if (yn < yMin || yn > yMax) continue;
-          const left = line.words.filter(w => w.bbox.x0 / W < 0.17);
-          const nameWords = line.words.filter(w => w.bbox.x0 / W >= 0.17 && w.bbox.x0 / W < 0.49);
+          const left = line.words.filter(w => w.bbox.x0 / W < 0.15);
+          const nameWords = line.words.filter(w => w.bbox.x0 / W >= 0.15 && w.bbox.x0 / W < 0.49);
           if (!left.length || !nameWords.length) continue;
           const first = left.map(w => w.text).join('').replace(/[^A-Z0-9.]/gi,'').toUpperCase();
           const name = nameWords.map(w => w.text).join(' ').replace(/\\s+/g,' ').trim();
