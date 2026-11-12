@@ -168,20 +168,20 @@
                         <label>Squadra B<input @bind="PdfTeamB" /></label>
                     </div>
                     <div class="archive-note"><strong>Controllo importazione</strong><p>Riconosciuti @PdfPeople.Count nominativi: @PdfPeople.Count(x=>x.Type=="PLAYER") atleti e @PdfPeople.Count(x=>x.Type=="OFFICIAL") dirigenti. I nominativi già presenti nell'anagrafica sono esclusi dall'inserimento; verifica e correggi eventuali errori OCR prima di confermare.</p>
-                    <p><strong>Nuovi:</strong> @PdfPeople.Count(IsNewPdfPerson) · <strong>Già presenti:</strong> @PdfPeople.Count(x=>!IsNewPdfPerson(x))</p></div>
+                    <p><strong>Nuovi:</strong> @PdfPeople.Count(IsNewPdfPerson) nuove anagrafiche · <strong>Nuove iscrizioni:</strong> @PdfPeople.Count(IsNewPdfEntry) · <strong>Già iscritte:</strong> @PdfPeople.Count(x=>!IsNewPdfEntry(x))</p></div>
                     <div class="archive-list">
                         @foreach (var p in PdfPeople)
                         {
                             <div class="archive-list-row">
-                                <input type="checkbox" @bind="p.Selected" disabled="@(!IsNewPdfPerson(p))" />
+                                <input type="checkbox" @bind="p.Selected" disabled="@(!IsNewPdfEntry(p))" />
                                 <div class="archive-list-main">
                                     <strong>@(p.Type=="PLAYER" ? "Atleta" : "Dirigente") · @p.Name</strong>
                                     <input @bind="p.Name" aria-label="Correggi nominativo" />
                                     @if (p.Type=="PLAYER") { <input @bind="p.Number" aria-label="Correggi numero maglia" placeholder="Numero maglia" /> }
                                     else { <input @bind="p.Letter" aria-label="Correggi lettera dirigente" placeholder="Lettera UFF" /> }
-                                    <small>Squadra @(p.TeamIndex==0 ? "A" : "B") · @(IsNewPdfPerson(p) ? "Nuovo nominativo" : "Già presente")</small>
+                                    <small>Squadra @(p.TeamIndex==0 ? "A" : "B") · @PdfEntryStatus(p)</small>
                                 </div>
-                                <span class="archive-status @(IsNewPdfPerson(p) ? "on" : "off")">@(IsNewPdfPerson(p) ? "NUOVO" : "PRESENTE")</span>
+                                <span class="archive-status @(IsNewPdfEntry(p) ? "on" : "off")">@(IsNewPdfEntry(p) ? "DA ISCRIVERE" : "PRESENTE")</span>
                             </div>
                         }
                     </div>
@@ -357,8 +357,24 @@
         public string Name { get; set; } = "";
         public bool Selected { get; set; }
     }
-    private bool IsNewPdfPerson(PdfImportPerson p) =>
-        !Archivio.Data.People.Any(x => x.PersonType == p.Type && NormalizePersonName(x.FullName) == NormalizePersonName(p.Name));
+    private ArchivePerson? FindPdfPerson(PdfImportPerson p) =>
+        Archivio.Data.People.FirstOrDefault(x => x.PersonType == p.Type && NormalizePersonName(x.FullName) == NormalizePersonName(p.Name));
+    private bool IsNewPdfPerson(PdfImportPerson p) => FindPdfPerson(p) is null;
+    private bool IsNewPdfEntry(PdfImportPerson p)
+    {
+        var person = FindPdfPerson(p);
+        if (person is null) return true;
+        var championship = Archivio.Data.Championships.FirstOrDefault(x => x.Id == PdfChampionshipId);
+        var season = Archivio.Data.Seasons.FirstOrDefault(x => ArchiveService.Same(x.Name, PdfSeason));
+        var teamName = p.TeamIndex == 0 ? PdfTeamA : PdfTeamB;
+        var team = Archivio.Data.Teams.FirstOrDefault(x => ArchiveService.Same(x.Name, teamName));
+        if (championship is null || season is null || team is null) return true;
+        return !Archivio.Data.TeamEntries.Any(x => x.PersonId == person.Id && x.TeamId == team.Id &&
+            x.ChampionshipId == championship.Id && x.SeasonId == season.Id && x.EntryType == p.Type);
+    }
+    private string PdfEntryStatus(PdfImportPerson p) =>
+        IsNewPdfPerson(p) ? "Nuova anagrafica + iscrizione" :
+        IsNewPdfEntry(p) ? "Anagrafica esistente · nuova iscrizione" : "Iscrizione già presente";
     private static string NormalizePersonName(string? value)
     {
         var normalized = (value ?? "").Normalize(System.Text.NormalizationForm.FormD);
@@ -389,7 +405,7 @@
                     Letter = item.GetProperty("letter").GetString() ?? "",
                     Name = item.GetProperty("name").GetString() ?? ""
                 };
-                p.Selected = IsNewPdfPerson(p);
+                p.Selected = IsNewPdfEntry(p);
                 PdfPeople.Add(p);
             }
             PdfImportMessage = "Estrazione completata. Controlla i nominativi e i nomi delle squadre prima dell'importazione.";
@@ -403,7 +419,7 @@
         if (championship is null) { PdfImportMessage = "Seleziona il campionato."; return; }
         if (string.IsNullOrWhiteSpace(PdfTeamA) || string.IsNullOrWhiteSpace(PdfTeamB) || string.IsNullOrWhiteSpace(PdfSeason))
         { PdfImportMessage = "Completa i nomi delle due squadre e la stagione."; return; }
-        var selected = PdfPeople.Where(x=>x.Selected && IsNewPdfPerson(x)).ToList();
+        var selected = PdfPeople.Where(x=>x.Selected && IsNewPdfEntry(x)).ToList();
         if (selected.Count==0) { PdfImportMessage = "Non ci sono nuovi nominativi selezionati."; return; }
         if (!await JS.InvokeAsync<bool>("confirm", $"Verranno aggiunti {selected.Count} nuovi nominativi e le relative associazioni. Le persone già presenti non saranno modificate. Continuare?")) return;
         try
@@ -419,18 +435,34 @@
                 if (!Archivio.Data.TeamEntries.Any(x=>x.TeamId==teams[i].Id && x.ChampionshipId==championship.Id && x.SeasonId==season.Id && x.EntryType=="TEAM"))
                     Archivio.Data.TeamEntries.Add(new ArchiveTeamEntry { TeamId=teams[i].Id, ChampionshipId=championship.Id, SeasonId=season.Id, EntryType="TEAM" });
             }
+            var addedPeople = 0;
+            var addedEntries = 0;
             foreach (var p in selected)
             {
-                var person = new ArchivePerson { FullName=p.Name.Trim(), PersonType=p.Type };
-                Archivio.Data.People.Add(person);
-                Archivio.Data.TeamEntries.Add(new ArchiveTeamEntry {
-                    TeamId=teams[p.TeamIndex].Id, ChampionshipId=championship.Id, SeasonId=season.Id,
-                    PersonId=person.Id, EntryType=p.Type, ShirtNumber=p.Type=="PLAYER" ? p.Number : "",
-                    OfficialLetter=p.Type=="OFFICIAL" ? p.Letter : ""
-                });
+                // Riutilizza l'anagrafica se la persona esiste già: l'iscrizione alla squadra è distinta.
+                var person = FindPdfPerson(p);
+                if (person is null)
+                {
+                    person = new ArchivePerson { FullName=p.Name.Trim(), PersonType=p.Type };
+                    Archivio.Data.People.Add(person);
+                    addedPeople++;
+                }
+                var team = teams[p.TeamIndex];
+                var existingEntry = Archivio.Data.TeamEntries.FirstOrDefault(x =>
+                    x.PersonId == person.Id && x.TeamId == team.Id &&
+                    x.ChampionshipId == championship.Id && x.SeasonId == season.Id && x.EntryType == p.Type);
+                if (existingEntry is null)
+                {
+                    Archivio.Data.TeamEntries.Add(new ArchiveTeamEntry {
+                        TeamId=team.Id, ChampionshipId=championship.Id, SeasonId=season.Id,
+                        PersonId=person.Id, EntryType=p.Type, ShirtNumber=p.Type=="PLAYER" ? p.Number : "",
+                        OfficialLetter=p.Type=="OFFICIAL" ? p.Letter : ""
+                    });
+                    addedEntries++;
+                }
             }
             await Archivio.SaveAsync();
-            PdfImportMessage = $"Importazione completata: aggiunti {selected.Count} nuovi nominativi. Archivio salvato.";
+            PdfImportMessage = $"Importazione completata: {addedPeople} nuove anagrafiche e {addedEntries} nuove iscrizioni alle squadre. Le persone già presenti sono state riutilizzate.";
             PdfPeople.Clear();
         }
         catch (Exception ex) { PdfImportMessage = "Importazione non completata: " + ex.Message; }
