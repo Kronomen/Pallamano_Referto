@@ -443,9 +443,9 @@ window.closeProvaApp = async function (isLocalRunner) {
     message.style.cssText = 'margin:0;padding:24px;text-align:center;font-size:clamp(18px,3vw,28px);font-weight:700;color:#111;';
     document.body.appendChild(message);
 
-    if (isLocalRunner) {
-      try { window.close(); } catch (e) {}
-    }
+    // Prova a chiudere anche la scheda online; se il browser lo impedisce,
+    // resta visibile soltanto la schermata bianca con il messaggio centrale.
+    try { window.close(); } catch (e) {}
     return true;
   } catch (error) {
     alert(error && error.message ? error.message : 'Non è stato possibile completare la chiusura.');
