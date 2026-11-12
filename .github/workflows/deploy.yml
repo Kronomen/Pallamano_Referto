@@ -5,6 +5,7 @@ name: Deploy Referto Pallamano
   push:
     branches:
       - main
+      - versione-definitiva
   workflow_dispatch:
 
 permissions:
