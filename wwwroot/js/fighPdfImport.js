@@ -30,7 +30,7 @@ window.fighPdfImport = {
       const seasonMatch = header.match(/20\\d{2}\\s*[/\\-]\\s*20\\d{2}/);
       const season = seasonMatch ? seasonMatch[0].replace(/\\s/g,'').replace('-', '/') : '';
       const teamRows = [];
-      const addBand = (teamIndex, yMin, yMax) => {
+      const addBand = (teamIndex, yMin, yMax, mode) => {
         for (const line of lines) {
           const yn = line.y / H;
           if (yn < yMin || yn > yMax) continue;
@@ -42,14 +42,17 @@ window.fighPdfImport = {
           if (/^UFF\\.?[A-E]$/.test(first) || /^UFF[A-E]$/.test(first)) {
             const letter = first.replace(/[^A-E]/g,'').slice(-1);
             if (letter && name.length > 2) teamRows.push({ teamIndex, type:'OFFICIAL', number:'', letter, name, y:yn });
-          } else if (/^\\d{1,2}$/.test(first) && name.length > 3) {
-            teamRows.push({ teamIndex, type:'PLAYER', number:first, letter:'', name, y:yn });
+          } else if (mode === 'PLAYER' && name.length > 3 && !/^UFF/i.test(first)) {
+            const number = /^\\d{1,2}$/.test(first) ? first : '';
+            teamRows.push({ teamIndex, type:'PLAYER', number, letter:'', name, y:yn });
           }
         }
       };
       // Le coordinate seguono la gabbia del referto FIGH A4: due rose verticali.
-      addBand(0, 0.145, 0.475);
-      addBand(1, 0.535, 0.865);
+      addBand(0, 0.145, 0.395, 'PLAYER');
+      addBand(0, 0.395, 0.475, 'OFFICIAL');
+      addBand(1, 0.535, 0.805, 'PLAYER');
+      addBand(1, 0.805, 0.865, 'OFFICIAL');
       const teamNameAt = (yTarget) => {
         const line = lines.reduce((best,l) => {
           const yn=l.y/H; return Math.abs(yn-yTarget)<Math.abs(best.y/H-yTarget)?l:best;
