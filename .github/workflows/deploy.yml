@@ -1,5 +1,6 @@
 
 name: Deploy Referto Pallamano
+# Il sorgente pubblicato viene prelevato dal ramo versione-definitiva.
 
 "on":
   push:
