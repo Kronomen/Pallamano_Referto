@@ -11,6 +11,20 @@
 
 <PageTitle>Referto Pallamano</PageTitle>
 
+@if (!Cloud.IsAuthenticated)
+{
+    <main style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#eef2f7;">
+        <section style="width:min(560px,100%);background:#fff;border:1px solid #cbd5e1;border-radius:16px;padding:30px;box-shadow:0 12px 36px rgba(15,23,42,.12);text-align:center;">
+            <img src="images/FIGH.png" alt="FIGH" style="width:76px;height:auto;margin-bottom:12px;" />
+            <div style="font-size:12px;font-weight:800;letter-spacing:.08em;color:#315b87;">REFERTO PALLAMANO · F.I.G.H.</div>
+            <h1 style="margin:8px 0 10px;color:#173b70;font-size:26px;">Accesso richiesto</h1>
+            <p style="margin:0 0 22px;color:#475569;line-height:1.55;">Per aprire e gestire una gara devi prima accedere come amministratore oppure attivare questo dispositivo come operatore. Senza autenticazione il referto e i comandi di gara restano bloccati.</p>
+            <button type="button" @onclick='() => Nav.NavigateTo("archivio", forceLoad: true)' style="border:0;border-radius:9px;background:#1d4ed8;color:#fff;padding:13px 22px;font-weight:800;cursor:pointer;">VAI ALL'ACCESSO AMMINISTRATORE / OPERATORE</button>
+        </section>
+    </main>
+}
+else
+{
 <div class="match-app tablet-app">
     @if (Game.State.ShootoutStarted)
     {
@@ -829,6 +843,7 @@
             <button type="button" class="timeout-exit-button" @onclick="Game.ExitTimeout" aria-label="Chiudi il popup del time out">CHIUDI TIME OUT</button>
         </div>
     </div>
+}
 }
 
 @code {
