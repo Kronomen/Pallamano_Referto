@@ -180,6 +180,32 @@
                                     @if (p.Type=="PLAYER") { <input @bind="p.Number" aria-label="Correggi numero maglia" placeholder="Numero maglia" /> }
                                     else { <input @bind="p.Letter" aria-label="Correggi lettera dirigente" placeholder="Lettera UFF" /> }
                                     <small>Squadra @(p.TeamIndex==0 ? "A" : "B") · @PdfEntryStatus(p)</small>
+                                    @if (p.Type == "PLAYER" && PdfNameMatches(p).Count > 0)
+                                    {
+                                        <label>Persona da associare
+                                            <select @bind="p.MatchedPersonId">
+                                                <option value="">Seleziona anagrafica</option>
+                                                @foreach (var match in PdfNameMatches(p))
+                                                {
+                                                    var oldTeams = PdfActiveRegistrations(p, match.Id).Select(e => Archivio.Data.Teams.FirstOrDefault(t=>t.Id==e.TeamId)?.Name).Where(n=>!string.IsNullOrWhiteSpace(n)).Distinct();
+                                                    <option value="@match.Id">@match.FullName — @(oldTeams.Any() ? string.Join(", ", oldTeams) : "nessuna iscrizione attiva")</option>
+                                                }
+                                            </select>
+                                        </label>
+                                        <label>Risoluzione
+                                            <select @bind="p.Resolution">
+                                                <option value="">Da decidere</option>
+                                                <option value="REUSE">È la stessa persona (riutilizza anagrafica)</option>
+                                                <option value="TRANSFER">Trasferisci alla squadra del referto</option>
+                                                <option value="NEW">È un omonimo (crea nuova anagrafica)</option>
+                                                <option value="SKIP">È un doppione (non importare)</option>
+                                            </select>
+                                        </label>
+                                        @if (PdfHasConflict(p))
+                                        {
+                                            <small>ATTENZIONE: l'atleta risulta già tesserato con un'altra squadra nella stessa stagione.</small>
+                                        }
+                                    }
                                 </div>
                                 <span class="archive-status @(IsNewPdfEntry(p) ? "on" : "off")">@(IsNewPdfEntry(p) ? "DA ISCRIVERE" : "PRESENTE")</span>
                             </div>
@@ -356,10 +382,25 @@
         public string Letter { get; set; } = "";
         public string Name { get; set; } = "";
         public bool Selected { get; set; }
+        public string Resolution { get; set; } = "";
+        public string MatchedPersonId { get; set; } = "";
     }
+    private List<ArchivePerson> PdfNameMatches(PdfImportPerson p) =>
+        Archivio.Data.People.Where(x => x.PersonType == p.Type && NormalizePersonName(x.FullName) == NormalizePersonName(p.Name)).ToList();
     private ArchivePerson? FindPdfPerson(PdfImportPerson p) =>
         Archivio.Data.People.FirstOrDefault(x => x.PersonType == p.Type && NormalizePersonName(x.FullName) == NormalizePersonName(p.Name));
     private bool IsNewPdfPerson(PdfImportPerson p) => FindPdfPerson(p) is null;
+    private List<ArchiveTeamEntry> PdfActiveRegistrations(PdfImportPerson p, string? personId = null)
+    {
+        var ids = personId is null ? PdfNameMatches(p).Select(x => x.Id).ToHashSet() : new HashSet<string> { personId };
+        var championship = Archivio.Data.Championships.FirstOrDefault(x => x.Id == PdfChampionshipId);
+        var season = Archivio.Data.Seasons.FirstOrDefault(x => ArchiveService.Same(x.Name, PdfSeason));
+        if (championship is null || season is null) return new();
+        return Archivio.Data.TeamEntries.Where(x => ids.Contains(x.PersonId) && x.ChampionshipId == championship.Id &&
+            x.SeasonId == season.Id && x.EntryType == p.Type && x.IsActive).ToList();
+    }
+    private bool PdfHasConflict(PdfImportPerson p) => p.Type == "PLAYER" && PdfActiveRegistrations(p).Any(x =>
+        !ArchiveService.Same(Archivio.Data.Teams.FirstOrDefault(t=>t.Id==x.TeamId)?.Name ?? "", p.TeamIndex==0 ? PdfTeamA : PdfTeamB));
     private bool IsNewPdfEntry(PdfImportPerson p)
     {
         var person = FindPdfPerson(p);
@@ -405,7 +446,10 @@
                     Letter = item.GetProperty("letter").GetString() ?? "",
                     Name = item.GetProperty("name").GetString() ?? ""
                 };
-                p.Selected = IsNewPdfEntry(p);
+                var matches = PdfNameMatches(p);
+                if (matches.Count == 1) p.MatchedPersonId = matches[0].Id;
+                p.Resolution = matches.Count == 0 ? "NEW" : matches.Count > 1 ? "" : PdfHasConflict(p) ? "" : "REUSE";
+                p.Selected = matches.Count == 0 || (matches.Count == 1 && !PdfHasConflict(p));
                 PdfPeople.Add(p);
             }
             PdfImportMessage = "Estrazione completata. Controlla i nominativi e i nomi delle squadre prima dell'importazione.";
@@ -419,9 +463,12 @@
         if (championship is null) { PdfImportMessage = "Seleziona il campionato."; return; }
         if (string.IsNullOrWhiteSpace(PdfTeamA) || string.IsNullOrWhiteSpace(PdfTeamB) || string.IsNullOrWhiteSpace(PdfSeason))
         { PdfImportMessage = "Completa i nomi delle due squadre e la stagione."; return; }
-        var selected = PdfPeople.Where(x=>x.Selected && IsNewPdfEntry(x)).ToList();
+        var selected = PdfPeople.Where(x=>x.Selected && (x.Type != "PLAYER" || x.Resolution != "SKIP")).ToList();
+        if (selected.Any(x => x.Type == "PLAYER" && PdfNameMatches(x).Count > 0 &&
+            (string.IsNullOrWhiteSpace(x.Resolution) || (x.Resolution != "NEW" && string.IsNullOrWhiteSpace(x.MatchedPersonId)))))
+        { PdfImportMessage = "Risolvi tutti i possibili omonimi o conflitti prima di importare."; return; }
         if (selected.Count==0) { PdfImportMessage = "Non ci sono nuovi nominativi selezionati."; return; }
-        if (!await JS.InvokeAsync<bool>("confirm", $"Verranno aggiunti {selected.Count} nuovi nominativi e le relative associazioni. Le persone già presenti non saranno modificate. Continuare?")) return;
+        if (!await JS.InvokeAsync<bool>("confirm", $"Verranno elaborate {selected.Count} righe selezionate. Le scelte di trasferimento disattiveranno la precedente iscrizione alla squadra. Continuare?")) return;
         try
         {
             var season = Archivio.Data.Seasons.FirstOrDefault(x=>ArchiveService.Same(x.Name,PdfSeason));
@@ -440,7 +487,17 @@
             foreach (var p in selected)
             {
                 // Riutilizza l'anagrafica se la persona esiste già: l'iscrizione alla squadra è distinta.
-                var person = FindPdfPerson(p);
+                ArchivePerson? person = null;
+                if (p.Type == "PLAYER" && p.Resolution == "SKIP") continue;
+                if (p.Type == "PLAYER" && p.Resolution == "NEW")
+                {
+                    person = new ArchivePerson { FullName=p.Name.Trim(), PersonType=p.Type };
+                    Archivio.Data.People.Add(person);
+                    addedPeople++;
+                }
+                else if (!string.IsNullOrWhiteSpace(p.MatchedPersonId))
+                    person = Archivio.Data.People.FirstOrDefault(x => x.Id == p.MatchedPersonId);
+                person ??= FindPdfPerson(p);
                 if (person is null)
                 {
                     person = new ArchivePerson { FullName=p.Name.Trim(), PersonType=p.Type };
@@ -448,6 +505,11 @@
                     addedPeople++;
                 }
                 var team = teams[p.TeamIndex];
+                if (p.Type == "PLAYER" && p.Resolution == "TRANSFER")
+                {
+                    foreach (var oldEntry in PdfActiveRegistrations(p, person.Id))
+                        oldEntry.IsActive = false;
+                }
                 var existingEntry = Archivio.Data.TeamEntries.FirstOrDefault(x =>
                     x.PersonId == person.Id && x.TeamId == team.Id &&
                     x.ChampionshipId == championship.Id && x.SeasonId == season.Id && x.EntryType == p.Type);
