@@ -23,8 +23,10 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      - name: Checkout
+      - name: Checkout versione definitiva
         uses: actions/checkout@v4
+        with:
+          ref: versione-definitiva
 
       - name: Setup .NET 10
         uses: actions/setup-dotnet@v4
