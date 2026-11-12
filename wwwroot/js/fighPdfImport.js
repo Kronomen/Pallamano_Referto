@@ -49,17 +49,17 @@ window.fighPdfImport = {
         }
       };
       // Le coordinate seguono la gabbia del referto FIGH A4: due rose verticali.
-      addBand(0, 0.145, 0.395, 'PLAYER');
-      addBand(0, 0.395, 0.475, 'OFFICIAL');
-      addBand(1, 0.535, 0.805, 'PLAYER');
-      addBand(1, 0.805, 0.865, 'OFFICIAL');
+      addBand(0, 0.145, 0.465, 'PLAYER');
+      addBand(0, 0.465, 0.515, 'OFFICIAL');
+      addBand(1, 0.55, 0.80, 'PLAYER');
+      addBand(1, 0.80, 0.875, 'OFFICIAL');
       const teamNameAt = (yTarget) => {
         const line = lines.reduce((best,l) => {
           const yn=l.y/H; return Math.abs(yn-yTarget)<Math.abs(best.y/H-yTarget)?l:best;
         }, lines[0]);
         return line ? line.words.filter(w=>w.bbox.x0/W>0.15 && w.bbox.x0/W<0.52).map(w=>w.text).join(' ').trim() : '';
       };
-      const teams = [teamNameAt(0.12), teamNameAt(0.51)];
+      const teams = [teamNameAt(0.124), teamNameAt(0.55)];
       const cleanTeam = s => s.replace(/^(A|B)\\s+/i,'').replace(/\\s+/g,' ').trim();
       const unique = [];
       for (const row of teamRows.sort((a,b)=>a.teamIndex-b.teamIndex || a.y-b.y)) {
