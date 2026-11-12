@@ -20,6 +20,7 @@ window.fighPdfImport = {
     try {
       await worker.setParameters({ tessedit_pageseg_mode: '6', preserve_interword_spaces: '1' });
       const people = [], teams = ['', ''];
+      const normalized = s => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]/g,'');
       for (const region of regions) {
         const crop = document.createElement('canvas');
         crop.width = Math.round(source.width * region.w);
@@ -39,7 +40,6 @@ window.fighPdfImport = {
         lines.sort((a,b) => a.y-b.y);
         for (const line of lines) line.words.sort((a,b) => a.bbox.x0-b.bbox.x0);
         const clean = s => (s || '').replace(/\s+/g, ' ').trim();
-        const normalized = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]/g,'');
         // Il nome squadra è nella riga superiore della tabella, dopo la lettera A/B.
         const header = lines.find(l => l.y / crop.height < .12);
         if (header) {
