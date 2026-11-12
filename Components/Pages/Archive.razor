@@ -471,6 +471,13 @@
                 p.Selected = matches.Count == 0 || (matches.Count == 1 && !PdfHasConflict(p));
                 PdfPeople.Add(p);
             }
+            // Le ripetizioni interne al PDF non devono essere importate automaticamente:
+            // ogni riga resta da decidere come persona distinta oppure doppione.
+            foreach (var p in PdfPeople.Where(PdfHasSameNameInPdf))
+            {
+                p.Resolution = "";
+                p.Selected = false;
+            }
             PdfImportMessage = "Estrazione completata. Controlla i nominativi e i nomi delle squadre prima dell'importazione.";
         }
         catch (Exception ex) { PdfImportMessage = "Lettura PDF non riuscita: " + ex.Message; }
