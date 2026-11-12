@@ -7838,3 +7838,27 @@ html:-webkit-full-screen, body:-webkit-full-screen{width:100%;height:100%;overfl
 .operator-device-empty{font-size:11px;color:#64748b;margin:3px}
 .operator-device-row{padding:8px}
 @media(max-width:650px){.operator-access-panel{padding:11px}.operator-create-row{align-items:stretch;flex-direction:column}.operator-create-row input,.operator-create-row button{width:100%}.operator-row,.operator-device-row{align-items:flex-start}.operator-row .archive-status,.operator-device-row .archive-status{margin-left:auto}}
+
+
+/* Pulsante di chiusura applicazione nella barra delle schede archivio */
+.archive-tabs .archive-close-tab{
+    margin-left:auto;
+    flex:0 0 auto;
+    align-self:center;
+    min-height:36px;
+    padding:0 14px;
+    border:1px solid #dc2626;
+    border-radius:7px;
+    background:#dc2626;
+    color:#123b5d;
+    font-size:10px;
+    font-weight:900;
+    letter-spacing:.25px;
+    white-space:nowrap;
+    cursor:pointer;
+}
+.archive-tabs .archive-close-tab:hover{background:#b91c1c;border-color:#b91c1c;color:#fff}
+.archive-tabs .archive-close-tab:disabled{opacity:.55;cursor:wait}
+@media(max-width:650px){
+    .archive-tabs .archive-close-tab{margin-left:0;padding:0 11px;min-height:34px}
+}
