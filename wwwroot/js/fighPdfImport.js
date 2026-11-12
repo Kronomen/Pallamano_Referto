@@ -39,7 +39,13 @@ window.fighPdfImport = {
           if (!left.length || !nameWords.length) continue;
           const first = left.map(w => w.text).join('').replace(/[^A-Z0-9.]/gi,'').toUpperCase();
           const name = nameWords.map(w => w.text).join(' ').replace(/\\s+/g,' ').trim();
-          if (/^UFF\\.?[A-E]$/.test(first) || /^UFF[A-E]$/.test(first)) {
+          const lineText = line.words.map(w => w.text).join(' ');
+          const officialMatch = lineText.match(/UFF\\.?\\s*([A-E])/i);
+          if (mode === 'OFFICIAL' && officialMatch) {
+            const letter = officialMatch[1].toUpperCase();
+            const officialName = lineText.replace(/UFF\\.?\\s*[A-E]\\.?/ig, '').replace(/\\s+/g, ' ').trim();
+            if (officialName.length > 2) teamRows.push({ teamIndex, type:'OFFICIAL', number:'', letter, name:officialName, y:yn });
+          } else if (/^UFF\\.?[A-E]$/.test(first) || /^UFF[A-E]$/.test(first)) {
             const letter = first.replace(/[^A-E]/g,'').slice(-1);
             if (letter && name.length > 2) teamRows.push({ teamIndex, type:'OFFICIAL', number:'', letter, name, y:yn });
           } else if (mode === 'PLAYER' && name.length > 3 && !/^UFF/i.test(first)) {
