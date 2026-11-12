@@ -177,7 +177,9 @@
                                 <div class="archive-list-main">
                                     <strong>@(p.Type=="PLAYER" ? "Atleta" : "Dirigente") · @p.Name</strong>
                                     <input @bind="p.Name" aria-label="Correggi nominativo" />
-                                    <small>@(p.Type=="PLAYER" ? "Numero maglia: " + (string.IsNullOrWhiteSpace(p.Number) ? "da verificare" : p.Number) : "UFF." + p.Letter) · Squadra @(p.TeamIndex==0 ? "A" : "B") · @(IsNewPdfPerson(p) ? "Nuovo nominativo" : "Già presente")</small>
+                                    @if (p.Type=="PLAYER") { <input @bind="p.Number" aria-label="Correggi numero maglia" placeholder="Numero maglia" /> }
+                                    else { <input @bind="p.Letter" aria-label="Correggi lettera dirigente" placeholder="Lettera UFF" /> }
+                                    <small>Squadra @(p.TeamIndex==0 ? "A" : "B") · @(IsNewPdfPerson(p) ? "Nuovo nominativo" : "Già presente")</small>
                                 </div>
                                 <span class="archive-status @(IsNewPdfPerson(p) ? "on" : "off")">@(IsNewPdfPerson(p) ? "NUOVO" : "PRESENTE")</span>
                             </div>
