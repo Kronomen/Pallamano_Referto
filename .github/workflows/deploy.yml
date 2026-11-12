@@ -1,5 +1,6 @@
 
 name: Deploy Referto Pallamano
+# Avvia il rilascio della versione definitiva con accesso protetto.
 # Il sorgente pubblicato viene prelevato dal ramo versione-definitiva.
 
 "on":
