@@ -465,7 +465,8 @@
         { PdfImportMessage = "Completa i nomi delle due squadre e la stagione."; return; }
         var selected = PdfPeople.Where(x=>x.Selected && (x.Type != "PLAYER" || x.Resolution != "SKIP")).ToList();
         if (selected.Any(x => x.Type == "PLAYER" && PdfNameMatches(x).Count > 0 &&
-            (string.IsNullOrWhiteSpace(x.Resolution) || (x.Resolution != "NEW" && string.IsNullOrWhiteSpace(x.MatchedPersonId)))))
+            (string.IsNullOrWhiteSpace(x.Resolution) || (x.Resolution != "NEW" && string.IsNullOrWhiteSpace(x.MatchedPersonId)) ||
+            (PdfHasConflict(x) && x.Resolution == "REUSE"))))
         { PdfImportMessage = "Risolvi tutti i possibili omonimi o conflitti prima di importare."; return; }
         if (selected.Count==0) { PdfImportMessage = "Non ci sono nuovi nominativi selezionati."; return; }
         if (!await JS.InvokeAsync<bool>("confirm", $"Verranno elaborate {selected.Count} righe selezionate. Le scelte di trasferimento disattiveranno la precedente iscrizione alla squadra. Continuare?")) return;
