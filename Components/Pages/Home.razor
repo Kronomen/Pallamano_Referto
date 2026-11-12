@@ -340,12 +340,14 @@
                                 <option value="">Seleziona squadra di casa</option>
                                 @foreach (var team in GetArchiveTeams()) { <option value="@team.Id">@team.Name</option> }
                             </select>
+                            <button type="button" class="archive-roster-load-button" style="margin-top:5px;width:100%" @onclick='() => ConvocaArchiveTeam("A")' disabled="@string.IsNullOrWhiteSpace(ArchiveSelectedHomeTeamId)">CONVOCA CASA</button>
                         </label>
                         <label>Squadra OSPITE
                             <select @bind="ArchiveSelectedAwayTeamId" @bind:after="() => ResetRosterSelection()">
                                 <option value="">Seleziona squadra ospite</option>
                                 @foreach (var team in GetArchiveTeams()) { <option value="@team.Id">@team.Name</option> }
                             </select>
+                            <button type="button" class="archive-roster-load-button" style="margin-top:5px;width:100%" @onclick='() => ConvocaArchiveTeam("B")' disabled="@string.IsNullOrWhiteSpace(ArchiveSelectedAwayTeamId)">CONVOCA OSPITI</button>
                         </label>
                     </div>
                     @if (!string.IsNullOrWhiteSpace(ArchiveRosterMessage)) { <div class="archive-roster-message">@ArchiveRosterMessage</div> }
@@ -978,6 +980,22 @@
         }
         return staff.Where(x => !string.IsNullOrWhiteSpace(x.Name))
             .OrderBy(x => x.Letter, StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    private async Task ConvocaArchiveTeam(string side)
+    {
+        var teamId = side == "A" ? ArchiveSelectedHomeTeamId : ArchiveSelectedAwayTeamId;
+        var team = Archivio.Data.Teams.FirstOrDefault(x => x.Id == teamId && x.IsActive);
+        if (team is null) return;
+
+        var target = side == "A" ? Game.State.Casa : Game.State.Ospiti;
+        target.Name = team.Name;
+        LoadPlayers(target, GetLiveRosterPlayers(side).ToArray());
+        LoadStaff(target, GetLiveRosterStaff(side).ToArray());
+        Game.State.Championship = Archivio.Data.Championships.FirstOrDefault(x => x.Id == ArchiveSelectedChampionshipId)?.Name ?? Game.State.Championship;
+        Game.State.Season = Archivio.Data.Seasons.FirstOrDefault(x => x.Id == ArchiveSelectedSeasonId)?.Name ?? Game.State.Season;
+        ArchiveRosterMessage = $"Squadra {team.Name} caricata dall'archivio. Apri la convocazione per scegliere o modificare atleti e dirigenti.";
+        await SaveRecoveryIfReady();
     }
 
     private void OpenRosterPage(string side)
