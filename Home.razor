@@ -796,8 +796,12 @@
         ArchiveSelectedChampionshipId = championship?.Id ?? Archivio.Data.Championships.FirstOrDefault(x => x.IsActive)?.Id ?? "";
         var season = Archivio.Data.Seasons.FirstOrDefault(x => ArchiveService.Same(x.Name, Game.State.Season));
         ArchiveSelectedSeasonId = season?.Id ?? Archivio.Data.Seasons.FirstOrDefault(x => x.IsActive)?.Id ?? "";
-        ArchiveSelectedHomeTeamId = "";
-        ArchiveSelectedAwayTeamId = "";
+        // Mantiene la selezione delle squadre già configurate quando si riapre
+        // la finestra; se i nomi non sono più presenti nel campionato/stagione
+        // selezionati, lascia il campo vuoto senza modificare la gara.
+        var availableTeams = GetArchiveTeams().ToList();
+        ArchiveSelectedHomeTeamId = availableTeams.FirstOrDefault(x => ArchiveService.Same(x.Name, Game.State.Casa.Name))?.Id ?? "";
+        ArchiveSelectedAwayTeamId = availableTeams.FirstOrDefault(x => ArchiveService.Same(x.Name, Game.State.Ospiti.Name))?.Id ?? "";
         ArchiveRosterMessage = "";
         ArchiveRosterEditingSide = "";
         ShowRosterPage = false;
