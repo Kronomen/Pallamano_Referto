@@ -12,8 +12,7 @@
 <div class="archive-app">
     <header class="archive-header">
         <div class="archive-brand"><img src="images/FIGH.png" alt="FIGH" /><div><strong>REFERTO PALLAMANO</strong><span>GESTIONE ARCHIVIO</span></div></div>
-        <div class="archive-header-actions"><button class="archive-back" @onclick="BackToMatch">← TORNA ALLA GARA</button>
-            @if (IsLocalRunner) { <button type="button" class="archive-close-app" @onclick="CloseApplication" title="Arresta l’applicazione locale" aria-label="Chiudi applicazione">×</button> }</div>
+        <div class="archive-header-actions"><button class="archive-back" @onclick="BackToMatch">← TORNA ALLA GARA</button></div>
     </header>
 
     @if (!string.IsNullOrWhiteSpace(Archivio.LoadError))
@@ -44,6 +43,7 @@
             <button class="@(Tab == "persone" ? "active" : "")" @onclick='() => SetTab("persone")'>ATLETI E DIRIGENTI</button>
             <button class="@(Tab == "importa" ? "active" : "")" @onclick='() => SetTab("importa")'>IMPORTA EXCEL</button>
             <button class="@(Tab == "gestione" ? "active" : "")" @onclick='() => SetTab("gestione")'>GESTIONE ARCHIVIO</button>
+            <button type="button" class="archive-close-tab" @onclick="CloseApplication" disabled="@CloudBusy">CHIUDI APPLICAZIONE</button>
         </nav>
 
         @if (Tab == "campionati")
@@ -382,7 +382,42 @@
     public ValueTask DisposeAsync()
     { _syncMonitorCts?.Cancel(); _syncMonitorCts?.Dispose(); return ValueTask.CompletedTask; }
     private bool IsLocalRunner => Uri.TryCreate(Nav.BaseUri, UriKind.Absolute, out var baseUri) && (baseUri.Host is "localhost" or "127.0.0.1") && baseUri.Port == 8088;
-    private async Task CloseApplication() => await JS.InvokeAsync<bool>("closeProvaApp");
+    private async Task CloseApplication()
+    {
+        if (CloudBusy) return;
+
+        var confirmed = await JS.InvokeAsync<bool>("confirm", "Vuoi chiudere Referto Pallamano? Prima verranno completati i salvataggi e verificata la sincronizzazione delle modifiche in sospeso.");
+        if (!confirmed) return;
+
+        CloudBusy = true;
+        try
+        {
+            // Salva sempre una copia aggiornata sul dispositivo prima di chiudere.
+            await Archivio.SaveAsync();
+
+            // Se esistono modifiche cloud in attesa, prova a sincronizzarle.
+            // In caso di errore o conflitto non chiude: i dati restano disponibili
+            // sul dispositivo e l'utente può riprovare la sincronizzazione.
+            if (Cloud.HasPendingChanges)
+                await Cloud.RetryPendingSyncAsync(Archivio.Data);
+
+            if (Cloud.HasPendingChanges || Cloud.HasSyncConflict)
+            {
+                await JS.InvokeVoidAsync("alert", "Chiusura sospesa: alcune modifiche non sono ancora state sincronizzate con il cloud. I dati sono stati conservati su questo dispositivo. Risolvi la sincronizzazione e riprova.");
+                return;
+            }
+
+            await JS.InvokeVoidAsync("closeProvaApp", IsLocalRunner);
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", "Non è stato possibile completare il salvataggio. L'applicazione resta aperta. Dettaglio: " + ex.Message);
+        }
+        finally
+        {
+            CloudBusy = false;
+        }
+    }
     private void SetTab(string value) => Tab = value;
     private void BackToMatch() => Nav.NavigateTo("./");
 
