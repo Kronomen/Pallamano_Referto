@@ -176,7 +176,8 @@
                                 <input type="checkbox" @bind="p.Selected" disabled="@(!IsNewPdfPerson(p))" />
                                 <div class="archive-list-main">
                                     <strong>@(p.Type=="PLAYER" ? "Atleta" : "Dirigente") · @p.Name</strong>
-                                    <small>@(p.Type=="PLAYER" ? "N. " + p.Number : "UFF." + p.Letter) · Squadra @(p.TeamIndex==0 ? "A" : "B") · @(IsNewPdfPerson(p) ? "Nuovo nominativo" : "Già presente")</small>
+                                    <input @bind="p.Name" aria-label="Correggi nominativo" />
+                                    <small>@(p.Type=="PLAYER" ? "Numero maglia: " + (string.IsNullOrWhiteSpace(p.Number) ? "da verificare" : p.Number) : "UFF." + p.Letter) · Squadra @(p.TeamIndex==0 ? "A" : "B") · @(IsNewPdfPerson(p) ? "Nuovo nominativo" : "Già presente")</small>
                                 </div>
                                 <span class="archive-status @(IsNewPdfPerson(p) ? "on" : "off")">@(IsNewPdfPerson(p) ? "NUOVO" : "PRESENTE")</span>
                             </div>
