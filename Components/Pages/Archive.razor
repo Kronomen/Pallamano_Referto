@@ -42,6 +42,7 @@
             <button class="@(Tab == "squadre" ? "active" : "")" @onclick='() => SetTab("squadre")'>SQUADRE</button>
             <button class="@(Tab == "stagioni" ? "active" : "")" @onclick='() => SetTab("stagioni")'>STAGIONI</button>
             <button class="@(Tab == "persone" ? "active" : "")" @onclick='() => SetTab("persone")'>ATLETI E DIRIGENTI</button>
+            <button class="@(Tab == "pdf" ? "active" : "")" @onclick='() => SetTab("pdf")'>IMPORTA PDF FIGH</button>
             <button class="@(Tab == "importa" ? "active" : "")" @onclick='() => SetTab("importa")'>IMPORTA EXCEL</button>
             <button class="@(Tab == "gestione" ? "active" : "")" @onclick='() => SetTab("gestione")'>GESTIONE ARCHIVIO</button>
         </nav>
@@ -145,6 +146,48 @@
                         <div class="archive-list-row"><div class="archive-list-icon">@(p.PersonType == "PLAYER" ? "👤" : "📋")</div><div class="archive-list-main"><strong>@p.FullName</strong><small>@(p.PersonType == "PLAYER" ? "Atleta" : "Dirigente") · @Archivio.Data.TeamEntries.Count(x => x.PersonId == p.Id) associazioni</small></div><span class="archive-status @(p.IsActive ? "on" : "off")">@(p.IsActive ? "ATTIVO" : "ARCHIVIATO")</span><button class="archive-small" @onclick="() => TogglePerson(p.Id)">@(p.IsActive ? "ARCHIVIA" : "RIATTIVA")</button><button class="archive-small danger" @onclick="() => DeletePerson(p.Id)">ELIMINA</button></div>
                     }
                 </div>
+            </section>
+        }
+        else if (Tab == "pdf")
+        {
+            <section class="archive-card import-card">
+                <div class="archive-card-title"><div><h2>Importazione da referto ufficiale FIGH</h2><p>Carica un referto PDF, controlla i nominativi riconosciuti e scegli quali nuove anagrafiche aggiungere.</p></div><span class="archive-excel">PDF</span></div>
+                <div class="archive-import-box">
+                    <div class="archive-import-icon">⇧</div>
+                    <div><strong>Seleziona il referto ufficiale FIGH</strong><p>È supportato il modello standard FIGH di una pagina. L'estrazione utilizza OCR: per la lettura è necessaria la connessione internet.</p>
+                    <InputFile OnChange="ReadFighPdf" accept=".pdf,application/pdf" /></div>
+                </div>
+                @if (PdfReadBusy) { <div class="archive-message">Lettura del PDF e riconoscimento OCR in corso. Attendi il completamento…</div> }
+                @if (!string.IsNullOrWhiteSpace(PdfImportMessage)) { <div class="archive-message">@PdfImportMessage</div> }
+                @if (PdfPeople.Count > 0)
+                {
+                    <div class="archive-form-grid registration-form">
+                        <label>Campionato<select @bind="PdfChampionshipId"><option value="">Seleziona campionato</option>@foreach (var x in Archivio.Data.Championships.OrderBy(x=>x.Name)) { <option value="@x.Id">@x.Name</option> }</select></label>
+                        <label>Stagione<input @bind="PdfSeason" /></label>
+                        <label>Squadra A<input @bind="PdfTeamA" /></label>
+                        <label>Squadra B<input @bind="PdfTeamB" /></label>
+                    </div>
+                    <div class="archive-note"><strong>Controllo importazione</strong><p>Riconosciuti @PdfPeople.Count nominativi: @PdfPeople.Count(x=>x.Type=="PLAYER") atleti e @PdfPeople.Count(x=>x.Type=="OFFICIAL") dirigenti. I nominativi già presenti nell'anagrafica sono esclusi dall'inserimento; verifica e correggi eventuali errori OCR prima di confermare.</p>
+                    <p><strong>Nuovi:</strong> @PdfPeople.Count(IsNewPdfPerson) · <strong>Già presenti:</strong> @PdfPeople.Count(x=>!IsNewPdfPerson(x))</p></div>
+                    <div class="archive-list">
+                        @foreach (var p in PdfPeople)
+                        {
+                            <div class="archive-list-row">
+                                <input type="checkbox" @bind="p.Selected" disabled="@(!IsNewPdfPerson(p))" />
+                                <div class="archive-list-main">
+                                    <strong>@(p.Type=="PLAYER" ? "Atleta" : "Dirigente") · @p.Name</strong>
+                                    <small>@(p.Type=="PLAYER" ? "N. " + p.Number : "UFF." + p.Letter) · Squadra @(p.TeamIndex==0 ? "A" : "B") · @(IsNewPdfPerson(p) ? "Nuovo nominativo" : "Già presente")</small>
+                                </div>
+                                <span class="archive-status @(IsNewPdfPerson(p) ? "on" : "off")">@(IsNewPdfPerson(p) ? "NUOVO" : "PRESENTE")</span>
+                            </div>
+                        }
+                    </div>
+                    <div class="archive-form-grid">
+                        <button class="archive-primary" @onclick="ConfirmPdfImport" disabled="@(string.IsNullOrWhiteSpace(PdfChampionshipId) || PdfPeople.All(x=>!x.Selected))">IMPORTA I NOMINATIVI SELEZIONATI</button>
+                        <button class="archive-small" @onclick="ClearPdfImport">ANNULLA ANTEPRIMA</button>
+                    </div>
+                }
+                <div class="archive-note"><strong>Protezione archivio</strong><p>La funzione aggiunge solo persone non presenti e le relative associazioni a squadra, campionato e stagione. Non modifica né cancella le anagrafiche esistenti. Il numero di maglia e la lettera UFF restano attributi dell'iscrizione.</p></div>
             </section>
         }
         else if (Tab == "importa")
@@ -295,6 +338,101 @@
 </div>
 
 @code {
+    private bool PdfReadBusy;
+    private string PdfImportMessage = "";
+    private string PdfChampionshipId = "";
+    private string PdfSeason = "2026/2027";
+    private string PdfTeamA = "";
+    private string PdfTeamB = "";
+    private List<PdfImportPerson> PdfPeople = new();
+    private sealed class PdfImportPerson
+    {
+        public int TeamIndex { get; set; }
+        public string Type { get; set; } = "PLAYER";
+        public string Number { get; set; } = "";
+        public string Letter { get; set; } = "";
+        public string Name { get; set; } = "";
+        public bool Selected { get; set; }
+    }
+    private bool IsNewPdfPerson(PdfImportPerson p) =>
+        !Archivio.Data.People.Any(x => x.PersonType == p.Type && NormalizePersonName(x.FullName) == NormalizePersonName(p.Name));
+    private static string NormalizePersonName(string? value)
+    {
+        var normalized = (value ?? "").Normalize(System.Text.NormalizationForm.FormD);
+        var chars = normalized.Where(ch => System.Globalization.CharUnicodeInfo.GetUnicodeCategory(ch) != System.Globalization.UnicodeCategory.NonSpacingMark);
+        return new string(chars.ToArray()).ToUpperInvariant().Where(char.IsLetterOrDigit).Aggregate("", (a, ch) => a + ch);
+    }
+    private async Task ReadFighPdf(InputFileChangeEventArgs e)
+    {
+        PdfReadBusy = true; PdfImportMessage = ""; PdfPeople.Clear();
+        try
+        {
+            using var stream = e.File.OpenReadStream(12 * 1024 * 1024);
+            using var ms = new MemoryStream(); await stream.CopyToAsync(ms);
+            var base64 = Convert.ToBase64String(ms.ToArray());
+            var json = await JS.InvokeAsync<string>("fighPdfImport.read", base64);
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            PdfSeason = root.TryGetProperty("season", out var season) && !string.IsNullOrWhiteSpace(season.GetString()) ? season.GetString()! : "2026/2027";
+            var teams = root.GetProperty("teams");
+            PdfTeamA = teams.GetArrayLength()>0 ? teams[0].GetString() ?? "" : "";
+            PdfTeamB = teams.GetArrayLength()>1 ? teams[1].GetString() ?? "" : "";
+            foreach (var item in root.GetProperty("people").EnumerateArray())
+            {
+                var p = new PdfImportPerson {
+                    TeamIndex = item.GetProperty("teamIndex").GetInt32(),
+                    Type = item.GetProperty("type").GetString() ?? "PLAYER",
+                    Number = item.GetProperty("number").GetString() ?? "",
+                    Letter = item.GetProperty("letter").GetString() ?? "",
+                    Name = item.GetProperty("name").GetString() ?? ""
+                };
+                p.Selected = IsNewPdfPerson(p);
+                PdfPeople.Add(p);
+            }
+            PdfImportMessage = "Estrazione completata. Controlla i nominativi e i nomi delle squadre prima dell'importazione.";
+        }
+        catch (Exception ex) { PdfImportMessage = "Lettura PDF non riuscita: " + ex.Message; }
+        finally { PdfReadBusy = false; }
+    }
+    private async Task ConfirmPdfImport()
+    {
+        var championship = Archivio.Data.Championships.FirstOrDefault(x=>x.Id==PdfChampionshipId);
+        if (championship is null) { PdfImportMessage = "Seleziona il campionato."; return; }
+        if (string.IsNullOrWhiteSpace(PdfTeamA) || string.IsNullOrWhiteSpace(PdfTeamB) || string.IsNullOrWhiteSpace(PdfSeason))
+        { PdfImportMessage = "Completa i nomi delle due squadre e la stagione."; return; }
+        var selected = PdfPeople.Where(x=>x.Selected && IsNewPdfPerson(x)).ToList();
+        if (selected.Count==0) { PdfImportMessage = "Non ci sono nuovi nominativi selezionati."; return; }
+        if (!await JS.InvokeAsync<bool>("confirm", $"Verranno aggiunti {selected.Count} nuovi nominativi e le relative associazioni. Le persone già presenti non saranno modificate. Continuare?")) return;
+        try
+        {
+            var season = Archivio.Data.Seasons.FirstOrDefault(x=>ArchiveService.Same(x.Name,PdfSeason));
+            if (season is null) { season = new ArchiveSeason { Name=PdfSeason.Trim() }; Archivio.Data.Seasons.Add(season); }
+            var teamNames = new[] { PdfTeamA.Trim(), PdfTeamB.Trim() };
+            var teams = new ArchiveTeam[2];
+            for (var i=0;i<2;i++)
+            {
+                teams[i] = Archivio.Data.Teams.FirstOrDefault(x=>ArchiveService.Same(x.Name,teamNames[i]))!;
+                if (teams[i] is null) { teams[i]=new ArchiveTeam { Name=teamNames[i] }; Archivio.Data.Teams.Add(teams[i]); }
+                if (!Archivio.Data.TeamEntries.Any(x=>x.TeamId==teams[i].Id && x.ChampionshipId==championship.Id && x.SeasonId==season.Id && x.EntryType=="TEAM"))
+                    Archivio.Data.TeamEntries.Add(new ArchiveTeamEntry { TeamId=teams[i].Id, ChampionshipId=championship.Id, SeasonId=season.Id, EntryType="TEAM" });
+            }
+            foreach (var p in selected)
+            {
+                var person = new ArchivePerson { FullName=p.Name.Trim(), PersonType=p.Type };
+                Archivio.Data.People.Add(person);
+                Archivio.Data.TeamEntries.Add(new ArchiveTeamEntry {
+                    TeamId=teams[p.TeamIndex].Id, ChampionshipId=championship.Id, SeasonId=season.Id,
+                    PersonId=person.Id, EntryType=p.Type, ShirtNumber=p.Type=="PLAYER" ? p.Number : "",
+                    OfficialLetter=p.Type=="OFFICIAL" ? p.Letter : ""
+                });
+            }
+            await Archivio.SaveAsync();
+            PdfImportMessage = $"Importazione completata: aggiunti {selected.Count} nuovi nominativi. Archivio salvato.";
+            PdfPeople.Clear();
+        }
+        catch (Exception ex) { PdfImportMessage = "Importazione non completata: " + ex.Message; }
+    }
+    private void ClearPdfImport() { PdfPeople.Clear(); PdfImportMessage="Anteprima annullata."; }
     private string Tab = "campionati";
     private string ChampionshipName = ""; private string ChampionshipCategory = ""; private string ChampionshipGender = "";
     private string TeamName = ""; private string TeamShortName = "";
