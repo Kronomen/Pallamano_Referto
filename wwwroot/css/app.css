@@ -7862,3 +7862,21 @@ html:-webkit-full-screen, body:-webkit-full-screen{width:100%;height:100%;overfl
 @media(max-width:650px){
     .archive-tabs .archive-close-tab{margin-left:0;padding:0 11px;min-height:34px}
 }
+
+/* Pulsante CANCELLA nella gestione squadre: rosso con testo blu, come richiesto. */
+.archive-small.archive-delete-team{background:#dc2626;border-color:#dc2626;color:#0000ff;font-weight:900}.archive-small.archive-delete-team:hover{background:#b91c1c;border-color:#b91c1c;color:#0000ff}
+
+/* Gestione anagrafica: nominativo apribile e dettaglio associazioni */
+.archive-person-name{border:0;background:transparent;padding:0;color:inherit;font:inherit;font-weight:800;text-align:left;cursor:pointer;text-decoration:underline;text-decoration-color:rgba(30,64,175,.35);text-underline-offset:3px}
+.archive-person-name:hover{color:#1d4ed8}
+.archive-small.archive-delete-team{background:#dc2626;border-color:#dc2626;color:#0000ff;font-weight:900}
+.archive-small.archive-delete-team:hover{background:#b91c1c;border-color:#b91c1c;color:#0000ff}
+.archive-person-modal-backdrop{position:fixed;inset:0;z-index:1000;background:rgba(15,23,42,.58);display:flex;align-items:center;justify-content:center;padding:18px}
+.archive-person-modal{width:min(760px,100%);max-height:min(82vh,760px);overflow:auto;background:#fff;color:#172033;border-radius:14px;padding:22px;box-shadow:0 24px 70px rgba(0,0,0,.3)}
+.archive-person-associations{display:grid;gap:10px;margin:18px 0}
+.archive-person-association{display:flex;align-items:center;justify-content:space-between;gap:16px;border:1px solid #d7deea;border-radius:10px;padding:12px}
+.archive-person-association label{display:flex;align-items:flex-start;gap:12px;cursor:pointer;flex:1;min-width:0}
+.archive-person-association input[type=checkbox]{width:19px;height:19px;flex:0 0 auto;margin-top:2px}
+.archive-person-association label span{display:grid;gap:4px}
+.archive-person-association small{color:#64748b}
+@media(max-width:640px){.archive-person-modal{padding:16px}.archive-person-association{align-items:flex-start;flex-wrap:wrap}}

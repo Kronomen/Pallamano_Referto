@@ -234,12 +234,18 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
             var number = isOfficial ? "" : rawNumber;
             var letter = isOfficial ? rawNumber.ToUpperInvariant() : "";
             var entry = Data.TeamEntries.FirstOrDefault(x => x.TeamId == team.Id && x.ChampionshipId == championship.Id &&
-                x.SeasonId == season.Id && x.PersonId == person.Id && x.EntryType == personType && x.IsActive);
+                x.SeasonId == season.Id && x.PersonId == person.Id && x.EntryType == personType);
+            // Una persona può avere una sola squadra attiva per lo stesso campionato e stagione.
+            // Le associazioni precedenti vengono conservate, ma disattivate nello storico.
+            foreach (var previous in Data.TeamEntries.Where(x => x.PersonId == person.Id && x.ChampionshipId == championship.Id &&
+                x.SeasonId == season.Id && x.EntryType == personType && x.TeamId != team.Id && x.IsActive))
+                previous.IsActive = false;
             if (entry is null)
                 Data.TeamEntries.Add(new ArchiveTeamEntry { TeamId = team.Id, ChampionshipId = championship.Id, SeasonId = season.Id,
                     PersonId = person.Id, EntryType = personType, ShirtNumber = number, OfficialLetter = letter });
             else
             {
+                entry.IsActive = true;
                 entry.ShirtNumber = number;
                 entry.OfficialLetter = letter;
             }
