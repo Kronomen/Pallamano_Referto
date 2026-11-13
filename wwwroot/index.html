@@ -474,8 +474,8 @@ window.archivePdf = {
     const ctx = canvas.getContext('2d', {willReadFrequently:true});
     await page.render({canvasContext:ctx, viewport}).promise;
     const crops = [
-      {key:'A',x:.055,y:.095,w:.365,h:.36},
-      {key:'B',x:.055,y:.46,w:.365,h:.36}
+      {key:'A',x:.055,y:.095,w:.365,h:.405},
+      {key:'B',x:.055,y:.505,w:.365,h:.42}
     ];
     const worker = await Tesseract.createWorker('eng');
     try {
