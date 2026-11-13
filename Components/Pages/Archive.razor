@@ -12,7 +12,7 @@
 <div class="archive-app">
     <header class="archive-header">
         <div class="archive-brand"><img src="images/FIGH.png" alt="FIGH" /><div><strong>REFERTO PALLAMANO</strong><span>GESTIONE ARCHIVIO</span></div></div>
-        <div class="archive-header-actions"><button class="archive-back" @onclick="BackToMatch">← TORNA ALLA GARA</button></div>
+        <div class="archive-header-actions">@if (Cloud.IsAuthenticated) { <button type="button" @onclick="DisconnectCloud" style="border:2px solid #dc2626;border-radius:8px;background:#dc2626;color:#173b70;padding:10px 14px;font-weight:900;cursor:pointer;">@(Cloud.IsAdmin ? "ESCI DA AMMINISTRATORE" : "ESCI DA OPERATORE")</button> } <button class="archive-back" @onclick="BackToMatch">← TORNA ALLA GARA</button></div>
     </header>
 
     @if (!string.IsNullOrWhiteSpace(Archivio.LoadError))
@@ -571,6 +571,8 @@
         var value = EntryNumber.Trim().ToUpperInvariant();
         if (isPlayer && value.Length > 0 && !(value == "0" || value == "00" || (int.TryParse(value, out var n) && n >= 1 && n <= 99))) { ImportMessage = "Numero maglia non valido: usa 0, 00 oppure un numero da 1 a 99."; return; }
         if (!isPlayer && value.Length > 0 && !"ABCDE".Contains(value)) { ImportMessage = "Per i dirigenti utilizza una lettera da A a E."; return; }
+        var existing = Archivio.Data.TeamEntries.FirstOrDefault(x => x.PersonId == EntryPersonId && x.TeamId == EntryTeamId && x.ChampionshipId == EntryChampionshipId && x.SeasonId == EntrySeasonId && x.EntryType == (isPlayer ? "PLAYER" : "OFFICIAL"));
+        if (existing is not null) { ImportMessage = "La persona risulta già associata a questa squadra, campionato e stagione."; return; }
         var previous = Archivio.Data.TeamEntries.Where(x => x.PersonId == EntryPersonId).ToList();
         if (previous.Any(x => x.TeamId != EntryTeamId))
         {
@@ -579,8 +581,6 @@
             if (!await JS.InvokeAsync<bool>("confirm", $"La persona è già associata a {oldTeams}. Vuoi trasferirla a {Archivio.Data.Teams.First(x => x.Id == EntryTeamId).Name}? Le precedenti società saranno sostituite.")) return;
             foreach (var oldEntry in previous) oldEntry.TeamId = EntryTeamId;
         }
-        var existing = Archivio.Data.TeamEntries.FirstOrDefault(x => x.PersonId == EntryPersonId && x.TeamId == EntryTeamId && x.ChampionshipId == EntryChampionshipId && x.SeasonId == EntrySeasonId && x.EntryType == (isPlayer ? "PLAYER" : "OFFICIAL"));
-        if (existing is not null) { ImportMessage = "La persona risulta già associata a questa squadra, campionato e stagione."; return; }
         Archivio.Data.TeamEntries.Add(new ArchiveTeamEntry { PersonId = EntryPersonId, TeamId = EntryTeamId, ChampionshipId = EntryChampionshipId, SeasonId = EntrySeasonId, EntryType = isPlayer ? "PLAYER" : "OFFICIAL", ShirtNumber = isPlayer ? value : "", OfficialLetter = isPlayer ? "" : value });
         EntryNumber = ""; await Archivio.SaveAsync();
     }
@@ -718,7 +718,8 @@
 
     private async Task DisconnectCloud()
     {
-        await JS.InvokeVoidAsync("localStorage.removeItem", "pallamanoCloudApiToken");
+        if (!await JS.InvokeAsync<bool>("confirm", $"Vuoi uscire dalla sessione {(Cloud.IsAdmin ? "Amministratore" : "Operatore")}? Per rientrare sarà necessario effettuare nuovamente l'accesso.")) return;
+        await Cloud.LogoutAsync();
         Nav.NavigateTo("archivio", forceLoad: true);
     }
 
