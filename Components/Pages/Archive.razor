@@ -87,7 +87,7 @@
                 <div class="archive-card-title"><div><h2>Squadre</h2><p>Una squadra può essere iscritta a campionati e stagioni differenti.</p></div><span class="archive-count">@Archivio.Data.Teams.Count</span></div>
                 <div class="archive-form-grid">
                     <label>Denominazione squadra<input @bind="TeamName" placeholder="Nome squadra" /></label>
-                    <label>Nome abbreviato<input @bind="TeamShortName" placeholder="Facoltativo" /></label>
+                    <label>Campionato<select @bind="TeamRegistrationChampionshipId"><option value="">Seleziona campionato</option>@foreach (var championship in Archivio.Data.Championships.Where(x => x.IsActive).OrderBy(x => x.Name)) { <option value="@championship.Id">@championship.Name</option> }</select></label>
                     <button class="archive-primary" @onclick="AddTeam">+ AGGIUNGI SQUADRA</button>
                 </div>
                 <div class="archive-form-grid registration-form">
@@ -99,7 +99,7 @@
                 <div class="archive-list teams-grid">
                     @foreach (var t in Archivio.Data.Teams.OrderBy(x => x.Name))
                     {
-                        <div class="archive-list-row"><div class="archive-list-icon">🏐</div><div class="archive-list-main"><strong>@t.Name</strong><small>@(string.IsNullOrWhiteSpace(t.ShortName) ? "Nessuna abbreviazione" : t.ShortName) · @Archivio.Data.TeamEntries.Count(x => x.TeamId == t.Id && x.EntryType == "TEAM") iscrizioni</small></div><span class="archive-status @(t.IsActive ? "on" : "off")">@(t.IsActive ? "ATTIVA" : "ARCHIVIATA")</span><button class="archive-small" @onclick="() => ToggleTeam(t.Id)">@(t.IsActive ? "ARCHIVIA" : "RIATTIVA")</button><button class="archive-small archive-delete-team" @onclick="() => DeleteTeam(t.Id)">CANCELLA</button></div>
+                        <div class="archive-list-row"><div class="archive-list-icon">🏐</div><div class="archive-list-main"><strong>@t.Name</strong><small>@string.Join(", ", Archivio.Data.TeamEntries.Where(x => x.TeamId == t.Id && x.EntryType == "TEAM").Select(x => Archivio.Data.Championships.FirstOrDefault(c => c.Id == x.ChampionshipId)?.Name).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct()) · @Archivio.Data.TeamEntries.Count(x => x.TeamId == t.Id && x.EntryType == "TEAM") iscrizioni</small></div><span class="archive-status @(t.IsActive ? "on" : "off")">@(t.IsActive ? "ATTIVA" : "ARCHIVIATA")</span><button class="archive-small" @onclick="() => ToggleTeam(t.Id)">@(t.IsActive ? "ARCHIVIA" : "RIATTIVA")</button><button class="archive-small archive-delete-team" @onclick="() => DeleteTeam(t.Id)">CANCELLA</button></div>
                     }
                 </div>
             </section>
@@ -471,7 +471,7 @@
     }
     private string Tab = "campionati";
     private string ChampionshipName = ""; private string ChampionshipCategory = ""; private string ChampionshipGender = "";
-    private string TeamName = ""; private string TeamShortName = "";
+    private string TeamName = "";
     private string SeasonName = ""; private DateTime SeasonStart = new(2027, 7, 1); private DateTime SeasonEnd = new(2028, 6, 30);
     private string PersonName = ""; private string PersonType = "PLAYER";
     private List<ArchivePerson> DuplicatePeople = new();
@@ -656,7 +656,47 @@
     }
     private async Task ToggleChampionship(string id) { var x = Archivio.Data.Championships.FirstOrDefault(x => x.Id == id); if (x is not null) { x.IsActive = !x.IsActive; await Archivio.SaveAsync(); } }
     private async Task DeleteChampionship(string id) { var x = Archivio.Data.Championships.FirstOrDefault(x => x.Id == id); if (x is null) return; if (Archivio.Data.TeamEntries.Any(e => e.ChampionshipId == id)) { ImportMessage = "Non è possibile eliminare un campionato già utilizzato: archivialo per conservarne lo storico."; return; } Archivio.Data.Championships.Remove(x); await Archivio.SaveAsync(); }
-    private async Task AddTeam() { if (string.IsNullOrWhiteSpace(TeamName) || Archivio.Data.Teams.Any(x => ArchiveService.Same(x.Name, TeamName))) return; Archivio.Data.Teams.Add(new ArchiveTeam { Name = TeamName.Trim(), ShortName = TeamShortName.Trim() }); TeamName = TeamShortName = ""; await Archivio.SaveAsync(); }
+    private async Task AddTeam()
+    {
+        var name = TeamName.Trim();
+        if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(TeamRegistrationChampionshipId))
+        {
+            ImportMessage = "Inserisci il nome della squadra e seleziona il campionato.";
+            return;
+        }
+
+        if (Archivio.Data.Teams.Any(x => ArchiveService.Same(x.Name, name)))
+        {
+            ImportMessage = "Questa squadra è già presente in archivio. Se devi iscriverla a un altro campionato o stagione, utilizza la sezione ISCRIVI SQUADRA.";
+            return;
+        }
+
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var season = Archivio.Data.Seasons
+            .Where(x => x.IsActive)
+            .OrderByDescending(x => x.StartDate <= today && x.EndDate >= today)
+            .ThenByDescending(x => x.StartDate)
+            .FirstOrDefault();
+        if (season is null)
+        {
+            ImportMessage = "Non è presente una stagione attiva. Crea o riattiva una stagione prima di inserire una squadra.";
+            return;
+        }
+
+        var team = new ArchiveTeam { Name = name };
+        Archivio.Data.Teams.Add(team);
+        Archivio.Data.TeamEntries.Add(new ArchiveTeamEntry
+        {
+            TeamId = team.Id,
+            ChampionshipId = TeamRegistrationChampionshipId,
+            SeasonId = season.Id,
+            EntryType = "TEAM"
+        });
+
+        TeamName = "";
+        ImportMessage = $"Squadra {name} registrata nel campionato selezionato per la stagione {season.Name}.";
+        await Archivio.SaveAsync();
+    }
     private async Task AddSeason() { if (string.IsNullOrWhiteSpace(SeasonName) || SeasonEnd < SeasonStart || Archivio.Data.Seasons.Any(x => ArchiveService.Same(x.Name, SeasonName))) return; Archivio.Data.Seasons.Add(new ArchiveSeason { Name = SeasonName.Trim(), StartDate = DateOnly.FromDateTime(SeasonStart), EndDate = DateOnly.FromDateTime(SeasonEnd) }); SeasonName = ""; await Archivio.SaveAsync(); }
     private async Task ToggleSeason(string id) { var x = Archivio.Data.Seasons.FirstOrDefault(x => x.Id == id); if (x is not null) { x.IsActive = !x.IsActive; await Archivio.SaveAsync(); } }
     private async Task ToggleTeam(string id) { var x = Archivio.Data.Teams.FirstOrDefault(x => x.Id == id); if (x is not null) { x.IsActive = !x.IsActive; await Archivio.SaveAsync(); } }
