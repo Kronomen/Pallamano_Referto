@@ -488,7 +488,7 @@ window.archivePdf = {
           part.width, part.height, 0, 0, part.width, part.height);
         const result = await worker.recognize(part);
         const lines = (result.data.lines || []).map(x => x.text.replace(/[|_]/g,' ').replace(/\s+/g,' ').trim()).filter(Boolean);
-        const headerLine = lines.find(x => /AC\\s*LIFE|LENO/i.test(x)) || '';\n        const detectedName = headerLine ? headerLine.replace(/^[AB]\\s+/i,'').trim() : (crop.key === 'B' ? 'Squadra B (verificare)' : 'Squadra A (verificare)');
+        const headerLine = lines.find(x => /AC\s*LIFE|LENO/i.test(x)) || '';\n        const detectedName = headerLine ? headerLine.replace(/^[AB]\s+/i,'').trim() : (crop.key === 'B' ? 'Squadra B (verificare)' : 'Squadra A (verificare)');
         const people = [];
         for (const line of lines) {
           const official = line.match(/UFF\s*[.\-]?\s*([A-E])\s+(.+)/i);
