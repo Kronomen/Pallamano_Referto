@@ -878,6 +878,13 @@
         return elsewhere ? "Già attivo in un'altra società: non verrà duplicato" : "Persona presente: nuova associazione";
     }
 
+    private static string NormalizePdfTeamName(string? value)
+    {
+        var normalized = (value ?? "").Normalize(System.Text.NormalizationForm.FormD);
+        normalized = new string(normalized.Where(c => System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c) != System.Globalization.UnicodeCategory.NonSpacingMark).ToArray());
+        return new string(normalized.ToUpperInvariant().Where(char.IsLetterOrDigit).ToArray());
+    }
+
     private async Task ImportPdfRoster(InputFileChangeEventArgs e)
     {
         PdfBusy = true; ImportMessage = ""; PdfRoster = null;
@@ -889,14 +896,33 @@
             PdfRoster = JsonSerializer.Deserialize<ArchivePdfRosterImport>(parsed, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
             if (PdfRoster is null || PdfRoster.Teams.Count != 2 || PdfRoster.Teams.Any(t => t.People.Count == 0))
                 throw new InvalidOperationException("Non sono state riconosciute entrambe le rose. Verifica che il PDF sia un referto FIGH leggibile.");
+
+            var missingTeams = new List<string>();
             foreach (var team in PdfRoster.Teams)
             {
-                var match = Archivio.Data.Teams.FirstOrDefault(t => ArchiveService.Same(t.Name, team.DetectedName));
-                if (match is not null) team.TeamId = match.Id;
+                var detected = NormalizePdfTeamName(team.DetectedName);
+                var match = Archivio.Data.Teams.FirstOrDefault(t =>
+                {
+                    var archived = NormalizePdfTeamName(t.Name);
+                    return archived == detected || (detected.Length >= 5 && archived.Contains(detected)) || (archived.Length >= 5 && detected.Contains(archived));
+                });
+                if (match is null) missingTeams.Add(team.DetectedName);
+                else { team.TeamId = match.Id; team.DetectedName = match.Name; }
             }
+            if (missingTeams.Count > 0)
+            {
+                var names = string.Join(", ", missingTeams);
+                PdfRoster = null;
+                await JS.InvokeVoidAsync("alert", $"Impossibile procedere: la seguente società indicata nel referto non esiste nell'archivio: {names}.\n\nL'operatore non deve inserire né scegliere la squadra. Verifica prima l'archivio e poi ripeti il caricamento del PDF.");
+                ImportMessage = "Importazione interrotta: una o più società del referto non sono presenti in archivio.";
+                return;
+            }
+
             PdfChampionship = Archivio.Data.Championships.FirstOrDefault(x => x.IsActive)?.Name ?? "";
             PdfSeason = Archivio.Data.Seasons.FirstOrDefault(x => x.IsActive)?.Name ?? "";
-            ImportMessage = $"Anteprima pronta: {PdfRoster.Teams.Sum(t => t.People.Count(p => p.PersonType == "PLAYER"))} atleti e {PdfRoster.Teams.Sum(t => t.People.Count(p => p.PersonType == "OFFICIAL"))} dirigenti rilevati. Controlla nomi, numeri e società prima di importare.";
+            if (string.IsNullOrWhiteSpace(PdfChampionship) || string.IsNullOrWhiteSpace(PdfSeason))
+                throw new InvalidOperationException("Nell'archivio non risultano un campionato e una stagione attivi. L'operatore deve prima attivarli.");
+            ImportMessage = $"Anteprima pronta: {PdfRoster.Teams.Sum(t => t.People.Count(p => p.PersonType == "PLAYER"))} atleti e {PdfRoster.Teams.Sum(t => t.People.Count(p => p.PersonType == "OFFICIAL"))} dirigenti rilevati nelle due società riconosciute. Controlla i dati e conferma.";
         }
         catch (Exception ex) { ImportMessage = "Lettura PDF non completata: " + ex.Message; PdfRoster = null; }
         finally { PdfBusy = false; }
@@ -905,20 +931,21 @@
     private async Task ConfirmPdfRosterImport()
     {
         if (!CanImportPdfRoster || PdfRoster is null) return;
-        var selected = PdfRoster.Teams.SelectMany(t => t.People).Count(p => p.Selected);
-        if (!await JS.InvokeAsync<bool>("confirm", $"Confermi l'importazione di {selected} persone selezionate? Le persone già presenti verranno riutilizzate; nessuna iscrizione attiva in un'altra società verrà spostata automaticamente.")) return;
+        var total = PdfRoster.Teams.Sum(t => t.People.Count);
+        if (!await JS.InvokeAsync<bool>("confirm", $"Confermi l'inserimento in archivio delle due rose ({total} persone)? Le anagrafiche già presenti non saranno duplicate.")) return;
         try
         {
             PdfRoster.Championship = PdfChampionship;
             PdfRoster.Season = PdfSeason;
             var result = await Archivio.ImportPdfRosterAsync(PdfRoster);
-            ImportMessage = $"Importazione completata: {result.AddedPeople} nuove anagrafiche, {result.AddedEntries} nuove iscrizioni, {result.UpdatedEntries} associazioni completate. Elementi non modificati o da verificare: {result.Skipped}.";
+            var message = $"Operazione completata. Nuove anagrafiche: {result.AddedPeople}; nuove iscrizioni: {result.AddedEntries}; associazioni completate: {result.UpdatedEntries}. Elementi già presenti o da verificare: {result.Skipped}.";
             PdfRoster = null;
+            ImportMessage = message + " Pronto per il prossimo referto PDF.";
         }
         catch (Exception ex) { ImportMessage = "Importazione non completata: " + ex.Message; }
     }
 
-    private void CancelPdfRoster() { PdfRoster = null; ImportMessage = "Anteprima annullata: nessun dato è stato modificato."; }
+    private void CancelPdfRoster() { PdfRoster = null; ImportMessage = "Operazione annullata. In attesa del prossimo referto PDF."; }
 
     private async Task ImportExcel(InputFileChangeEventArgs e)
     {
