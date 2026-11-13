@@ -526,12 +526,12 @@
     {
         var person = Archivio.Data.People.FirstOrDefault(x => x.Id == id);
         if (person is null) return;
-        if (Archivio.Data.TeamEntries.Any(e => e.PersonId == id))
-        {
-            await JS.InvokeVoidAsync("alert", "Non è possibile cancellare questa persona perché ha associazioni presenti o storiche. Apri il nominativo per verificare e disattivare le associazioni, oppure utilizza ARCHIVIA per conservarne lo storico.");
-            return;
-        }
-        if (!await JS.InvokeAsync<bool>("confirm", $"Vuoi cancellare definitivamente {person.FullName}? L'operazione non può essere annullata.")) return;
+        var associations = Archivio.Data.TeamEntries.Where(e => e.PersonId == id).ToList();
+        var message = associations.Count == 0
+            ? $"Vuoi cancellare definitivamente {person.FullName}? L'operazione non può essere annullata."
+            : $"Vuoi cancellare definitivamente {person.FullName}? Verranno eliminate anche le {associations.Count} associazioni con squadre, campionati e stagioni presenti nell'archivio. I referti già salvati non vengono modificati.";
+        if (!await JS.InvokeAsync<bool>("confirm", message)) return;
+        Archivio.Data.TeamEntries.RemoveAll(e => e.PersonId == id);
         Archivio.Data.People.Remove(person);
         await Archivio.SaveAsync();
     }
