@@ -424,6 +424,10 @@ window.archiveExcel = {
 };
 </script>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script>if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+
     <script src="_framework/blazor.webassembly.js"></script>
 <script>
 window.closeProvaApp = async function (isLocalRunner) {
@@ -453,5 +457,57 @@ window.closeProvaApp = async function (isLocalRunner) {
   }
 };
 </script>
+
+
+// Lettura delle sole due tabelle rose dal PDF del referto FIGH.
+// PDF.js esegue il rendering della pagina; Tesseract riconosce il testo nelle aree delle rose.
+window.archivePdf = {
+  read: async function(base64) {
+    if (!window.pdfjsLib) throw new Error('Lettore PDF non disponibile. Ricaricare la pagina.');
+    if (!window.Tesseract) throw new Error('Motore OCR non disponibile. Verificare la connessione e ricaricare.');
+    const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+    const pdf = await pdfjsLib.getDocument({data:bytes}).promise;
+    if (pdf.numPages < 1) throw new Error('Il PDF non contiene pagine.');
+    const page = await pdf.getPage(1);
+    const viewport = page.getViewport({scale:2.6});
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.ceil(viewport.width); canvas.height = Math.ceil(viewport.height);
+    const ctx = canvas.getContext('2d', {willReadFrequently:true});
+    await page.render({canvasContext:ctx, viewport}).promise;
+    const crops = [
+      {key:'A',x:.085,y:.095,w:.43,h:.36},
+      {key:'B',x:.085,y:.46,w:.43,h:.36}
+    ];
+    const worker = await Tesseract.createWorker('eng');
+    try {
+      const teams = [];
+      for (const crop of crops) {
+        const part = document.createElement('canvas');
+        part.width = Math.floor(canvas.width*crop.w); part.height = Math.floor(canvas.height*crop.h);
+        part.getContext('2d').drawImage(canvas, canvas.width*crop.x, canvas.height*crop.y,
+          part.width, part.height, 0, 0, part.width, part.height);
+        const result = await worker.recognize(part);
+        const lines = (result.data.lines || []).map(x => x.text.replace(/\\s+/g,' ').trim()).filter(Boolean);
+        const header = lines.find(x => /AC\\s*LIFE|STYLE|ERICE|LENO/i.test(x)) || '';
+        let detectedName = /LENO/i.test(header) || crop.key==='B' ? 'LENO' : 'AC LIFE STYLE ERICE';
+        const people = [];
+        for (const line of lines) {
+          const official = line.match(/UFF\\s*[.\\-]?\\s*([A-E])\\s+(.+)/i);
+          if (official) { people.push({numberOrLetter:official[1].toUpperCase(),name:official[2].trim(),personType:'OFFICIAL'}); continue; }
+          const player = line.match(/^\\s*(\\d{1,2})\\s+(.{3,})$/);
+          if (player && !/^N[°O]?$/i.test(player[2])) {
+            const name = player[2].replace(/\\s+[0-9]+\\s*$/,'').trim();
+            if (/[A-ZÀ-Ü]{2,}/i.test(name)) people.push({numberOrLetter:player[1],name,personType:'PLAYER'});
+          }
+        }
+        teams.push({detectedName,people});
+      }
+      const total = teams.reduce((n,t)=>n+t.people.length,0);
+      if (total < 5) throw new Error('Non sono riuscito a leggere le rose. Verifica che il PDF sia un referto FIGH leggibile e non una scansione sfocata.');
+      return JSON.stringify({teams});
+    } finally { await worker.terminate(); }
+  }
+};
+
 </body>
 </html>
