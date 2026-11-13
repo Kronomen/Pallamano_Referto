@@ -12,7 +12,7 @@
 <div class="archive-app">
     <header class="archive-header">
         <div class="archive-brand"><img src="images/FIGH.png" alt="FIGH" /><div><strong>REFERTO PALLAMANO</strong><span>GESTIONE ARCHIVIO</span></div></div>
-        <div class="archive-header-actions"><button class="archive-back" @onclick="BackToMatch">← TORNA ALLA GARA</button></div>
+        <div class="archive-header-actions">@if (Cloud.IsAuthenticated) { <button type="button" @onclick="DisconnectCloud" style="border:2px solid #dc2626;border-radius:8px;background:#dc2626;color:#173b70;padding:10px 14px;font-weight:900;cursor:pointer;">@(Cloud.IsAdmin ? "ESCI DA AMMINISTRATORE" : "ESCI DA OPERATORE")</button> } <button class="archive-back" @onclick="BackToMatch">← TORNA ALLA GARA</button></div>
     </header>
 
     @if (!string.IsNullOrWhiteSpace(Archivio.LoadError))
@@ -718,7 +718,8 @@
 
     private async Task DisconnectCloud()
     {
-        await JS.InvokeVoidAsync("localStorage.removeItem", "pallamanoCloudApiToken");
+        if (!await JS.InvokeAsync<bool>("confirm", $"Vuoi uscire dalla sessione {(Cloud.IsAdmin ? "Amministratore" : "Operatore")}? Per rientrare sarà necessario effettuare nuovamente l'accesso.")) return;
+        await Cloud.LogoutAsync();
         Nav.NavigateTo("archivio", forceLoad: true);
     }
 
