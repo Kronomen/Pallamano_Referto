@@ -293,12 +293,30 @@
                 {
                     <div class="archive-note">
                         <strong>Controlla le due rose riconosciute</strong>
-                        <p>Le società sono già state abbinate all'archivio. Controlla i nominativi, i numeri di maglia e le lettere dei dirigenti. Non è necessario selezionare o associare manualmente le persone.</p>
+                        <p>Le società vengono abbinate automaticamente quando il nome sul referto corrisponde all'archivio. Se un nome non viene riconosciuto, scegli la società corretta dal menu che compare sotto.</p>
                     </div>
                     @foreach (var team in PdfRoster.Teams)
                     {
                         <div class="archive-note">
                             <h3>@team.DetectedName</h3>
+                            @if (string.IsNullOrWhiteSpace(team.TeamId))
+                            {
+                                <div class="archive-note">
+                                    <strong>Società non riconosciuta: @team.DetectedName</strong>
+                                    <p>Il nome potrebbe essere scritto in modo diverso nel referto. Seleziona la società corretta presente nell'archivio per continuare.</p>
+                                    <select class="archive-select" @bind="team.TeamId">
+                                        <option value="">Seleziona la società corretta</option>
+                                        @foreach (var archivedTeam in Archivio.Data.Teams.OrderBy(x => x.Name))
+                                        {
+                                            <option value="@archivedTeam.Id">@archivedTeam.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                            }
+                            else
+                            {
+                                <p><strong>Società abbinata:</strong> @Archivio.Data.Teams.FirstOrDefault(x => x.Id == team.TeamId)?.Name</p>
+                            }
                             <div class="archive-list">
                                 @foreach (var person in team.People)
                                 {
@@ -316,7 +334,7 @@
                     <button class="archive-primary" disabled="@(!CanImportPdfRoster)" @onclick="ConfirmPdfRosterImport">CONFERMA E INSERISCI IN ARCHIVIO</button>
                     <button class="archive-small" @onclick="CancelPdfRoster">ANNULLA</button>
                 }
-                <div class="archive-note"><strong>Procedura automatica</strong><ul><li>Le squadre A e B vengono riconosciute dai nomi stampati sul referto e abbinate alle società in archivio.</li><li>Se anche una sola società non viene trovata, compare un avviso e l'importazione si interrompe: non devi inserire o scegliere la squadra.</li><li>Le persone già presenti vengono riconosciute e non duplicate; le nuove anagrafiche e le associazioni mancanti vengono aggiunte dopo la tua conferma.</li><li>Al termine l'anteprima si chiude e la pagina torna in attesa del prossimo PDF.</li></ul></div>
+                <div class="archive-note"><strong>Procedura automatica</strong><ul><li>Le squadre A e B vengono riconosciute dai nomi stampati sul referto e abbinate alle società in archivio.</li><li>Se una società non viene riconosciuta, compare un menu a tendina per abbinarla alla società corretta già presente nell'archivio.</li><li>Le persone già presenti vengono riconosciute e non duplicate; le nuove anagrafiche e le associazioni mancanti vengono aggiunte dopo la tua conferma.</li><li>Al termine l'anteprima si chiude e la pagina torna in attesa del prossimo PDF.</li></ul></div>
             </section>
         }
         else
@@ -511,6 +529,7 @@
     private string PdfSeason = "";
     private bool CanImportPdfRoster => PdfRoster is not null && PdfRoster.Teams.Count == 2 &&
         PdfRoster.Teams.All(t => !string.IsNullOrWhiteSpace(t.TeamId) && t.People.Count > 0) &&
+        PdfRoster.Teams.Select(t => t.TeamId).Distinct(StringComparer.Ordinal).Count() == 2 &&
         PdfRoster.Teams.SelectMany(t => t.People).All(p => !string.IsNullOrWhiteSpace(p.Name) && !string.IsNullOrWhiteSpace(p.NumberOrLetter));
 
     private string CloudPassword = "";
@@ -897,7 +916,6 @@
             if (PdfRoster is null || PdfRoster.Teams.Count != 2 || PdfRoster.Teams.Any(t => t.People.Count == 0))
                 throw new InvalidOperationException("Non sono state riconosciute entrambe le rose. Verifica che il PDF sia un referto FIGH leggibile.");
 
-            var missingTeams = new List<string>();
             foreach (var team in PdfRoster.Teams)
             {
                 var detected = NormalizePdfTeamName(team.DetectedName);
@@ -907,23 +925,14 @@
                     var shortName = NormalizePdfTeamName(t.ShortName);
                     return archived == detected || (!string.IsNullOrEmpty(shortName) && shortName == detected);
                 });
-                if (match is null) missingTeams.Add(team.DetectedName);
-                else { team.TeamId = match.Id; team.DetectedName = match.Name; }
-            }
-            if (missingTeams.Count > 0)
-            {
-                var names = string.Join(", ", missingTeams);
-                PdfRoster = null;
-                await JS.InvokeVoidAsync("alert", $"Impossibile procedere: la seguente società indicata nel referto non esiste nell'archivio: {names}.\n\nL'operatore non deve inserire né scegliere la squadra. Verifica prima l'archivio e poi ripeti il caricamento del PDF.");
-                ImportMessage = "Importazione interrotta: una o più società del referto non sono presenti in archivio.";
-                return;
+                if (match is not null) team.TeamId = match.Id;
             }
 
             PdfChampionship = Archivio.Data.Championships.FirstOrDefault(x => x.IsActive)?.Name ?? "";
             PdfSeason = Archivio.Data.Seasons.FirstOrDefault(x => x.IsActive)?.Name ?? "";
             if (string.IsNullOrWhiteSpace(PdfChampionship) || string.IsNullOrWhiteSpace(PdfSeason))
                 throw new InvalidOperationException("Nell'archivio non risultano un campionato e una stagione attivi. L'operatore deve prima attivarli.");
-            ImportMessage = $"Anteprima pronta: {PdfRoster.Teams.Sum(t => t.People.Count(p => p.PersonType == "PLAYER"))} atleti e {PdfRoster.Teams.Sum(t => t.People.Count(p => p.PersonType == "OFFICIAL"))} dirigenti rilevati nelle due società riconosciute. Controlla i dati e conferma.";
+            ImportMessage = $"Anteprima pronta: {PdfRoster.Teams.Sum(t => t.People.Count(p => p.PersonType == "PLAYER"))} atleti e {PdfRoster.Teams.Sum(t => t.People.Count(p => p.PersonType == "OFFICIAL"))} dirigenti rilevati. Controlla le società, i nominativi e conferma.";
         }
         catch (Exception ex) { ImportMessage = "Lettura PDF non completata: " + ex.Message; PdfRoster = null; }
         finally { PdfBusy = false; }
