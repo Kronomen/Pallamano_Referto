@@ -904,7 +904,8 @@
                 var match = Archivio.Data.Teams.FirstOrDefault(t =>
                 {
                     var archived = NormalizePdfTeamName(t.Name);
-                    return archived == detected || (detected.Length >= 5 && archived.Contains(detected)) || (archived.Length >= 5 && detected.Contains(archived));
+                    var shortName = NormalizePdfTeamName(t.ShortName);
+                    return archived == detected || (!string.IsNullOrEmpty(shortName) && shortName == detected);
                 });
                 if (match is null) missingTeams.Add(team.DetectedName);
                 else { team.TeamId = match.Id; team.DetectedName = match.Name; }
