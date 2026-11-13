@@ -930,7 +930,8 @@
         try
         {
             PdfRoster.Championship = PdfChampionship;
-            PdfRoster.Season = PdfSeason;\n            var result = await Archivio.ImportPdfRosterAsync(PdfRoster);
+            PdfRoster.Season = PdfSeason;
+            var result = await Archivio.ImportPdfRosterAsync(PdfRoster);
             ImportMessage = $"Importazione completata: {result.AddedPeople} nuove anagrafiche, {result.AddedEntries} nuove iscrizioni, {result.UpdatedEntries} associazioni completate. Elementi non modificati o da verificare: {result.Skipped}.";
             PdfRoster = null;
         }
