@@ -7862,3 +7862,6 @@ html:-webkit-full-screen, body:-webkit-full-screen{width:100%;height:100%;overfl
 @media(max-width:650px){
     .archive-tabs .archive-close-tab{margin-left:0;padding:0 11px;min-height:34px}
 }
+
+/* Pulsante CANCELLA nella gestione squadre: rosso con testo blu, come richiesto. */
+.archive-small.archive-delete-team{background:#dc2626;border-color:#dc2626;color:#0000ff;font-weight:900}.archive-small.archive-delete-team:hover{background:#b91c1c;border-color:#b91c1c;color:#0000ff}
