@@ -174,7 +174,14 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
 
     public async Task LogoutAsync()
     {
-        await ClearSessionAsync();
+        // L'uscita esplicita deve riuscire a rimuovere il token persistente:
+        // se localStorage non è accessibile, non dichiariamo la sessione chiusa.
+        await js.InvokeVoidAsync("localStorage.removeItem", TokenKey);
+        _token = null;
+        _autoSyncEnabled = false;
+        IsAdmin = false;
+        OperatorName = null;
+        DeviceId = null;
         Status = "Sessione chiusa. Per rientrare è necessario effettuare nuovamente l'accesso.";
     }
 
