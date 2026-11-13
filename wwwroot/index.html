@@ -468,6 +468,14 @@ window.archivePdf = {
     const pdf = await pdfjsLib.getDocument({data:bytes}).promise;
     if (pdf.numPages < 1) throw new Error('Il PDF non contiene pagine.');
     const page = await pdf.getPage(1);
+    const textContent = await page.getTextContent();
+    const textRows = new Map();
+    for (const item of textContent.items || []) {
+      if (!item.str || !item.str.trim() || !item.transform) continue;
+      const y = Math.round(item.transform[5] / 3) * 3;
+      textRows.set(y, [...(textRows.get(y) || []), item.str.trim()]);
+    }
+    const pdfLines = [...textRows.entries()].sort((a,b)=>b[0]-a[0]).map(x=>x[1].join(' ').replace(/\s+/g,' ').trim());
     const viewport = page.getViewport({scale:2.6});
     const canvas = document.createElement('canvas');
     canvas.width = Math.ceil(viewport.width); canvas.height = Math.ceil(viewport.height);
@@ -488,8 +496,13 @@ window.archivePdf = {
           part.width, part.height, 0, 0, part.width, part.height);
         const result = await worker.recognize(part);
         const lines = (result.data.lines || []).map(x => x.text.replace(/[|_]/g,' ').replace(/\s+/g,' ').trim()).filter(Boolean);
-        const headerLine = lines.find(x => /AC\s*LIFE|LENO/i.test(x)) || '';
-        const detectedName = headerLine ? headerLine.replace(/^[AB]\s+/i,'').trim() : (crop.key === 'B' ? 'Squadra B (verificare)' : 'Squadra A (verificare)');
+        const expectedLabel = crop.key;
+        const pdfHeader = pdfLines.find(x => new RegExp('^\\s*' + expectedLabel + '\\s+').test(x));
+        const ocrHeader = lines.find(x => new RegExp('^\\s*' + expectedLabel + '\\s+').test(x)) || lines.find(x => /AC\\s*LIFE|LENO/i.test(x));
+        const headerLine = pdfHeader || ocrHeader || '';
+        const detectedName = headerLine
+          ? headerLine.replace(new RegExp('^\\s*' + expectedLabel + '\\s+', 'i'), '').replace(/^[AB]\\s+/i,'').trim()
+          : (crop.key === 'B' ? 'Squadra B (nome non letto)' : 'Squadra A (nome non letto)');
         const people = [];
         for (const line of lines) {
           const official = line.match(/UFF\s*[.\-]?\s*([A-E])\s+(.+)/i);
