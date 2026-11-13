@@ -459,8 +459,7 @@ window.closeProvaApp = async function (isLocalRunner) {
 </script>
 
 
-// Lettura delle sole due tabelle rose dal PDF del referto FIGH.
-// PDF.js esegue il rendering della pagina; Tesseract riconosce il testo nelle aree delle rose.
+<script>
 window.archivePdf = {
   read: async function(base64) {
     if (!window.pdfjsLib) throw new Error('Lettore PDF non disponibile. Ricaricare la pagina.');
@@ -475,11 +474,12 @@ window.archivePdf = {
     const ctx = canvas.getContext('2d', {willReadFrequently:true});
     await page.render({canvasContext:ctx, viewport}).promise;
     const crops = [
-      {key:'A',x:.085,y:.095,w:.43,h:.36},
-      {key:'B',x:.085,y:.46,w:.43,h:.36}
+      {key:'A',x:.055,y:.095,w:.365,h:.36},
+      {key:'B',x:.055,y:.46,w:.365,h:.36}
     ];
     const worker = await Tesseract.createWorker('eng');
     try {
+      await worker.setParameters({ tessedit_pageseg_mode: '4' });
       const teams = [];
       for (const crop of crops) {
         const part = document.createElement('canvas');
@@ -487,16 +487,18 @@ window.archivePdf = {
         part.getContext('2d').drawImage(canvas, canvas.width*crop.x, canvas.height*crop.y,
           part.width, part.height, 0, 0, part.width, part.height);
         const result = await worker.recognize(part);
-        const lines = (result.data.lines || []).map(x => x.text.replace(/\\s+/g,' ').trim()).filter(Boolean);
-        const header = lines.find(x => /AC\\s*LIFE|STYLE|ERICE|LENO/i.test(x)) || '';
-        let detectedName = /LENO/i.test(header) || crop.key==='B' ? 'LENO' : 'AC LIFE STYLE ERICE';
+        const lines = (result.data.lines || []).map(x => x.text.replace(/[|_]/g,' ').replace(/\s+/g,' ').trim()).filter(Boolean);
+        const detectedName = crop.key === 'B' ? 'LENO' : 'AC LIFE STYLE ERICE';
         const people = [];
         for (const line of lines) {
-          const official = line.match(/UFF\\s*[.\\-]?\\s*([A-E])\\s+(.+)/i);
-          if (official) { people.push({numberOrLetter:official[1].toUpperCase(),name:official[2].trim(),personType:'OFFICIAL'}); continue; }
-          const player = line.match(/^\\s*(\\d{1,2})\\s+(.{3,})$/);
-          if (player && !/^N[°O]?$/i.test(player[2])) {
-            const name = player[2].replace(/\\s+[0-9]+\\s*$/,'').trim();
+          const official = line.match(/UFF\s*[.\-]?\s*([A-E])\s+(.+)/i);
+          if (official) {
+            people.push({numberOrLetter:official[1].toUpperCase(),name:official[2].replace(/[|_]/g,' ').trim(),personType:'OFFICIAL'});
+            continue;
+          }
+          const player = line.match(/^\s*(\d{1,2})\s+(.{3,})$/);
+          if (player) {
+            const name = player[2].replace(/\s+[0-9]+\s*$/,'').trim();
             if (/[A-ZÀ-Ü]{2,}/i.test(name)) people.push({numberOrLetter:player[1],name,personType:'PLAYER'});
           }
         }
@@ -508,6 +510,7 @@ window.archivePdf = {
     } finally { await worker.terminate(); }
   }
 };
+</script>
 
 </body>
 </html>
