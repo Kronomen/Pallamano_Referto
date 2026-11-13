@@ -164,14 +164,76 @@
                         <button class="archive-small" @onclick="CancelDuplicatePerson">ANNULLA</button>
                     </div>
                 }
-                <div class="archive-form-grid registration-form">
-                    <label>Persona<select @bind="EntryPersonId"><option value="">Seleziona persona</option>@foreach (var x in Archivio.Data.People) { <option value="@x.Id">@x.FullName (@(x.PersonType == "PLAYER" ? "Atleta" : "Dirigente"))</option> }</select></label>
-                    <label>Squadra<select @bind="EntryTeamId"><option value="">Seleziona squadra</option>@foreach (var x in Archivio.Data.Teams) { <option value="@x.Id">@x.Name</option> }</select></label>
-                    <label>Campionato<select @bind="EntryChampionshipId"><option value="">Seleziona campionato</option>@foreach (var x in Archivio.Data.Championships) { <option value="@x.Id">@x.Name</option> }</select></label>
-                    <label>Stagione<select @bind="EntrySeasonId"><option value="">Seleziona stagione</option>@foreach (var x in Archivio.Data.Seasons) { <option value="@x.Id">@x.Name</option> }</select></label>
-                    <label>@(PersonTypeForEntry == "PLAYER" ? "Numero maglia" : "Lettera dirigente")<input @bind="EntryNumber" placeholder="Numero / A-E" /></label>
-                    <button class="archive-primary" @onclick="AddPersonEntry">ASSOCIA ALLA SQUADRA</button>
-                </div>
+                <section class="archive-note">
+                    <h3>Ricerca Atleta/Dirigente</h3>
+                    <div class="archive-form-grid">
+                        <label>Ricerca per cognome
+                            <input @bind="PersonSearchSurname" @bind:event="oninput" placeholder="Inserisci il cognome" />
+                        </label>
+                        <button type="button" class="archive-small" @onclick="() => PersonSearchSurname = string.Empty">NUOVA RICERCA</button>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(PersonSearchSurname))
+                    {
+                        var foundBySurname = PeopleFoundBySurname;
+                        <p class="archive-note">Risultati per “@PersonSearchSurname”: @foundBySurname.Count</p>
+                        @if (foundBySurname.Count == 0)
+                        {
+                            <div class="archive-empty">Nessuna persona trovata con questo cognome.</div>
+                        }
+                        else
+                        {
+                            <div class="archive-list">
+                                @foreach (var person in foundBySurname)
+                                {
+                                    <div class="archive-list-row">
+                                        <div class="archive-list-icon">@(person.PersonType == "PLAYER" ? "👤" : "📋")</div>
+                                        <div class="archive-list-main">
+                                            <button type="button" class="archive-person-name" @onclick="() => OpenPersonAssociations(person.Id)">@person.FullName</button>
+                                            <small>@(person.PersonType == "PLAYER" ? "Atleta" : "Dirigente") · @GetPersonTeamNames(person.Id)</small>
+                                        </div>
+                                        <span class="archive-status @(person.IsActive ? "on" : "off")">@(person.IsActive ? "ATTIVO" : "ARCHIVIATO")</span>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    }
+                </section>
+                <section class="archive-note">
+                    <h3>Ricerca per squadra</h3>
+                    <label>Squadra
+                        <select @bind="PersonSearchTeamId">
+                            <option value="">Seleziona società</option>
+                            @foreach (var team in Archivio.Data.Teams.Where(x => x.IsActive).OrderBy(x => x.Name))
+                            {
+                                <option value="@team.Id">@team.Name</option>
+                            }
+                        </select>
+                    </label>
+                    @if (!string.IsNullOrWhiteSpace(PersonSearchTeamId))
+                    {
+                        <p class="archive-note">Persone associate: @PeopleFoundByTeam.Count</p>
+                        @if (PeopleFoundByTeam.Count == 0)
+                        {
+                            <div class="archive-empty">Nessun atleta o dirigente associato a questa società.</div>
+                        }
+                        else
+                        {
+                            <div class="archive-list">
+                                @foreach (var person in PeopleFoundByTeam)
+                                {
+                                    <div class="archive-list-row">
+                                        <div class="archive-list-icon">@(person.PersonType == "PLAYER" ? "👤" : "📋")</div>
+                                        <div class="archive-list-main">
+                                            <button type="button" class="archive-person-name" @onclick="() => OpenPersonAssociations(person.Id)">@person.FullName</button>
+                                            <small>@(person.PersonType == "PLAYER" ? "Atleta" : "Dirigente") · @GetTeamEntryDetails(person.Id, PersonSearchTeamId)</small>
+                                        </div>
+                                        <span class="archive-status @(person.IsActive ? "on" : "off")">@(person.IsActive ? "ATTIVO" : "ARCHIVIATO")</span>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    }
+                </section>
                 <div class="archive-list">
                     @foreach (var p in Archivio.Data.People.OrderBy(x => x.FullName))
                     {
@@ -392,6 +454,27 @@
     private List<DuplicatePlayerEnrollmentCleanup> DuplicatePlayerEnrollments => BuildDuplicatePlayerEnrollments();
     private string TeamRegistrationTeamId = ""; private string TeamRegistrationChampionshipId = ""; private string TeamRegistrationSeasonId = "";
     private string EntryPersonId = ""; private string EntryTeamId = ""; private string EntryChampionshipId = ""; private string EntrySeasonId = ""; private string EntryNumber = "";
+    private string PersonSearchSurname = "";
+    private string PersonSearchTeamId = "";
+    private List<ArchivePerson> PeopleFoundBySurname => string.IsNullOrWhiteSpace(PersonSearchSurname)
+        ? new()
+        : Archivio.Data.People.Where(p => p.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Any(part => part.Contains(PersonSearchSurname.Trim(), StringComparison.OrdinalIgnoreCase)))
+            .OrderBy(p => p.FullName).ToList();
+    private List<ArchivePerson> PeopleFoundByTeam => string.IsNullOrWhiteSpace(PersonSearchTeamId)
+        ? new()
+        : Archivio.Data.People.Where(p => Archivio.Data.TeamEntries.Any(e => e.PersonId == p.Id && e.TeamId == PersonSearchTeamId && e.IsActive && e.EntryType != "TEAM"))
+            .OrderBy(p => p.PersonType).ThenBy(p => p.FullName).ToList();
+    private string GetPersonTeamNames(string personId) => string.Join(", ", Archivio.Data.TeamEntries
+        .Where(e => e.PersonId == personId && e.IsActive && e.EntryType != "TEAM")
+        .Select(e => Archivio.Data.Teams.FirstOrDefault(t => t.Id == e.TeamId)?.Name)
+        .Where(n => !string.IsNullOrWhiteSpace(n)).Distinct());
+    private string GetTeamEntryDetails(string personId, string teamId) => string.Join(" · ", Archivio.Data.TeamEntries
+        .Where(e => e.PersonId == personId && e.TeamId == teamId && e.IsActive && e.EntryType != "TEAM")
+        .Select(e => {
+            var championship = Archivio.Data.Championships.FirstOrDefault(c => c.Id == e.ChampionshipId)?.Name;
+            var season = Archivio.Data.Seasons.FirstOrDefault(x => x.Id == e.SeasonId)?.Name;
+            return string.Join(" / ", new[] { championship, season }.Where(v => !string.IsNullOrWhiteSpace(v)));
+        }).Distinct());
     private string PersonTypeForEntry => Archivio.Data.People.FirstOrDefault(x => x.Id == EntryPersonId)?.PersonType ?? "PLAYER";
     private string ImportMessage = "";
     private string CloudPassword = "";
