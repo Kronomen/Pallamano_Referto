@@ -131,6 +131,23 @@
                     <label>Tipo<select @bind="PersonType"><option value="PLAYER">Atleta</option><option value="OFFICIAL">Dirigente</option></select></label>
                     <button class="archive-primary" @onclick="AddPerson">+ AGGIUNGI PERSONA</button>
                 </div>
+                @if (DuplicatePlayerEnrollments.Count > 0)
+                {
+                    <div class="archive-message">
+                        <strong>Rilevate @DuplicatePlayerEnrollments.Count situazioni con più società attive per lo stesso atleta nella stessa stagione.</strong>
+                        <p>Verrà mantenuta la prima società registrata; le iscrizioni alle altre società saranno disattivate, senza cancellare lo storico o modificare i referti già salvati.</p>
+                        @foreach (var duplicate in DuplicatePlayerEnrollments)
+                        {
+                            <div class="archive-list-row">
+                                <div class="archive-list-main">
+                                    <strong>@duplicate.PersonName</strong>
+                                    <small>@duplicate.SeasonName · Mantieni: @duplicate.KeepTeamName · Disattiva: @string.Join(", ", duplicate.RemoveTeamNames)</small>
+                                </div>
+                            </div>
+                        }
+                        <button class="archive-primary" @onclick="DeactivateDuplicatePlayerEnrollments">DISATTIVA LE SECONDE SOCIETÀ</button>
+                    </div>
+                }
                 @if (DuplicatePeople.Count > 0)
                 {
                     <div class="archive-message">
@@ -180,7 +197,7 @@
                             </div>
                             @if (SelectedPersonEntries.Count > 0)
                             {
-                                <p class="archive-note">Iscrizioni presenti: scegli quale mantenere attiva. Le altre iscrizioni della stessa stagione verranno disattivate; i referti già salvati non vengono modificati.</p>
+                                <p class="archive-note">Elenco completo delle iscrizioni. Se un atleta risulta attivo in più società nella stessa stagione, la funzione di pulizia mantiene automaticamente la prima società registrata e disattiva le successive. Per correggere la società, utilizza il selettore qui sopra.</p>
                                 <div class="archive-list">
                                     @foreach (var entry in SelectedPersonEntries)
                                     {
@@ -190,11 +207,6 @@
                                         <div class="archive-list-row">
                                             <div class="archive-list-main"><strong>@teamName</strong><small>@championshipName · @seasonName · @(entry.EntryType == "PLAYER" ? "Atleta" : "Dirigente") · @(entry.EntryType == "PLAYER" ? "N. " + entry.ShirtNumber : "Lettera " + entry.OfficialLetter)</small></div>
                                             <span class="archive-status @(entry.IsActive ? "on" : "off")">@(entry.IsActive ? "ATTIVA" : "DISATTIVATA")</span>
-                                            <button class="archive-primary" @onclick="() => SetPersonEntryActive(entry.Id, true)">MANTIENI QUESTA</button>
-                                            @if (entry.IsActive)
-                                            {
-                                                <button class="archive-small" @onclick="() => SetPersonEntryActive(entry.Id, false)">DISATTIVA</button>
-                                            }
                                         </div>
                                     }
                                 </div>
@@ -355,6 +367,17 @@
 </div>
 
 @code {
+    private sealed class DuplicatePlayerEnrollmentCleanup
+    {
+        public string PersonId { get; set; } = "";
+        public string PersonName { get; set; } = "";
+        public string SeasonId { get; set; } = "";
+        public string SeasonName { get; set; } = "";
+        public string KeepTeamId { get; set; } = "";
+        public string KeepTeamName { get; set; } = "";
+        public List<string> RemoveTeamIds { get; set; } = new();
+        public List<string> RemoveTeamNames { get; set; } = new();
+    }
     private string Tab = "campionati";
     private string ChampionshipName = ""; private string ChampionshipCategory = ""; private string ChampionshipGender = "";
     private string TeamName = ""; private string TeamShortName = "";
@@ -366,6 +389,7 @@
     private string SelectedPersonTeamId = "";
     private ArchivePerson? SelectedPerson => Archivio.Data.People.FirstOrDefault(x => x.Id == SelectedPersonId);
     private List<ArchiveTeamEntry> SelectedPersonEntries => SelectedPersonId is null ? new() : Archivio.Data.TeamEntries.Where(x => x.PersonId == SelectedPersonId).OrderByDescending(x => x.IsActive).ThenBy(x => x.SeasonId).ToList();
+    private List<DuplicatePlayerEnrollmentCleanup> DuplicatePlayerEnrollments => BuildDuplicatePlayerEnrollments();
     private string TeamRegistrationTeamId = ""; private string TeamRegistrationChampionshipId = ""; private string TeamRegistrationSeasonId = "";
     private string EntryPersonId = ""; private string EntryTeamId = ""; private string EntryChampionshipId = ""; private string EntrySeasonId = ""; private string EntryNumber = "";
     private string PersonTypeForEntry => Archivio.Data.People.FirstOrDefault(x => x.Id == EntryPersonId)?.PersonType ?? "PLAYER";
@@ -637,6 +661,60 @@
         await Archivio.SaveAsync();
     }
     private async Task TogglePerson(string id) { var x = Archivio.Data.People.FirstOrDefault(x => x.Id == id); if (x is not null) { x.IsActive = !x.IsActive; await Archivio.SaveAsync(); } }
+    private List<DuplicatePlayerEnrollmentCleanup> BuildDuplicatePlayerEnrollments()
+    {
+        var result = new List<DuplicatePlayerEnrollmentCleanup>();
+        var groups = Archivio.Data.TeamEntries
+            .Where(x => x.IsActive && x.EntryType == "PLAYER" && !string.IsNullOrWhiteSpace(x.PersonId))
+            .GroupBy(x => new { x.PersonId, x.SeasonId });
+        foreach (var group in groups)
+        {
+            var teamGroups = group.GroupBy(x => x.TeamId).ToList();
+            if (teamGroups.Count < 2) continue;
+            var keepTeamId = teamGroups[0].Key;
+            var person = Archivio.Data.People.FirstOrDefault(x => x.Id == group.Key.PersonId);
+            var season = Archivio.Data.Seasons.FirstOrDefault(x => x.Id == group.Key.SeasonId);
+            var removeTeamIds = teamGroups.Skip(1).Select(x => x.Key).ToList();
+            result.Add(new DuplicatePlayerEnrollmentCleanup
+            {
+                PersonId = group.Key.PersonId,
+                PersonName = person?.FullName ?? "Atleta non trovato",
+                SeasonId = group.Key.SeasonId,
+                SeasonName = season?.Name ?? "Stagione non trovata",
+                KeepTeamId = keepTeamId,
+                KeepTeamName = Archivio.Data.Teams.FirstOrDefault(x => x.Id == keepTeamId)?.Name ?? "Società non trovata",
+                RemoveTeamIds = removeTeamIds,
+                RemoveTeamNames = removeTeamIds.Select(id => Archivio.Data.Teams.FirstOrDefault(t => t.Id == id)?.Name ?? "Società non trovata").ToList()
+            });
+        }
+        return result;
+    }
+
+    private async Task DeactivateDuplicatePlayerEnrollments()
+    {
+        var duplicates = BuildDuplicatePlayerEnrollments();
+        if (duplicates.Count == 0)
+        {
+            ImportMessage = "Non risultano atleti con più società attive nella stessa stagione.";
+            return;
+        }
+        var count = duplicates.Sum(x => Archivio.Data.TeamEntries.Count(entry =>
+            entry.IsActive && entry.EntryType == "PLAYER" && entry.PersonId == x.PersonId &&
+            entry.SeasonId == x.SeasonId && x.RemoveTeamIds.Contains(entry.TeamId)));
+        var summary = string.Join("\\n", duplicates.Select(x => $"{x.PersonName} ({x.SeasonName}): mantiene {x.KeepTeamName}; disattiva {string.Join(", ", x.RemoveTeamNames)}"));
+        if (!await JS.InvokeAsync<bool>("confirm", $"Saranno disattivate {count} iscrizioni duplicate per {duplicates.Count} atleti.\\n\\n{summary}\\n\\nLa prima società registrata resterà attiva. Lo storico e i referti non verranno cancellati. Procedere?"))
+            return;
+        foreach (var duplicate in duplicates)
+        {
+            foreach (var entry in Archivio.Data.TeamEntries.Where(entry =>
+                entry.IsActive && entry.EntryType == "PLAYER" && entry.PersonId == duplicate.PersonId &&
+                entry.SeasonId == duplicate.SeasonId && duplicate.RemoveTeamIds.Contains(entry.TeamId)))
+                entry.IsActive = false;
+        }
+        await Archivio.SaveAsync();
+        ImportMessage = $"Pulizia completata: disattivate {count} iscrizioni duplicate per {duplicates.Count} atleti. Le prime società registrate sono rimaste attive.";
+    }
+
     private async Task AddPersonEntry()
     {
         if (string.IsNullOrWhiteSpace(EntryPersonId) || string.IsNullOrWhiteSpace(EntryTeamId) || string.IsNullOrWhiteSpace(EntryChampionshipId) || string.IsNullOrWhiteSpace(EntrySeasonId)) return;
