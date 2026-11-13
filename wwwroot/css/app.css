@@ -7880,3 +7880,32 @@ html:-webkit-full-screen, body:-webkit-full-screen{width:100%;height:100%;overfl
 .archive-person-association label span{display:grid;gap:4px}
 .archive-person-association small{color:#64748b}
 @media(max-width:640px){.archive-person-modal{padding:16px}.archive-person-association{align-items:flex-start;flex-wrap:wrap}}
+
+
+/* Correzione intestazione: il titolo resta centrato e libero da pulsanti sovrapposti. */
+.topbar {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+}
+.topbar .brand {
+  position: relative !important;
+  inset: auto !important;
+  grid-column: 1 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  justify-content: center !important;
+  pointer-events: none !important;
+}
+.topbar .brand > div {
+  padding: 0 18px 0 64px !important;
+  text-align: center !important;
+  min-width: 0 !important;
+}
+.topbar .brand img {
+  left: 0 !important;
+}
+.topbar .phase-box {
+  grid-column: 2 !important;
+  z-index: 2 !important;
+}
