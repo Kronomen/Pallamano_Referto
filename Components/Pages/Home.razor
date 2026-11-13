@@ -137,6 +137,7 @@ else
     {
         <header class="topbar">
             <div class="brand"><img src="images/FIGH.png" alt="FIGH" /><div><div class="federation">FEDERAZIONE ITALIANA GIUOCO HANDBALL</div><div class="app-title">REFERTO PALLAMANO</div></div></div>
+            <button type="button" @onclick="LogoutFromMatch" style="margin-left:auto;border:2px solid #dc2626;border-radius:8px;background:#dc2626;color:#173b70;padding:10px 14px;font-weight:900;cursor:pointer;white-space:nowrap;">@(Cloud.IsAdmin ? "ESCI DA AMMINISTRATORE" : "ESCI DA OPERATORE")</button>
             @if (Cloud.IsAuthenticated && Cloud.IsOperator)
             {
                 <div style="display:flex;flex-direction:column;align-items:flex-end;justify-content:center;padding:6px 12px;border-radius:8px;background:#eaf2ff;color:#173b70;min-width:150px;">
@@ -1526,6 +1527,14 @@ else
             // render: il pulsante di ingresso viene abilitato solo adesso.
             await JS.InvokeVoidAsync("refertoAppReady");
         }
+    }
+
+    private async Task LogoutFromMatch()
+    {
+        if (!await JS.InvokeAsync<bool>("confirm", $"Vuoi uscire dalla sessione {(Cloud.IsAdmin ? "Amministratore" : "Operatore")}? Per rientrare sarà necessario effettuare nuovamente l'accesso.")) return;
+        await SaveRecoveryIfReady();
+        await Cloud.LogoutAsync();
+        Nav.NavigateTo("archivio", forceLoad: true);
     }
 
     private async Task SaveRecoveryIfReady()
