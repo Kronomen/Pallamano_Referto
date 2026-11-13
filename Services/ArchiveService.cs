@@ -282,7 +282,7 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
                     x.ChampionshipId == championship.Id && x.SeasonId == season.Id && x.EntryType == (isOfficial ? "OFFICIAL" : "PLAYER"));
                 var activeElsewhere = Data.TeamEntries.Any(x => x.PersonId == person.Id && x.ChampionshipId == championship.Id &&
                     x.SeasonId == season.Id && x.EntryType == (isOfficial ? "OFFICIAL" : "PLAYER") && x.IsActive && x.TeamId != team.Id);
-                if (entry is null && activeElsewhere) { skipped++; continue; }
+                if (activeElsewhere) { skipped++; continue; }
                 if (entry is null)
                 {
                     Data.TeamEntries.Add(new ArchiveTeamEntry { PersonId = person.Id, TeamId = team.Id, ChampionshipId = championship.Id,
@@ -293,9 +293,12 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
                 else
                 {
                     var existing = isOfficial ? entry.OfficialLetter : entry.ShirtNumber;
-                    if (string.IsNullOrWhiteSpace(existing))
+                    if (string.IsNullOrWhiteSpace(existing) || !entry.IsActive)
                     {
-                        if (isOfficial) entry.OfficialLetter = code; else entry.ShirtNumber = code;
+                        if (string.IsNullOrWhiteSpace(existing))
+                        {
+                            if (isOfficial) entry.OfficialLetter = code; else entry.ShirtNumber = code;
+                        }
                         entry.IsActive = true; updatedEntries++;
                     }
                     else if (!Same(existing, code)) skipped++;
