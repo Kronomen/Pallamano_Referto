@@ -509,12 +509,11 @@
         if (active)
         {
             var conflicts = Archivio.Data.TeamEntries.Where(x => x.Id != entry.Id && x.PersonId == entry.PersonId &&
-                x.ChampionshipId == entry.ChampionshipId && x.SeasonId == entry.SeasonId &&
-                x.IsActive && x.EntryType == entry.EntryType).ToList();
+                x.SeasonId == entry.SeasonId && x.IsActive).ToList();
             if (conflicts.Count > 0)
             {
                 var teamNames = string.Join(", ", conflicts.Select(x => Archivio.Data.Teams.FirstOrDefault(t => t.Id == x.TeamId)?.Name ?? "Squadra non trovata").Distinct());
-                if (!await JS.InvokeAsync<bool>("confirm", $"Questa persona risulta già attiva in {teamNames} per lo stesso campionato e la stessa stagione. Vuoi attivare questa squadra e disattivare le associazioni precedenti?"))
+                if (!await JS.InvokeAsync<bool>("confirm", $"Questa persona risulta già attiva in {teamNames} nella stessa stagione. Vuoi assegnarla a questa squadra e disattivare le altre associazioni attive?"))
                     return;
                 foreach (var conflict in conflicts) conflict.IsActive = false;
             }
@@ -546,12 +545,11 @@
         if (!isPlayer && value.Length > 0 && !"ABCDE".Contains(value)) { ImportMessage = "Per i dirigenti utilizza una lettera da A a E."; return; }
         var existing = Archivio.Data.TeamEntries.FirstOrDefault(x => x.PersonId == EntryPersonId && x.TeamId == EntryTeamId && x.ChampionshipId == EntryChampionshipId && x.SeasonId == EntrySeasonId && x.EntryType == (isPlayer ? "PLAYER" : "OFFICIAL"));
         if (existing is not null) { ImportMessage = "La persona risulta già associata a questa squadra, campionato e stagione. Apri il nominativo per verificare le associazioni."; return; }
-        var previous = Archivio.Data.TeamEntries.Where(x => x.PersonId == EntryPersonId && x.ChampionshipId == EntryChampionshipId &&
-            x.SeasonId == EntrySeasonId && x.EntryType == (isPlayer ? "PLAYER" : "OFFICIAL") && x.IsActive).ToList();
+        var previous = Archivio.Data.TeamEntries.Where(x => x.PersonId == EntryPersonId && x.SeasonId == EntrySeasonId && x.IsActive).ToList();
         if (previous.Count > 0)
         {
             var oldTeams = string.Join(", ", previous.Select(x => Archivio.Data.Teams.FirstOrDefault(t => t.Id == x.TeamId)?.Name ?? "Squadra non trovata").Distinct());
-            if (!await JS.InvokeAsync<bool>("confirm", $"La persona è già attiva in {oldTeams} per questo campionato e questa stagione. Vuoi trasferirla nella nuova squadra? Le associazioni precedenti saranno disattivate ma conservate nello storico.")) return;
+            if (!await JS.InvokeAsync<bool>("confirm", $"La persona è già attiva in {oldTeams} nella stessa stagione. Vuoi trasferirla nella nuova squadra? Le associazioni precedenti saranno disattivate ma conservate nello storico.")) return;
             foreach (var oldEntry in previous) oldEntry.IsActive = false;
         }
         Archivio.Data.TeamEntries.Add(new ArchiveTeamEntry { PersonId = EntryPersonId, TeamId = EntryTeamId, ChampionshipId = EntryChampionshipId, SeasonId = EntrySeasonId, EntryType = isPlayer ? "PLAYER" : "OFFICIAL", ShirtNumber = isPlayer ? value : "", OfficialLetter = isPlayer ? "" : value });
