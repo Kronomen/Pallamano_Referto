@@ -122,7 +122,7 @@
                 </div>
                 <div class="archive-form-grid registration-form">
                     <label>Squadra<select @bind="TeamRegistrationTeamId" disabled="@(!CanWriteArchive)"><option value="">Seleziona squadra</option>@foreach (var x in Archivio.Data.Teams) { <option value="@x.Id">@x.Name</option> }</select></label>
-                    <label>Campionato<select @bind="TeamRegistrationChampionshipId"><option value="">Seleziona campionato</option>@foreach (var x in Archivio.Data.Championships) { <option value="@x.Id">@x.Name</option> }</select></label>
+                    <label>Campionato<select @bind="TeamRegistrationChampionshipId" disabled="@(!CanWriteArchive)"><option value="">Seleziona campionato</option>@foreach (var x in Archivio.Data.Championships) { <option value="@x.Id">@x.Name</option> }</select></label>
                     <label>Stagione<select @bind="TeamRegistrationSeasonId" disabled="@(!CanWriteArchive)"><option value="">Seleziona stagione</option>@foreach (var x in Archivio.Data.Seasons) { <option value="@x.Id">@x.Name</option> }</select></label>
                     <button class="archive-primary" @onclick="AddTeamRegistration" disabled="@(!CanWriteArchive)">ISCRIVI SQUADRA</button>
                 </div>
