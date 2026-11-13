@@ -1,0 +1,25 @@
+name: PR build validation
+
+on:
+  push:
+    branches:
+      - aggiungi-cancella-squadre
+  pull_request:
+    branches:
+      - versione-definitiva
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Restore
+        run: dotnet restore RefertoPallamano_Blazor.csproj
+      - name: Build
+        run: dotnet build RefertoPallamano_Blazor.csproj --configuration Release --no-restore
