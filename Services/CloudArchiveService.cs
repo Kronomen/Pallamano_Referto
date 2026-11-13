@@ -172,6 +172,12 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
         catch (Exception ex) { Status = "Connessione cloud non disponibile. La sessione locale è stata conservata. " + ex.Message; return false; }
     }
 
+    public async Task LogoutAsync()
+    {
+        await ClearSessionAsync();
+        Status = "Sessione chiusa. Per rientrare è necessario effettuare nuovamente l'accesso.";
+    }
+
     private async Task ClearSessionAsync()
     {
         _token = null; _autoSyncEnabled = false; IsAdmin = false; OperatorName = null; DeviceId = null;
