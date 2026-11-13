@@ -929,7 +929,7 @@
         if (!await JS.InvokeAsync<bool>("confirm", $"Confermi l'importazione di {selected} persone selezionate? Le persone già presenti verranno riutilizzate; nessuna iscrizione attiva in un'altra società verrà spostata automaticamente.")) return;
         try
         {
-            var result = await Archivio.ImportPdfRosterAsync(PdfRoster);
+            PdfRoster.Championship = PdfChampionship;\n            PdfRoster.Season = PdfSeason;\n            var result = await Archivio.ImportPdfRosterAsync(PdfRoster);
             ImportMessage = $"Importazione completata: {result.AddedPeople} nuove anagrafiche, {result.AddedEntries} nuove iscrizioni, {result.UpdatedEntries} associazioni completate. Elementi non modificati o da verificare: {result.Skipped}.";
             PdfRoster = null;
         }
