@@ -190,11 +190,8 @@
                                         <div class="archive-list-row">
                                             <div class="archive-list-main"><strong>@teamName</strong><small>@championshipName · @seasonName · @(entry.EntryType == "PLAYER" ? "Atleta" : "Dirigente") · @(entry.EntryType == "PLAYER" ? "N. " + entry.ShirtNumber : "Lettera " + entry.OfficialLetter)</small></div>
                                             <span class="archive-status @(entry.IsActive ? "on" : "off")">@(entry.IsActive ? "ATTIVA" : "DISATTIVATA")</span>
-                                            @if (!entry.IsActive)
-                                            {
-                                                <button class="archive-primary" @onclick="() => SetPersonEntryActive(entry.Id, true)">MANTIENI QUESTA</button>
-                                            }
-                                            else
+                                            <button class="archive-primary" @onclick="() => SetPersonEntryActive(entry.Id, true)">MANTIENI QUESTA</button>
+                                            @if (entry.IsActive)
                                             {
                                                 <button class="archive-small" @onclick="() => SetPersonEntryActive(entry.Id, false)">DISATTIVA</button>
                                             }
