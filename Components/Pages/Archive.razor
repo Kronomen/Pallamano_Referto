@@ -142,9 +142,37 @@
                 <div class="archive-list">
                     @foreach (var p in Archivio.Data.People.OrderBy(x => x.FullName))
                     {
-                        <div class="archive-list-row"><div class="archive-list-icon">@(p.PersonType == "PLAYER" ? "👤" : "📋")</div><div class="archive-list-main"><strong>@p.FullName</strong><small>@(p.PersonType == "PLAYER" ? "Atleta" : "Dirigente") · @Archivio.Data.TeamEntries.Count(x => x.PersonId == p.Id) associazioni</small></div><span class="archive-status @(p.IsActive ? "on" : "off")">@(p.IsActive ? "ATTIVO" : "ARCHIVIATO")</span><button class="archive-small" @onclick="() => TogglePerson(p.Id)">@(p.IsActive ? "ARCHIVIA" : "RIATTIVA")</button></div>
+                        <div class="archive-list-row"><div class="archive-list-icon">@(p.PersonType == "PLAYER" ? "👤" : "📋")</div><div class="archive-list-main"><button type="button" class="archive-person-name" @onclick="() => OpenPersonAssociations(p.Id)">@p.FullName</button><small>@(p.PersonType == "PLAYER" ? "Atleta" : "Dirigente") · @Archivio.Data.TeamEntries.Count(x => x.PersonId == p.Id && x.IsActive) associazioni attive / @Archivio.Data.TeamEntries.Count(x => x.PersonId == p.Id) totali</small></div><span class="archive-status @(p.IsActive ? "on" : "off")">@(p.IsActive ? "ATTIVO" : "ARCHIVIATO")</span><button class="archive-small" @onclick="() => TogglePerson(p.Id)">@(p.IsActive ? "ARCHIVIA" : "RIATTIVA")</button><button class="archive-small archive-delete-team" @onclick="() => DeletePerson(p.Id)">CANCELLA</button></div>
                     }
                 </div>
+                @if (SelectedPerson is not null)
+                {
+                    <div class="archive-person-modal-backdrop">
+                        <section class="archive-person-modal" role="dialog" aria-modal="true" aria-labelledby="person-associations-title">
+                            <div class="archive-card-title"><div><h2 id="person-associations-title">@SelectedPerson.FullName</h2><p>Associazioni con squadre, campionati e stagioni. Togli la spunta per disattivare un'associazione non più valida.</p></div><button class="archive-small" @onclick="ClosePersonAssociations">CHIUDI</button></div>
+                            @if (SelectedPersonEntries.Count == 0)
+                            {
+                                <div class="archive-empty">Questa persona non ha associazioni registrate.</div>
+                            }
+                            else
+                            {
+                                <div class="archive-person-associations">
+                                    @foreach (var entry in SelectedPersonEntries)
+                                    {
+                                        var teamName = Archivio.Data.Teams.FirstOrDefault(x => x.Id == entry.TeamId)?.Name ?? "Squadra non trovata";
+                                        var championshipName = Archivio.Data.Championships.FirstOrDefault(x => x.Id == entry.ChampionshipId)?.Name ?? "Campionato non trovato";
+                                        var seasonName = Archivio.Data.Seasons.FirstOrDefault(x => x.Id == entry.SeasonId)?.Name ?? "Stagione non trovata";
+                                        <div class="archive-person-association">
+                                            <label><input type="checkbox" checked="@entry.IsActive" @onchange="(e) => SetPersonEntryActive(entry.Id, e.Value is bool value && value)" /><span><strong>@teamName</strong><small>@championshipName · @seasonName · @(entry.EntryType == "PLAYER" ? "Atleta" : "Dirigente") · @(entry.EntryType == "PLAYER" ? "N. " + entry.ShirtNumber : "Lettera " + entry.OfficialLetter)</small></span></label>
+                                            <span class="archive-status @(entry.IsActive ? "on" : "off")">@(entry.IsActive ? "ATTIVA" : "DISATTIVATA")</span>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            <p class="archive-note">Le associazioni disattivate restano nello storico, ma non vengono proposte nella rosa della squadra. Puoi riattivarle in qualsiasi momento.</p>
+                        </section>
+                    </div>
+                }
             </section>
         }
         else if (Tab == "importa")
@@ -299,6 +327,9 @@
     private string TeamName = ""; private string TeamShortName = "";
     private string SeasonName = ""; private DateTime SeasonStart = new(2027, 7, 1); private DateTime SeasonEnd = new(2028, 6, 30);
     private string PersonName = ""; private string PersonType = "PLAYER";
+    private string? SelectedPersonId;
+    private ArchivePerson? SelectedPerson => Archivio.Data.People.FirstOrDefault(x => x.Id == SelectedPersonId);
+    private List<ArchiveTeamEntry> SelectedPersonEntries => SelectedPersonId is null ? new() : Archivio.Data.TeamEntries.Where(x => x.PersonId == SelectedPersonId).OrderByDescending(x => x.IsActive).ThenBy(x => x.SeasonId).ToList();
     private string TeamRegistrationTeamId = ""; private string TeamRegistrationChampionshipId = ""; private string TeamRegistrationSeasonId = "";
     private string EntryPersonId = ""; private string EntryTeamId = ""; private string EntryChampionshipId = ""; private string EntrySeasonId = ""; private string EntryNumber = "";
     private string PersonTypeForEntry => Archivio.Data.People.FirstOrDefault(x => x.Id == EntryPersonId)?.PersonType ?? "PLAYER";
@@ -469,6 +500,28 @@
         await Archivio.SaveAsync();
     }
     private async Task AddPerson() { if (string.IsNullOrWhiteSpace(PersonName) || Archivio.Data.People.Any(x => ArchiveService.Same(x.FullName, PersonName) && x.PersonType == PersonType)) return; Archivio.Data.People.Add(new ArchivePerson { FullName = PersonName.Trim(), PersonType = PersonType }); PersonName = ""; await Archivio.SaveAsync(); }
+    private void OpenPersonAssociations(string id) => SelectedPersonId = id;
+    private void ClosePersonAssociations() => SelectedPersonId = null;
+    private async Task SetPersonEntryActive(string id, bool active)
+    {
+        var entry = Archivio.Data.TeamEntries.FirstOrDefault(x => x.Id == id && x.PersonId == SelectedPersonId);
+        if (entry is null) return;
+        entry.IsActive = active;
+        await Archivio.SaveAsync();
+    }
+    private async Task DeletePerson(string id)
+    {
+        var person = Archivio.Data.People.FirstOrDefault(x => x.Id == id);
+        if (person is null) return;
+        if (Archivio.Data.TeamEntries.Any(e => e.PersonId == id))
+        {
+            await JS.InvokeVoidAsync("alert", "Non è possibile cancellare questa persona perché ha associazioni presenti o storiche. Apri il nominativo per verificare e disattivare le associazioni, oppure utilizza ARCHIVIA per conservarne lo storico.");
+            return;
+        }
+        if (!await JS.InvokeAsync<bool>("confirm", $"Vuoi cancellare definitivamente {person.FullName}? L'operazione non può essere annullata.")) return;
+        Archivio.Data.People.Remove(person);
+        await Archivio.SaveAsync();
+    }
     private async Task TogglePerson(string id) { var x = Archivio.Data.People.FirstOrDefault(x => x.Id == id); if (x is not null) { x.IsActive = !x.IsActive; await Archivio.SaveAsync(); } }
     private async Task AddPersonEntry()
     {
