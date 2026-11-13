@@ -99,7 +99,7 @@
                 <div class="archive-list teams-grid">
                     @foreach (var t in Archivio.Data.Teams.OrderBy(x => x.Name))
                     {
-                        <div class="archive-list-row"><div class="archive-list-icon">🏐</div><div class="archive-list-main"><strong>@t.Name</strong><small>@(string.IsNullOrWhiteSpace(t.ShortName) ? "Nessuna abbreviazione" : t.ShortName) · @Archivio.Data.TeamEntries.Count(x => x.TeamId == t.Id && x.EntryType == "TEAM") iscrizioni</small></div><span class="archive-status @(t.IsActive ? "on" : "off")">@(t.IsActive ? "ATTIVA" : "ARCHIVIATA")</span><button class="archive-small" @onclick="() => ToggleTeam(t.Id)">@(t.IsActive ? "ARCHIVIA" : "RIATTIVA")</button></div>
+                        <div class="archive-list-row"><div class="archive-list-icon">🏐</div><div class="archive-list-main"><strong>@t.Name</strong><small>@(string.IsNullOrWhiteSpace(t.ShortName) ? "Nessuna abbreviazione" : t.ShortName) · @Archivio.Data.TeamEntries.Count(x => x.TeamId == t.Id && x.EntryType == "TEAM") iscrizioni</small></div><span class="archive-status @(t.IsActive ? "on" : "off")">@(t.IsActive ? "ATTIVA" : "ARCHIVIATA")</span><button class="archive-small" @onclick="() => ToggleTeam(t.Id)">@(t.IsActive ? "ARCHIVIA" : "RIATTIVA")</button><button class="archive-small archive-delete-team" @onclick="() => DeleteTeam(t.Id)">CANCELLA</button></div>
                     }
                 </div>
             </section>
@@ -447,6 +447,20 @@
     private async Task AddSeason() { if (string.IsNullOrWhiteSpace(SeasonName) || SeasonEnd < SeasonStart || Archivio.Data.Seasons.Any(x => ArchiveService.Same(x.Name, SeasonName))) return; Archivio.Data.Seasons.Add(new ArchiveSeason { Name = SeasonName.Trim(), StartDate = DateOnly.FromDateTime(SeasonStart), EndDate = DateOnly.FromDateTime(SeasonEnd) }); SeasonName = ""; await Archivio.SaveAsync(); }
     private async Task ToggleSeason(string id) { var x = Archivio.Data.Seasons.FirstOrDefault(x => x.Id == id); if (x is not null) { x.IsActive = !x.IsActive; await Archivio.SaveAsync(); } }
     private async Task ToggleTeam(string id) { var x = Archivio.Data.Teams.FirstOrDefault(x => x.Id == id); if (x is not null) { x.IsActive = !x.IsActive; await Archivio.SaveAsync(); } }
+    private async Task DeleteTeam(string id)
+    {
+        var team = Archivio.Data.Teams.FirstOrDefault(x => x.Id == id);
+        if (team is null) return;
+        if (Archivio.Data.TeamEntries.Any(e => e.TeamId == id))
+        {
+            await JS.InvokeVoidAsync("alert", "Non è possibile cancellare questa squadra perché è collegata a iscrizioni, atleti o dirigenti. Per conservarne lo storico, utilizza ARCHIVIA.");
+            return;
+        }
+        var confirmed = await JS.InvokeAsync<bool>("confirm", $"Vuoi cancellare definitivamente la squadra \"{team.Name}\"? L'operazione non può essere annullata.");
+        if (!confirmed) return;
+        Archivio.Data.Teams.Remove(team);
+        await Archivio.SaveAsync();
+    }
     private async Task AddTeamRegistration()
     {
         if (string.IsNullOrWhiteSpace(TeamRegistrationTeamId) || string.IsNullOrWhiteSpace(TeamRegistrationChampionshipId) || string.IsNullOrWhiteSpace(TeamRegistrationSeasonId)) return;
