@@ -280,6 +280,9 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
                 }
                 var entry = Data.TeamEntries.FirstOrDefault(x => x.PersonId == person.Id && x.TeamId == team.Id &&
                     x.ChampionshipId == championship.Id && x.SeasonId == season.Id && x.EntryType == (isOfficial ? "OFFICIAL" : "PLAYER"));
+                var activeElsewhere = Data.TeamEntries.Any(x => x.PersonId == person.Id && x.ChampionshipId == championship.Id &&
+                    x.SeasonId == season.Id && x.EntryType == (isOfficial ? "OFFICIAL" : "PLAYER") && x.IsActive && x.TeamId != team.Id);
+                if (entry is null && activeElsewhere) { skipped++; continue; }
                 if (entry is null)
                 {
                     Data.TeamEntries.Add(new ArchiveTeamEntry { PersonId = person.Id, TeamId = team.Id, ChampionshipId = championship.Id,
