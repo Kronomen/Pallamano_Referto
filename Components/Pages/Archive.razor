@@ -131,6 +131,22 @@
                     <label>Tipo<select @bind="PersonType"><option value="PLAYER">Atleta</option><option value="OFFICIAL">Dirigente</option></select></label>
                     <button class="archive-primary" @onclick="AddPerson">+ AGGIUNGI PERSONA</button>
                 </div>
+                @if (DuplicatePeople.Count > 0)
+                {
+                    <div class="archive-message">
+                        <strong>Attenzione: nominativo già presente in archivio.</strong>
+                        <p>Seleziona la persona esistente per modificarne la squadra oppure indica che si tratta di un omonimo per creare una nuova scheda.</p>
+                        @foreach (var duplicate in DuplicatePeople)
+                        {
+                            <div class="archive-list-row">
+                                <div class="archive-list-main"><strong>@duplicate.FullName</strong><small>@(duplicate.PersonType == "PLAYER" ? "Atleta" : "Dirigente") · @Archivio.Data.TeamEntries.Where(x => x.PersonId == duplicate.Id && x.IsActive).Select(x => Archivio.Data.Teams.FirstOrDefault(t => t.Id == x.TeamId)?.Name).Where(x => x != null).Distinct().DefaultIfEmpty("Nessuna squadra attiva").Aggregate((a, b) => a + ", " + b)</small></div>
+                                <button class="archive-primary" @onclick="() => UseExistingPerson(duplicate.Id)">È LA STESSA PERSONA</button>
+                            </div>
+                        }
+                        <button class="archive-small" @onclick="AddHomonym">È UN OMONIMO: CREA NUOVA SCHEDA</button>
+                        <button class="archive-small" @onclick="CancelDuplicatePerson">ANNULLA</button>
+                    </div>
+                }
                 <div class="archive-form-grid registration-form">
                     <label>Persona<select @bind="EntryPersonId"><option value="">Seleziona persona</option>@foreach (var x in Archivio.Data.People) { <option value="@x.Id">@x.FullName (@(x.PersonType == "PLAYER" ? "Atleta" : "Dirigente"))</option> }</select></label>
                     <label>Squadra<select @bind="EntryTeamId"><option value="">Seleziona squadra</option>@foreach (var x in Archivio.Data.Teams) { <option value="@x.Id">@x.Name</option> }</select></label>
@@ -164,7 +180,27 @@
                             </div>
                             @if (SelectedPersonEntries.Count > 0)
                             {
-                                <p class="archive-note">La modifica aggiorna tutte le associazioni della persona alla nuova società. Le gare e i referti già salvati non vengono modificati.</p>
+                                <p class="archive-note">Iscrizioni presenti: scegli quale mantenere attiva. Le altre iscrizioni della stessa stagione verranno disattivate; i referti già salvati non vengono modificati.</p>
+                                <div class="archive-list">
+                                    @foreach (var entry in SelectedPersonEntries)
+                                    {
+                                        var teamName = Archivio.Data.Teams.FirstOrDefault(x => x.Id == entry.TeamId)?.Name ?? "Squadra non trovata";
+                                        var championshipName = Archivio.Data.Championships.FirstOrDefault(x => x.Id == entry.ChampionshipId)?.Name ?? "Campionato non trovato";
+                                        var seasonName = Archivio.Data.Seasons.FirstOrDefault(x => x.Id == entry.SeasonId)?.Name ?? "Stagione non trovata";
+                                        <div class="archive-list-row">
+                                            <div class="archive-list-main"><strong>@teamName</strong><small>@championshipName · @seasonName · @(entry.EntryType == "PLAYER" ? "Atleta" : "Dirigente") · @(entry.EntryType == "PLAYER" ? "N. " + entry.ShirtNumber : "Lettera " + entry.OfficialLetter)</small></div>
+                                            <span class="archive-status @(entry.IsActive ? "on" : "off")">@(entry.IsActive ? "ATTIVA" : "DISATTIVATA")</span>
+                                            @if (!entry.IsActive)
+                                            {
+                                                <button class="archive-primary" @onclick="() => SetPersonEntryActive(entry.Id, true)">MANTIENI QUESTA</button>
+                                            }
+                                            else
+                                            {
+                                                <button class="archive-small" @onclick="() => SetPersonEntryActive(entry.Id, false)">DISATTIVA</button>
+                                            }
+                                        </div>
+                                    }
+                                </div>
                             }
                             else
                             {
@@ -327,6 +363,8 @@
     private string TeamName = ""; private string TeamShortName = "";
     private string SeasonName = ""; private DateTime SeasonStart = new(2027, 7, 1); private DateTime SeasonEnd = new(2028, 6, 30);
     private string PersonName = ""; private string PersonType = "PLAYER";
+    private List<ArchivePerson> DuplicatePeople = new();
+    private string? PendingDuplicateName;
     private string? SelectedPersonId;
     private string SelectedPersonTeamId = "";
     private ArchivePerson? SelectedPerson => Archivio.Data.People.FirstOrDefault(x => x.Id == SelectedPersonId);
@@ -500,7 +538,46 @@
         Archivio.Data.TeamEntries.Add(new ArchiveTeamEntry { TeamId = TeamRegistrationTeamId, ChampionshipId = TeamRegistrationChampionshipId, SeasonId = TeamRegistrationSeasonId, EntryType = "TEAM" });
         await Archivio.SaveAsync();
     }
-    private async Task AddPerson() { if (string.IsNullOrWhiteSpace(PersonName) || Archivio.Data.People.Any(x => ArchiveService.Same(x.FullName, PersonName) && x.PersonType == PersonType)) return; Archivio.Data.People.Add(new ArchivePerson { FullName = PersonName.Trim(), PersonType = PersonType }); PersonName = ""; await Archivio.SaveAsync(); }
+    private async Task AddPerson()
+    {
+        var name = PersonName.Trim();
+        if (string.IsNullOrWhiteSpace(name)) return;
+        DuplicatePeople = Archivio.Data.People
+            .Where(x => x.PersonType == PersonType && ArchiveService.Same(x.FullName, name))
+            .ToList();
+        if (DuplicatePeople.Count > 0)
+        {
+            PendingDuplicateName = name;
+            ImportMessage = "Nominativo già presente: scegli se utilizzare la persona esistente o creare una scheda per un omonimo.";
+            return;
+        }
+        Archivio.Data.People.Add(new ArchivePerson { FullName = name, PersonType = PersonType });
+        PersonName = "";
+        await Archivio.SaveAsync();
+        ImportMessage = "Persona aggiunta correttamente all'archivio.";
+    }
+    private void UseExistingPerson(string id)
+    {
+        PersonName = "";
+        PendingDuplicateName = null;
+        DuplicatePeople.Clear();
+        OpenPersonAssociations(id);
+    }
+    private async Task AddHomonym()
+    {
+        if (string.IsNullOrWhiteSpace(PendingDuplicateName)) return;
+        Archivio.Data.People.Add(new ArchivePerson { FullName = PendingDuplicateName, PersonType = PersonType });
+        PersonName = "";
+        PendingDuplicateName = null;
+        DuplicatePeople.Clear();
+        await Archivio.SaveAsync();
+        ImportMessage = "Nuova scheda per omonimo creata correttamente.";
+    }
+    private void CancelDuplicatePerson()
+    {
+        DuplicatePeople.Clear();
+        PendingDuplicateName = null;
+    }
     private void OpenPersonAssociations(string id)
     {
         SelectedPersonId = id;
