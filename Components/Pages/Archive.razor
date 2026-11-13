@@ -59,10 +59,10 @@
                 <div class="archive-card-title"><div><h2>Elenco campionati</h2><p>I campionati sono dati configurabili, non opzioni fisse del programma.</p></div><span class="archive-count">@Archivio.Data.Championships.Count</span></div>
                 <div class="archive-form-grid championship-form">
                     <label>Nome campionato
-                        <input @bind="ChampionshipName" placeholder="Es. Serie A1 Femminile" />
+                        <input @bind="ChampionshipName" placeholder="Es. Serie A1 Femminile" disabled="@(!CanWriteArchive)" />
                     </label>
                     <label>Categoria
-                        <select @bind="ChampionshipCategory">
+                        <select @bind="ChampionshipCategory" disabled="@(!CanWriteArchive)">
                             <option value="">Seleziona categoria</option>
                             <option value="Senior">Senior</option>
                             <option value="Junior">Junior</option>
@@ -70,7 +70,7 @@
                         </select>
                     </label>
                     <label>Genere
-                        <select @bind="ChampionshipGender">
+                        <select @bind="ChampionshipGender" disabled="@(!CanWriteArchive)">
                             <option value="">Non specificato</option>
                             <option>Femminile</option>
                             <option>Maschile</option>
@@ -93,14 +93,14 @@
             <section class="archive-card">
                 <div class="archive-card-title"><div><h2>Squadre</h2><p>Una squadra può essere iscritta a campionati e stagioni differenti.</p></div><span class="archive-count">@Archivio.Data.Teams.Count</span></div>
                 <div class="archive-form-grid">
-                    <label>Denominazione squadra<input @bind="TeamName" placeholder="Nome squadra" /></label>
-                    <label>Campionato<select @bind="TeamRegistrationChampionshipId"><option value="">Seleziona campionato</option>@foreach (var championship in Archivio.Data.Championships.Where(x => x.IsActive).OrderBy(x => x.Name)) { <option value="@championship.Id">@championship.Name</option> }</select></label>
+                    <label>Denominazione squadra<input @bind="TeamName" placeholder="Nome squadra" disabled="@(!CanWriteArchive)" /></label>
+                    <label>Campionato<select @bind="TeamRegistrationChampionshipId" disabled="@(!CanWriteArchive)"><option value="">Seleziona campionato</option>@foreach (var championship in Archivio.Data.Championships.Where(x => x.IsActive).OrderBy(x => x.Name)) { <option value="@championship.Id">@championship.Name</option> }</select></label>
                     <button class="archive-primary" @onclick="AddTeam" disabled="@(!CanWriteArchive)">+ AGGIUNGI SQUADRA</button>
                 </div>
                 <div class="archive-card-title" style="margin-top:18px"><div><h3>Modifica squadra</h3><p>Seleziona una squadra in ordine alfabetico per modificarne il nome e il campionato di appartenenza nella stagione attiva.</p></div></div>
                 <div class="archive-form-grid">
                     <label>Seleziona squadra
-                        <select @bind="TeamEditTeamId" @bind:after="LoadTeamForEdit">
+                        <select @bind="TeamEditTeamId" @bind:after="LoadTeamForEdit" disabled="@(!CanWriteArchive)">
                             <option value="">Seleziona squadra</option>
                             @foreach (var team in Archivio.Data.Teams.OrderBy(x => x.Name))
                             {
@@ -108,9 +108,9 @@
                             }
                         </select>
                     </label>
-                    <label>Denominazione squadra<input @bind="TeamEditName" placeholder="Nome squadra" disabled="@string.IsNullOrWhiteSpace(TeamEditTeamId)" /></label>
+                    <label>Denominazione squadra<input @bind="TeamEditName" placeholder="Nome squadra" disabled="@(!CanWriteArchive || string.IsNullOrWhiteSpace(TeamEditTeamId))" /></label>
                     <label>Campionato
-                        <select @bind="TeamEditChampionshipId" disabled="@string.IsNullOrWhiteSpace(TeamEditTeamId)">
+                        <select @bind="TeamEditChampionshipId" disabled="@(!CanWriteArchive || string.IsNullOrWhiteSpace(TeamEditTeamId))">
                             <option value="">Seleziona campionato</option>
                             @foreach (var championship in Archivio.Data.Championships.OrderBy(x => x.Name))
                             {
@@ -121,9 +121,9 @@
                     <button class="archive-primary" @onclick="SaveTeamEdit" disabled="@(!CanWriteArchive || string.IsNullOrWhiteSpace(TeamEditTeamId))">SALVA MODIFICHE</button>
                 </div>
                 <div class="archive-form-grid registration-form">
-                    <label>Squadra<select @bind="TeamRegistrationTeamId"><option value="">Seleziona squadra</option>@foreach (var x in Archivio.Data.Teams) { <option value="@x.Id">@x.Name</option> }</select></label>
+                    <label>Squadra<select @bind="TeamRegistrationTeamId" disabled="@(!CanWriteArchive)"><option value="">Seleziona squadra</option>@foreach (var x in Archivio.Data.Teams) { <option value="@x.Id">@x.Name</option> }</select></label>
                     <label>Campionato<select @bind="TeamRegistrationChampionshipId"><option value="">Seleziona campionato</option>@foreach (var x in Archivio.Data.Championships) { <option value="@x.Id">@x.Name</option> }</select></label>
-                    <label>Stagione<select @bind="TeamRegistrationSeasonId"><option value="">Seleziona stagione</option>@foreach (var x in Archivio.Data.Seasons) { <option value="@x.Id">@x.Name</option> }</select></label>
+                    <label>Stagione<select @bind="TeamRegistrationSeasonId" disabled="@(!CanWriteArchive)"><option value="">Seleziona stagione</option>@foreach (var x in Archivio.Data.Seasons) { <option value="@x.Id">@x.Name</option> }</select></label>
                     <button class="archive-primary" @onclick="AddTeamRegistration" disabled="@(!CanWriteArchive)">ISCRIVI SQUADRA</button>
                 </div>
                 <div class="archive-list teams-grid">
@@ -139,9 +139,9 @@
             <section class="archive-card">
                 <div class="archive-card-title"><div><h2>Stagioni sportive</h2><p>Ogni iscrizione e ogni rosa sono collegate a una stagione specifica.</p></div><span class="archive-count">@Archivio.Data.Seasons.Count</span></div>
                 <div class="archive-form-grid season-form">
-                    <label>Nome stagione<input @bind="SeasonName" placeholder="Es. 2027/2028" /></label>
-                    <label>Data inizio<input type="date" @bind="SeasonStart" /></label>
-                    <label>Data fine<input type="date" @bind="SeasonEnd" /></label>
+                    <label>Nome stagione<input @bind="SeasonName" placeholder="Es. 2027/2028" disabled="@(!CanWriteArchive)" /></label>
+                    <label>Data inizio<input type="date" @bind="SeasonStart" disabled="@(!CanWriteArchive)" /></label>
+                    <label>Data fine<input type="date" @bind="SeasonEnd" disabled="@(!CanWriteArchive)" /></label>
                     <button class="archive-primary" @onclick="AddSeason" disabled="@(!CanWriteArchive)">+ AGGIUNGI STAGIONE</button>
                 </div>
                 <div class="archive-list">
@@ -157,8 +157,8 @@
             <section class="archive-card">
                 <div class="archive-card-title"><div><h2>Anagrafica atleti e dirigenti</h2><p>Il numero di maglia e la lettera del dirigente appartengono all'iscrizione stagionale, non alla persona.</p></div><span class="archive-count">@Archivio.Data.People.Count</span></div>
                 <div class="archive-form-grid people-form">
-                    <label>Nominativo<input @bind="PersonName" placeholder="Cognome e nome" /></label>
-                    <label>Tipo<select @bind="PersonType"><option value="PLAYER">Atleta</option><option value="OFFICIAL">Dirigente</option></select></label>
+                    <label>Nominativo<input @bind="PersonName" placeholder="Cognome e nome" disabled="@(!CanWriteArchive)" /></label>
+                    <label>Tipo<select @bind="PersonType" disabled="@(!CanWriteArchive)"><option value="PLAYER">Atleta</option><option value="OFFICIAL">Dirigente</option></select></label>
                     <button class="archive-primary" @onclick="AddPerson" disabled="@(!CanWriteArchive)">+ AGGIUNGI PERSONA</button>
                 </div>
                 @if (DuplicatePeople.Count > 0)
@@ -260,7 +260,7 @@
                             <div class="archive-card-title"><div><h2 id="person-associations-title">@SelectedPerson.FullName</h2><p>Seleziona la società di appartenenza attuale. Ogni persona può essere assegnata a una sola squadra.</p></div><button class="archive-small" @onclick="ClosePersonAssociations">CHIUDI</button></div>
                             <div class="archive-form-grid">
                                 <label>Società di appartenenza
-                                    <select @bind="SelectedPersonTeamId">
+                                    <select @bind="SelectedPersonTeamId" disabled="@(!CanWriteArchive)">
                                         <option value="">Seleziona squadra</option>
                                         @foreach (var team in Archivio.Data.Teams.Where(x => x.IsActive).OrderBy(x => x.Name))
                                         {
@@ -299,7 +299,7 @@
         {
             <section class="archive-card import-card">
                 <div class="archive-card-title"><div><h2>Importa atleti/dirigenti da PDF</h2><p>Carica il referto: il programma riconosce automaticamente le società indicate accanto alle lettere A e B e legge soltanto le rispettive rose.</p></div><span class="archive-excel">PDF</span></div>
-                <div class="archive-import-box"><div class="archive-import-icon">⇧</div><div><strong>Seleziona il referto PDF</strong><p>Non devi indicare le squadre: vengono ricavate dal referto e cercate automaticamente nell'archivio.</p><InputFile OnChange="ImportPdfRoster" accept=".pdf,application/pdf" /></div></div>
+                <div class="archive-import-box"><div class="archive-import-icon">⇧</div><div><strong>Seleziona il referto PDF</strong><p>Non devi indicare le squadre: vengono ricavate dal referto e cercate automaticamente nell'archivio.</p><InputFile OnChange="ImportPdfRoster" accept=".pdf,application/pdf" disabled="@(!CanWriteArchive)" /></div></div>
                 @if (PdfBusy) { <div class="archive-message">Lettura del PDF in corso…</div> }
                 @if (!string.IsNullOrWhiteSpace(ImportMessage)) { <div class="archive-message">@ImportMessage</div> }
                 @if (PdfRoster is not null)
@@ -317,7 +317,7 @@
                                 <div class="archive-note">
                                     <strong>Società non riconosciuta: @team.DetectedName</strong>
                                     <p>Il nome potrebbe essere scritto in modo diverso nel referto. Seleziona la società corretta presente nell'archivio per continuare.</p>
-                                    <select class="archive-select" @bind="team.TeamId">
+                                    <select class="archive-select" @bind="team.TeamId" disabled="@(!CanWriteArchive)">
                                         <option value="">Seleziona la società corretta</option>
                                         @foreach (var archivedTeam in Archivio.Data.Teams.OrderBy(x => x.Name))
                                         {
@@ -336,7 +336,7 @@
                                     <div class="archive-list-row">
                                         <div class="archive-list-main">
                                             <strong>@person.NumberOrLetter</strong>
-                                            <input class="archive-inline-edit" @bind="person.Name" aria-label="Cognome e nome" />
+                                            <input class="archive-inline-edit" @bind="person.Name" aria-label="Cognome e nome" disabled="@(!CanWriteArchive)" />
                                             <small>@(person.PersonType == "PLAYER" ? "Atleta" : "Dirigente") · @GetPdfPersonStatus(person, team.TeamId, PdfChampionship, PdfSeason)</small>
                                         </div>
                                     </div>
