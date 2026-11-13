@@ -59,3 +59,25 @@ public sealed class ArchiveTeamEntry
     public bool IsSelected { get; set; } = false;
     public bool IsActive { get; set; } = true;
 }
+
+
+public sealed class ArchivePdfRosterImport
+{
+    public string Championship { get; set; } = "";
+    public string Season { get; set; } = "";
+    public List<ArchivePdfRosterTeam> Teams { get; set; } = [];
+}
+public sealed class ArchivePdfRosterTeam
+{
+    public string DetectedName { get; set; } = "";
+    public string TeamId { get; set; } = "";
+    public List<ArchivePdfRosterPerson> People { get; set; } = [];
+}
+public sealed class ArchivePdfRosterPerson
+{
+    public string NumberOrLetter { get; set; } = "";
+    public string Name { get; set; } = "";
+    public string PersonType { get; set; } = "PLAYER";
+    public bool Selected { get; set; } = true;
+    public string Status { get; set; } = "";
+}

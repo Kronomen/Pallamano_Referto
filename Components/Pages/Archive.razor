@@ -285,10 +285,58 @@
         else if (Tab == "importa")
         {
             <section class="archive-card import-card">
-                <div class="archive-card-title"><div><h2>Importazione del modello Excel</h2><p>Importa gli elenchi già presenti nei tre fogli del file .xlsm, mantenendo le anagrafiche riutilizzabili.</p></div><span class="archive-excel">XLSM</span></div>
-                <div class="archive-import-box"><div class="archive-import-icon">⇧</div><div><strong>Seleziona il modello Excel</strong><p>File supportati: .xlsm, .xlsx e .xls. Verranno letti i fogli «Squadre» e «Giocatori Dirigenti»; il foglio «Gara» viene usato per ricavare la stagione di riferimento.</p><InputFile OnChange="ImportExcel" accept=".xlsm,.xlsx,.xls" /></div></div>
+                <div class="archive-card-title"><div><h2>Importa atleti/dirigenti da PDF</h2><p>Carica il referto completo di una gara precedente: verranno lette soltanto le due tabelle delle rose, ignorando risultati, marcatori e ufficiali di gara.</p></div><span class="archive-excel">PDF</span></div>
+                <div class="archive-import-box"><div class="archive-import-icon">⇧</div><div><strong>Seleziona il referto PDF</strong><p>PDF FIGH in formato A4. L'estrazione utilizza OCR sulle sole aree delle rose; i nominativi saranno modificabili prima del salvataggio.</p><InputFile OnChange="ImportPdfRoster" accept=".pdf,application/pdf" /></div></div>
+                @if (PdfBusy) { <div class="archive-message">Lettura del PDF in corso. Il riconoscimento OCR può richiedere qualche secondo…</div> }
                 @if (!string.IsNullOrWhiteSpace(ImportMessage)) { <div class="archive-message">@ImportMessage</div> }
-                <div class="archive-note"><strong>Come viene importato il modello</strong><ul><li>I campionati vengono creati dinamicamente in base ai nomi trovati nel foglio Squadre.</li><li>Le squadre vengono associate al rispettivo campionato.</li><li>Atleti e dirigenti vengono riconosciuti dai numeri di maglia e dalle lettere A–E.</li><li>Le anagrafiche già presenti vengono riutilizzate evitando duplicati.</li><li>La stagione viene letta dal foglio Gara; se manca, viene utilizzata 2026/2027.</li></ul></div>
+                @if (PdfRoster is not null)
+                {
+                    <div class="archive-note">
+                        <strong>Verifica i dati prima dell'importazione</strong>
+                        <div class="archive-form-grid">
+                            <label>Campionato
+                                <select @bind="PdfChampionship">
+                                    <option value="">Seleziona campionato</option>
+                                    @foreach (var c in Archivio.Data.Championships.OrderBy(x => x.Name)) { <option value="@c.Name">@c.Name</option> }
+                                </select>
+                            </label>
+                            <label>Stagione
+                                <select @bind="PdfSeason">
+                                    <option value="">Seleziona stagione</option>
+                                    @foreach (var season in Archivio.Data.Seasons.OrderByDescending(x => x.StartDate)) { <option value="@season.Name">@season.Name</option> }
+                                </select>
+                            </label>
+                        </div>
+                    </div>
+                    @foreach (var team in PdfRoster.Teams)
+                    {
+                        <div class="archive-note">
+                            <h3>Squadra rilevata: @team.DetectedName</h3>
+                            <label>Associa alla società presente in archivio
+                                <select @bind="team.TeamId">
+                                    <option value="">Seleziona società</option>
+                                    @foreach (var t in Archivio.Data.Teams.OrderBy(x => x.Name)) { <option value="@t.Id">@t.Name</option> }
+                                </select>
+                            </label>
+                            <div class="archive-list">
+                                @foreach (var person in team.People)
+                                {
+                                    <div class="archive-list-row">
+                                        <input type="checkbox" @bind="person.Selected" />
+                                        <div class="archive-list-main">
+                                            <input class="archive-inline-edit" @bind="person.NumberOrLetter" aria-label="Numero maglia o lettera" />
+                                            <input class="archive-inline-edit" @bind="person.Name" aria-label="Cognome e nome" />
+                                            <small>@(person.PersonType == "PLAYER" ? "Atleta" : "Dirigente") · @GetPdfPersonStatus(person, team.TeamId, PdfChampionship, PdfSeason)</small>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                    <button class="archive-primary" disabled="@(!CanImportPdfRoster)" @onclick="ConfirmPdfRosterImport">CONFERMA E IMPORTA LE PERSONE SELEZIONATE</button>
+                    <button class="archive-small" @onclick="CancelPdfRoster">ANNULLA ANTEPRIMA</button>
+                }
+                <div class="archive-note"><strong>Regole di importazione</strong><ul><li>Vengono considerate esclusivamente le rose delle due squadre: giocatori numerati e dirigenti UFF.A–UFF.E.</li><li>Le anagrafiche già presenti vengono riutilizzate, senza creare duplicati.</li><li>Se l'iscrizione esiste ma manca il numero o la lettera, viene completata.</li><li>Se la persona risulta già attiva in un'altra società per lo stesso campionato e stagione, non viene spostata automaticamente: viene segnalata come da verificare.</li><li>Il salvataggio avviene solo dopo la verifica e la conferma.</li></ul></div>
             </section>
         }
         else
@@ -477,6 +525,14 @@
         }).Distinct());
     private string PersonTypeForEntry => Archivio.Data.People.FirstOrDefault(x => x.Id == EntryPersonId)?.PersonType ?? "PLAYER";
     private string ImportMessage = "";
+    private bool PdfBusy;
+    private ArchivePdfRosterImport? PdfRoster;
+    private string PdfChampionship = "";
+    private string PdfSeason = "";
+    private bool CanImportPdfRoster => PdfRoster is not null && !string.IsNullOrWhiteSpace(PdfChampionship) &&
+        !string.IsNullOrWhiteSpace(PdfSeason) && PdfRoster.Teams.All(t => !string.IsNullOrWhiteSpace(t.TeamId)) &&
+        PdfRoster.Teams.SelectMany(t => t.People).Any(p => p.Selected && !string.IsNullOrWhiteSpace(p.Name) && !string.IsNullOrWhiteSpace(p.NumberOrLetter));
+
     private string CloudPassword = "";
     private string OperatorCode = "";
     private string DeviceName = "Tablet";
@@ -819,6 +875,70 @@
         Archivio.Data.TeamEntries.Add(new ArchiveTeamEntry { PersonId = EntryPersonId, TeamId = EntryTeamId, ChampionshipId = EntryChampionshipId, SeasonId = EntrySeasonId, EntryType = isPlayer ? "PLAYER" : "OFFICIAL", ShirtNumber = isPlayer ? value : "", OfficialLetter = isPlayer ? "" : value });
         EntryNumber = ""; await Archivio.SaveAsync();
     }
+
+    private string GetPdfPersonStatus(ArchivePdfRosterPerson row, string teamId, string championshipName, string seasonName)
+    {
+        if (string.IsNullOrWhiteSpace(row.Name) || string.IsNullOrWhiteSpace(teamId)) return "Da completare";
+        var type = row.PersonType == "OFFICIAL" ? "OFFICIAL" : "PLAYER";
+        var person = Archivio.Data.People.FirstOrDefault(p => ArchiveService.Same(p.FullName, row.Name) && p.PersonType == type);
+        if (person is null) return "Nuova anagrafica";
+        var championship = Archivio.Data.Championships.FirstOrDefault(x => ArchiveService.Same(x.Name, championshipName));
+        var season = Archivio.Data.Seasons.FirstOrDefault(x => ArchiveService.Same(x.Name, seasonName));
+        if (championship is null || season is null) return "Già in archivio";
+        var entry = Archivio.Data.TeamEntries.FirstOrDefault(x => x.PersonId == person.Id && x.TeamId == teamId &&
+            x.ChampionshipId == championship.Id && x.SeasonId == season.Id && x.EntryType == type);
+        if (entry is not null)
+        {
+            var existing = type == "PLAYER" ? entry.ShirtNumber : entry.OfficialLetter;
+            return string.IsNullOrWhiteSpace(existing) ? "Associazione presente: completa numero/lettera" :
+                ArchiveService.Same(existing, row.NumberOrLetter) ? "Già presente e correttamente associato" : $"Numero/lettera già registrato: {existing}";
+        }
+        var elsewhere = Archivio.Data.TeamEntries.Any(x => x.PersonId == person.Id && x.ChampionshipId == championship.Id &&
+            x.SeasonId == season.Id && x.EntryType == type && x.IsActive && x.TeamId != teamId);
+        return elsewhere ? "Già attivo in un'altra società: non verrà duplicato" : "Persona presente: nuova associazione";
+    }
+
+    private async Task ImportPdfRoster(InputFileChangeEventArgs e)
+    {
+        PdfBusy = true; ImportMessage = ""; PdfRoster = null;
+        try
+        {
+            using var stream = e.File.OpenReadStream(20 * 1024 * 1024);
+            using var ms = new MemoryStream(); await stream.CopyToAsync(ms);
+            var parsed = await JS.InvokeAsync<string>("archivePdf.read", Convert.ToBase64String(ms.ToArray()));
+            PdfRoster = JsonSerializer.Deserialize<ArchivePdfRosterImport>(parsed, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            if (PdfRoster is null || PdfRoster.Teams.Count != 2 || PdfRoster.Teams.Any(t => t.People.Count == 0))
+                throw new InvalidOperationException("Non sono state riconosciute entrambe le rose. Verifica che il PDF sia un referto FIGH leggibile.");
+            foreach (var team in PdfRoster.Teams)
+            {
+                var match = Archivio.Data.Teams.FirstOrDefault(t => ArchiveService.Same(t.Name, team.DetectedName));
+                if (match is not null) team.TeamId = match.Id;
+            }
+            PdfChampionship = Archivio.Data.Championships.FirstOrDefault(x => x.IsActive)?.Name ?? "";
+            PdfSeason = Archivio.Data.Seasons.FirstOrDefault(x => x.IsActive)?.Name ?? "";
+            ImportMessage = $"Anteprima pronta: {PdfRoster.Teams.Sum(t => t.People.Count(p => p.PersonType == "PLAYER"))} atleti e {PdfRoster.Teams.Sum(t => t.People.Count(p => p.PersonType == "OFFICIAL"))} dirigenti rilevati. Controlla nomi, numeri e società prima di importare.";
+        }
+        catch (Exception ex) { ImportMessage = "Lettura PDF non completata: " + ex.Message; PdfRoster = null; }
+        finally { PdfBusy = false; }
+    }
+
+    private async Task ConfirmPdfRosterImport()
+    {
+        if (!CanImportPdfRoster || PdfRoster is null) return;
+        var selected = PdfRoster.Teams.SelectMany(t => t.People).Count(p => p.Selected);
+        if (!await JS.InvokeAsync<bool>("confirm", $"Confermi l'importazione di {selected} persone selezionate? Le persone già presenti verranno riutilizzate; nessuna iscrizione attiva in un'altra società verrà spostata automaticamente.")) return;
+        try
+        {
+            PdfRoster.Championship = PdfChampionship;
+            PdfRoster.Season = PdfSeason;
+            var result = await Archivio.ImportPdfRosterAsync(PdfRoster);
+            ImportMessage = $"Importazione completata: {result.AddedPeople} nuove anagrafiche, {result.AddedEntries} nuove iscrizioni, {result.UpdatedEntries} associazioni completate. Elementi non modificati o da verificare: {result.Skipped}.";
+            PdfRoster = null;
+        }
+        catch (Exception ex) { ImportMessage = "Importazione non completata: " + ex.Message; }
+    }
+
+    private void CancelPdfRoster() { PdfRoster = null; ImportMessage = "Anteprima annullata: nessun dato è stato modificato."; }
 
     private async Task ImportExcel(InputFileChangeEventArgs e)
     {
