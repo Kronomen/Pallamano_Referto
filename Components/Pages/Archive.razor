@@ -362,7 +362,7 @@
                 </div>
                 <div class="archive-note">
                     <strong>Sincronizzazione cloud privata</strong>
-                    <p>Collega questo dispositivo al repository privato. Dopo aver scelto quale archivio utilizzare, le modifiche successive verranno salvate anche sul cloud. La copia locale continua a funzionare anche senza connessione.</p>
+                    <p>Collega questo dispositivo una sola volta. Dopo l'accesso l'archivio comune viene recuperato e unito automaticamente; ogni nuova modifica viene sincronizzata con gli altri dispositivi autorizzati. Senza rete, le modifiche restano in locale e vengono ritentate al ripristino della connessione.</p>
                     @if (!Cloud.IsAuthenticated)
                     {
                         <div class="operator-access-panel">
@@ -480,10 +480,10 @@
                 <div class="archive-note"><strong>Importa archivio da file JSON</strong><p>La sostituzione crea prima una copia di sicurezza dell'archivio attuale. Seleziona un file JSON esportato da Referto Pallamano.</p><InputFile OnChange="ImportArchiveJson" accept=".json,application/json" disabled="@(!CanWriteArchive)" /></div>
                 <div class="archive-note"><strong>Ripristina ultima copia di sicurezza</strong><p>Ripristina la copia salvata automaticamente prima dell'ultima importazione.</p><button class="archive-small" @onclick="RestoreBackup" disabled="@(!CanWriteArchive)">RIPRISTINA BACKUP</button></div>
                 @if (!string.IsNullOrWhiteSpace(ImportMessage)) { <div class="archive-message">@ImportMessage</div> }
-                <div class="archive-note"><strong>Attenzione</strong><p>L'archivio è memorizzato nel browser e nel dispositivo in uso. Per trasferirlo su un altro dispositivo, esporta il JSON e importalo anche lì. Il caricamento di una nuova versione del sito non aggiorna automaticamente i dati locali.</p></div>
+                <div class="archive-note"><strong>Attenzione</strong><p>L'archivio condiviso viene sincronizzato automaticamente tra i dispositivi autorizzati. In assenza di rete, le modifiche restano in locale e vengono ritentate al ripristino della connessione.</p></div>
             </section>
         }
-        <footer class="archive-footer"><span>Archivio locale del browser · salvataggio automatico dopo le modifiche</span><button class="archive-small" @onclick="ExportBackup">ESPORTA ARCHIVIO JSON</button></footer>
+        <footer class="archive-footer"><span>Archivio condiviso · sincronizzazione automatica tra dispositivi autorizzati</span><button class="archive-small" @onclick="ExportBackup">ESPORTA ARCHIVIO JSON</button></footer>
     }
 </div>
 
@@ -574,8 +574,11 @@
         await Archivio.InitializeAsync();
         if (!Archivio.IsLoaded) return;
         await Cloud.TryRestoreSessionAsync();
-        if (Cloud.IsAuthenticated)
+        if (Cloud.IsAuthenticated && Cloud.HasCheckedRemote)
+        {
+            await BootstrapSharedArchiveAsync();
             await CleanupDuplicatePlayerEnrollmentsOnLoadAsync();
+        }
         if (Cloud.IsAdmin) await LoadOperators();
         _syncMonitorCts = new CancellationTokenSource();
         _ = MonitorPendingSyncAsync(_syncMonitorCts.Token);
@@ -595,6 +598,8 @@
                     if (Cloud.HasPendingChanges)
                     {
                         await Cloud.RetryPendingSyncAsync(Archivio.Data);
+                        if (!Cloud.HasPendingChanges && !Cloud.HasSyncConflict)
+                            await Archivio.SaveAsync(syncCloud: false);
                     }
                     else
                     {
@@ -628,7 +633,7 @@
     private async Task RetryCloudSync()
     {
         CloudBusy = true;
-        try { await Cloud.RetryPendingSyncAsync(Archivio.Data); CloudMessage = Cloud.Status; }
+        try { await Cloud.ForceRetryPendingSyncAsync(Archivio.Data); if (!Cloud.HasPendingChanges && !Cloud.HasSyncConflict) await Archivio.SaveAsync(syncCloud: false); CloudMessage = Cloud.Status; }
         finally { CloudBusy = false; StateHasChanged(); }
     }
 
@@ -652,7 +657,10 @@
             // In caso di errore o conflitto non chiude: i dati restano disponibili
             // sul dispositivo e l'utente può riprovare la sincronizzazione.
             if (Cloud.HasPendingChanges)
+            {
                 await Cloud.RetryPendingSyncAsync(Archivio.Data);
+                if (!Cloud.HasPendingChanges && !Cloud.HasSyncConflict) await Archivio.SaveAsync(syncCloud: false);
+            }
 
             if (Cloud.HasPendingChanges || Cloud.HasSyncConflict)
             {
@@ -1126,6 +1134,40 @@
         }
         catch (Exception ex) { ImportMessage = "Importazione non completata: " + ex.Message; }
     }
+    private async Task BootstrapSharedArchiveAsync()
+    {
+        if (!Cloud.IsAuthenticated || !Cloud.HasCheckedRemote) return;
+
+        // Prima tenta di recuperare eventuali modifiche locali rimaste in sospeso.
+        if (Cloud.HasPendingChanges)
+        {
+            await Cloud.RetryPendingSyncAsync(Archivio.Data);
+            if (Cloud.HasPendingChanges || Cloud.HasSyncConflict)
+            {
+                CloudMessage = Cloud.Status;
+                return;
+            }
+            await Archivio.SaveAsync(syncCloud: false);
+        }
+
+        if (Cloud.HasRemoteArchive)
+        {
+            var remote = await Cloud.DownloadRemoteAsync();
+            if (remote is null) throw new InvalidOperationException("Il cloud segnala un archivio presente ma non ha restituito i dati.");
+            var added = await Archivio.MergeRemoteArchiveAsync(remote);
+            await Cloud.EnableAutoSyncAsync();
+            if (added > 0) await Cloud.TrySyncAsync(Archivio.Data);
+            CloudMessage = added > 0
+                ? $"Archivio condiviso aggiornato: recuperati e sincronizzati {added} record locali."
+                : "Archivio condiviso aggiornato. Sincronizzazione automatica attiva.";
+        }
+        else
+        {
+            await Cloud.UploadInitialAsync(Archivio.Data);
+            CloudMessage = "Prima copia dell'archivio condiviso creata automaticamente.";
+        }
+    }
+
     private async Task ConnectCloud()
     {
         CloudBusy = true; CloudMessage = "";
@@ -1133,6 +1175,7 @@
         {
             await Cloud.LoginAsync(CloudPassword);
             CloudPassword = "";
+            await BootstrapSharedArchiveAsync();
             CloudMessage = Cloud.Status;
             await LoadOperators();
         }
@@ -1147,6 +1190,7 @@
         {
             await Cloud.ActivateOperatorAsync(OperatorCode, DeviceName);
             OperatorCode = "";
+            await BootstrapSharedArchiveAsync();
             CloudMessage = Cloud.Status;
         }
         catch (Exception ex) { CloudMessage = ex.Message; }
@@ -1270,9 +1314,12 @@
         {
             var remote = await Cloud.DownloadRemoteAsync();
             if (remote is null) { CloudMessage = "Nel cloud non è presente alcun archivio."; return; }
-            await Archivio.ReplaceFromJsonAsync(JsonSerializer.Serialize(remote), syncCloud: false);
+            var added = await Archivio.MergeRemoteArchiveAsync(remote);
             await Cloud.EnableAutoSyncAsync();
-            CloudMessage = "Archivio cloud copiato su questo dispositivo. Sincronizzazione automatica attiva.";
+            if (added > 0) await Cloud.TrySyncAsync(Archivio.Data);
+            CloudMessage = added > 0
+                ? $"Archivio unito senza sostituire i dati locali: {added} record aggiunti e sincronizzazione automatica attiva."
+                : "Archivio cloud verificato e sincronizzazione automatica attiva.";
         }
         catch (Exception ex) { CloudMessage = ex.Message; }
         finally { CloudBusy = false; }

@@ -84,9 +84,14 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
         {
             var json = JsonSerializer.Serialize(Data, JsonOptions);
             await js.InvokeVoidAsync("archiveStorage.saveArchive", StorageKey, BackupKey, json);
-            // Il salvataggio locale resta prioritario; il cloud viene aggiornato solo
-            // dopo il collegamento e la sincronizzazione iniziale scelti dall'utente.
-            if (syncCloud) await cloud.TrySyncAsync(Data);
+            // Il salvataggio locale resta prioritario. Dopo il tentativo cloud
+            // risalviamo anche l'eventuale merge automatico ricevuto dal server.
+            if (syncCloud)
+            {
+                await cloud.TrySyncAsync(Data);
+                var reconciledJson = JsonSerializer.Serialize(Data, JsonOptions);
+                await js.InvokeVoidAsync("archiveStorage.saveArchive", StorageKey, BackupKey, reconciledJson);
+            }
             Changed?.Invoke();
         }
         finally { _saveLock.Release(); }
@@ -124,6 +129,27 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
         finally { _saveLock.Release(); }
     }
 
+
+    public async Task<int> MergeRemoteArchiveAsync(ArchiveDatabase remote)
+    {
+        if (remote is null) throw new ArgumentNullException(nameof(remote));
+        remote.Championships ??= [];
+        remote.Seasons ??= [];
+        remote.Teams ??= [];
+        remote.People ??= [];
+        remote.TeamEntries ??= [];
+
+        // Il cloud resta la base autorevole; aggiungiamo le registrazioni locali mancanti.
+        // Il merge rileva gli ID modificati in modo divergente e si ferma senza sovrascrivere.
+        var merged = JsonSerializer.Deserialize<ArchiveDatabase>(JsonSerializer.Serialize(remote), JsonOptions)
+            ?? throw new InvalidOperationException("Impossibile preparare la copia cloud per il merge.");
+        var added = merged.MergeFrom(Data);
+        await CreateBackupAsync();
+        Data = merged;
+        IsLoaded = true;
+        await SaveAsync(syncCloud: false);
+        return added;
+    }
 
     public async Task<string> ExportJsonAsync()
     {
