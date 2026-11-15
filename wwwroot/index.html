@@ -44,9 +44,10 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
 (function(){
-  const KEY = 'refertoPallamanoRecoveryV4';
+  const TEST_MODE = new URLSearchParams(window.location.search).get('modalita-prova') === 'locale';
+  const KEY = TEST_MODE ? 'refertoPallamanoRecoveryV4_TEST' : 'refertoPallamanoRecoveryV4';
   window.salvaPartitaLocale = function(json){ try { localStorage.setItem(KEY, json); return true; } catch(e){ return false; } };
-  window.recuperaPartitaLocale = function(){ try { return localStorage.getItem(KEY) || localStorage.getItem('refertoPallamanoRecoveryV3') || localStorage.getItem('refertoPallamanoRecoveryV2'); } catch(e){ return null; } };
+  window.recuperaPartitaLocale = function(){ try { return localStorage.getItem(KEY) || (!TEST_MODE && (localStorage.getItem('refertoPallamanoRecoveryV3') || localStorage.getItem('refertoPallamanoRecoveryV2'))); } catch(e){ return null; } };
   window.esisteRecupero = function(){ try { return !!localStorage.getItem(KEY); } catch(e){ return false; } };
   let recoveryTimer = null;
   window.avviaAutoRecovery = function(dotnetRef){
@@ -291,15 +292,19 @@ window.chiudiApplicazione = function(){
 <script>
 // Archivio gestionale: persistenza locale e lettura del modello Excel.
 window.archiveStorage = (() => {
+  const TEST_MODE = new URLSearchParams(window.location.search).get('modalita-prova') === 'locale';
+  const DB_NAME = TEST_MODE ? 'RefertoPallamanoArchive_TEST' : 'RefertoPallamanoArchive';
+  const storageKey = key => TEST_MODE ? key + '_TEST' : key;
   const openDb = () => new Promise((resolve, reject) => {
     if (!window.indexedDB) { reject(new Error('IndexedDB non disponibile')); return; }
-    const request = indexedDB.open('RefertoPallamanoArchive', 1);
+    const request = indexedDB.open(DB_NAME, 1);
     request.onupgradeneeded = () => request.result.createObjectStore('records', { keyPath: 'key' });
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
   });
   return {
     getSeed: async () => {
+      if (TEST_MODE) return null;
       try {
         const response = await fetch('data/archivio-iniziale.json', { cache: 'no-store' });
         if (!response.ok) return null;
@@ -307,6 +312,7 @@ window.archiveStorage = (() => {
       } catch { return null; }
     },
     get: async key => {
+      key = storageKey(key);
       if (!window.indexedDB) return localStorage.getItem(key);
       const db = await openDb();
       try {
@@ -321,6 +327,7 @@ window.archiveStorage = (() => {
       } finally { db.close(); }
     },
     set: async (key, value) => {
+      key = storageKey(key);
       if (!window.indexedDB) { localStorage.setItem(key, value); return true; }
       const db = await openDb();
       try {
@@ -335,6 +342,7 @@ window.archiveStorage = (() => {
       } finally { db.close(); }
     },
     saveArchive: async (key, backupKey, value) => {
+      key = storageKey(key); backupKey = storageKey(backupKey);
       if (!window.indexedDB) {
         const previous = localStorage.getItem(key);
         if (previous) localStorage.setItem(backupKey, previous);
