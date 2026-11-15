@@ -386,6 +386,7 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
             ?? throw new InvalidOperationException("Impossibile preparare una copia di sicurezza dell'archivio.");
 
         Data = workingData;
+        (int AddedPeople, int AddedEntries, int UpdatedEntries, int Skipped) result;
         try
         {
         var championship = Data.Championships.FirstOrDefault(x => Same(x.Name, import.Championship))
@@ -471,14 +472,17 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
                 }
             }
         }
-        await SaveAsync();
-        return (addedPeople, addedEntries, updatedEntries, skipped);
+        result = (addedPeople, addedEntries, updatedEntries, skipped);
         }
         catch
         {
             Data = originalData;
             throw;
         }
+
+        // Il commit locale/cloud avviene solo dopo che tutte le righe sono state elaborate.
+        await SaveAsync();
+        return result;
     }
 
     public ArchiveChampionship GetOrAddChampionship(string name)
