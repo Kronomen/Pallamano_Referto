@@ -986,9 +986,15 @@
             else if (person is not null) person.FullName = newName;
 
             await Archivio.SaveAsync();
-            // Il salvataggio locale è completato prima del ricaricamento;
-            // eventuali errori di sincronizzazione sono mostrati senza cancellare la modifica locale.
-            Nav.NavigateTo(Nav.Uri, forceLoad: true);
+
+            // La modifica è già applicata all'archivio in memoria e salvata
+            // localmente: non serve ricaricare l'intera applicazione.
+            // Evitiamo così di riavviare il bootstrap cloud e disabilitare
+            // temporaneamente VARIAZIONE/CANCELLA sulle altre persone.
+            IsNameEditOpen = false;
+            NameEditBusy = false;
+            NameEditKind = NameEditId = NameEditValue = NameEditMessage = "";
+            await InvokeAsync(StateHasChanged);
         }
         catch (Exception ex)
         {
