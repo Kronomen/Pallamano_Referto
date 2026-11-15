@@ -9,5 +9,6 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <Compile Include="../../Models/ArchiveModels.cs" Link="ArchiveModels.cs" />
     <Compile Include="../../Services/CloudArchiveService.cs" Link="CloudArchiveService.cs" />
+    <Compile Include="../../Services/ArchiveService.cs" Link="ArchiveService.cs" />
   </ItemGroup>
 </Project>
