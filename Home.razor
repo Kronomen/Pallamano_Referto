@@ -196,7 +196,7 @@
         </main>
 
         <footer class="bottom-bar">
-            <button class="toolbar-save" @onclick="SaveGame">💾 SALVA GARA</button><button class="toolbar-config" @onclick='() => Nav.NavigateTo("archivio")'>📚 ARCHIVIO</button><button class="toolbar-restore" @onclick="RestoreRecovery">↶ RIPRISTINA</button><button class="toolbar-referto" @onclick="PrintReferto">📄 REFERTO</button><button class="toolbar-config" @onclick="Game.OpenConfiguration" disabled="@Game.State.MatchStarted">⚙ CONFIGURAZIONE</button><button class="toolbar-period @(Game.IsPeriodStoppedAtEnd ? "toolbar-period-ended" : string.Empty)" @onclick="Game.FinishCurrentPeriod" disabled="@(Game.State.MatchFinished || Game.State.ShootoutStarted)">@(Game.State.PeriodEndAcknowledged && !Game.ShowNextPeriod ? "CONTINUA" : "FINE PERIODO")</button>        <div class="mini-timer-card mini-timer-toolbar">
+            <button class="toolbar-save" @onclick="SaveGame">💾 SALVA GARA</button><button class="toolbar-config" @onclick="GoToArchive">📚 ARCHIVIO</button><button class="toolbar-restore" @onclick="RestoreRecovery">↶ RIPRISTINA</button><button class="toolbar-referto" @onclick="PrintReferto">📄 REFERTO</button><button class="toolbar-config" @onclick="Game.OpenConfiguration" disabled="@Game.State.MatchStarted">⚙ CONFIGURAZIONE</button><button class="toolbar-period @(Game.IsPeriodStoppedAtEnd ? "toolbar-period-ended" : string.Empty)" @onclick="Game.FinishCurrentPeriod" disabled="@(Game.State.MatchFinished || Game.State.ShootoutStarted)">@(Game.State.PeriodEndAcknowledged && !Game.ShowNextPeriod ? "CONTINUA" : "FINE PERIODO")</button>        <div class="mini-timer-card mini-timer-toolbar">
             <div class="mini-timer-label">CRONOMETRO</div>
             <div class="mini-timer-display">@GameService.FormatTime(Game.GetMiniTimerSeconds())</div>
         </div>
@@ -1140,8 +1140,21 @@
     private bool IsStaffConfigured(string team, int index) =>
         !string.IsNullOrWhiteSpace((team == "A" ? Game.State.Casa : Game.State.Ospiti).StaffLetters[index]);
 
+    private async Task GoToArchive()
+    {
+        // Prima di lasciare Referto salviamo anche i campi modificati
+        // direttamente tramite @bind, che potrebbero non aver generato Game.Changed.
+        await SaveRecoveryIfReady();
+        Nav.NavigateTo("archivio");
+    }
+
     private async Task ExitApplication()
     {
+        // Solo l'uscita esplicita dal programma è una chiusura regolare:
+        // ferma ogni autosalvataggio e rimuove il recovery temporaneo.
+        _recoveryReady = false;
+        try { await JS.InvokeVoidAsync("fermaAutoRecovery"); } catch { }
+        try { await JS.InvokeVoidAsync("cancellaRecuperoPartitaLocale"); } catch { }
         try { await JS.InvokeVoidAsync("chiudiApplicazione"); } catch { }
     }
 
@@ -1204,13 +1217,26 @@
             // Leggiamo prima il recovery esistente. L'app non deve mai
             // sovrascriverlo all'avvio con una gara vuota.
             var existingRecovery = await JS.InvokeAsync<string?>("recuperaPartitaLocale");
-            // IMPORTANTISSIMO: all'avvio il recovery può contenere una gara
-            // precedente. Non deve essere sovrascritto dalla GameState vuota.
-            // Il confronto parte dallo stato appena creato e il primo autosave
-            // avviene soltanto quando lo stato cambia realmente.
+            // Se esiste una sessione non chiusa regolarmente, la ripristiniamo
+            // automaticamente: tornare a Gestione archivio o riaprire la pagina
+            // non deve azzerare la configurazione o la gara in corso.
             _lastRecoveryJson = Game.ExportJson();
+            if (!string.IsNullOrWhiteSpace(existingRecovery))
+            {
+                try
+                {
+                    Game.ImportJson(existingRecovery);
+                    _lastRecoveryJson = Game.ExportJson();
+                    _recoveryAvailable = true;
+                }
+                catch
+                {
+                    // Un recovery non leggibile non va mai sostituito con una
+                    // partita vuota: resta disponibile per un recupero manuale.
+                    _recoveryAvailable = true;
+                }
+            }
             _recoveryReady = true;
-            _recoveryAvailable = !string.IsNullOrWhiteSpace(existingRecovery);
 
             // Il recovery viene registrato autonomamente anche quando
             // l'utente modifica campi della distinta/configurazione che
