@@ -362,7 +362,7 @@
                 </div>
                 <div class="archive-note">
                     <strong>Sincronizzazione cloud privata</strong>
-                    <p>Collega questo dispositivo al repository privato. Dopo aver scelto quale archivio utilizzare, le modifiche successive verranno salvate anche sul cloud. La copia locale continua a funzionare anche senza connessione.</p>
+                    <p>Collega questo dispositivo una sola volta. Dopo l'accesso l'archivio comune viene recuperato e unito automaticamente; ogni nuova modifica viene sincronizzata con gli altri dispositivi autorizzati. Senza rete, le modifiche restano in locale e vengono ritentate al ripristino della connessione.</p>
                     @if (!Cloud.IsAuthenticated)
                     {
                         <div class="operator-access-panel">
@@ -633,7 +633,7 @@
     private async Task RetryCloudSync()
     {
         CloudBusy = true;
-        try { await Cloud.RetryPendingSyncAsync(Archivio.Data); CloudMessage = Cloud.Status; }
+        try { await Cloud.RetryPendingSyncAsync(Archivio.Data); if (!Cloud.HasPendingChanges && !Cloud.HasSyncConflict) await Archivio.SaveAsync(syncCloud: false); CloudMessage = Cloud.Status; }
         finally { CloudBusy = false; StateHasChanged(); }
     }
 
@@ -657,7 +657,10 @@
             // In caso di errore o conflitto non chiude: i dati restano disponibili
             // sul dispositivo e l'utente può riprovare la sincronizzazione.
             if (Cloud.HasPendingChanges)
+            {
                 await Cloud.RetryPendingSyncAsync(Archivio.Data);
+                if (!Cloud.HasPendingChanges && !Cloud.HasSyncConflict) await Archivio.SaveAsync(syncCloud: false);
+            }
 
             if (Cloud.HasPendingChanges || Cloud.HasSyncConflict)
             {
