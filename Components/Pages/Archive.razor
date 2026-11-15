@@ -1096,6 +1096,10 @@
         var season = Archivio.Data.Seasons.FirstOrDefault(x => ArchiveService.Same(x.Name, seasonName));
         if (championship is null || season is null || string.IsNullOrWhiteSpace(row.Name)) return new();
         var type = row.PersonType == "OFFICIAL" ? "OFFICIAL" : "PLAYER";
+        var alreadyInThisTeam = Archivio.Data.People.Any(p => ArchiveService.Same(p.FullName, row.Name) && p.PersonType == type &&
+            Archivio.Data.TeamEntries.Any(e => e.PersonId == p.Id && e.TeamId == teamId && e.ChampionshipId == championship.Id &&
+                e.SeasonId == season.Id && e.EntryType == type));
+        if (alreadyInThisTeam) return new();
         return Archivio.Data.People.Where(p => ArchiveService.Same(p.FullName, row.Name) && p.PersonType == type &&
             Archivio.Data.TeamEntries.Any(e => e.PersonId == p.Id && e.ChampionshipId == championship.Id &&
                 e.SeasonId == season.Id && e.EntryType == type && e.IsActive && e.TeamId != teamId)).ToList();
