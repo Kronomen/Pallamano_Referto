@@ -27,5 +27,9 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
+      - name: Ripristina dipendenze applicazione
+        run: dotnet restore RefertoPallamano_Blazor.csproj
+      - name: Compila applicazione
+        run: dotnet build RefertoPallamano_Blazor.csproj --configuration Release --no-restore
       - name: Esegue test isolati
         run: dotnet run --project tests/SyncIsolation/SyncIsolation.csproj --configuration Release
