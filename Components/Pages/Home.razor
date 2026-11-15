@@ -1044,7 +1044,7 @@ else
                 // su una nuova gara/dispositivo usa la convocazione predefinita condivisa.
                 if (sameCurrentMatchTeam && currentIndex >= 0 && current.ActivePlayers[currentIndex])
                     ArchivePlayerSelections.Add(person.Id);
-                else if (!sameCurrentMatchTeam && entry.IsSelected)
+                else if (currentIndex < 0 && entry.IsSelected)
                     ArchivePlayerSelections.Add(person.Id);
             }
             else if (person.PersonType == "OFFICIAL")
