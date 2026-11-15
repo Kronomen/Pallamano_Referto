@@ -84,9 +84,14 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
         {
             var json = JsonSerializer.Serialize(Data, JsonOptions);
             await js.InvokeVoidAsync("archiveStorage.saveArchive", StorageKey, BackupKey, json);
-            // Il salvataggio locale resta prioritario; il cloud viene aggiornato solo
-            // dopo il collegamento e la sincronizzazione iniziale scelti dall'utente.
-            if (syncCloud) await cloud.TrySyncAsync(Data);
+            // Il salvataggio locale resta prioritario. Dopo il tentativo cloud
+            // risalviamo anche l'eventuale merge automatico ricevuto dal server.
+            if (syncCloud)
+            {
+                await cloud.TrySyncAsync(Data);
+                var reconciledJson = JsonSerializer.Serialize(Data, JsonOptions);
+                await js.InvokeVoidAsync("archiveStorage.saveArchive", StorageKey, BackupKey, reconciledJson);
+            }
             Changed?.Invoke();
         }
         finally { _saveLock.Release(); }
