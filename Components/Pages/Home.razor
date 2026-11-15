@@ -955,11 +955,15 @@ else
         }
         else
         {
-            players = GetRosterEntries(teamId).Where(entry => entry.EntryType == "PLAYER" && entry.IsSelected)
-                .Select(entry => new ImportedPlayer
+            var current = side == "A" ? Game.State.Casa : Game.State.Ospiti;
+            players = Enumerable.Range(0, Math.Min(16, current.PlayerNames.Length))
+                .Where(i => i < current.ActivePlayers.Length && current.ActivePlayers[i] &&
+                    !string.IsNullOrWhiteSpace(current.NumberLabels[i]) &&
+                    !string.IsNullOrWhiteSpace(current.PlayerNames[i]))
+                .Select(i => new ImportedPlayer
                 {
-                    Number = entry.ShirtNumber,
-                    Name = Archivio.Data.People.FirstOrDefault(p => p.Id == entry.PersonId)?.FullName ?? ""
+                    Number = current.NumberLabels[i],
+                    Name = current.PlayerNames[i]
                 });
         }
         return players.Where(x => !string.IsNullOrWhiteSpace(x.Name))
@@ -981,31 +985,32 @@ else
         }
         else
         {
-            staff = GetRosterEntries(teamId).Where(entry => entry.EntryType == "OFFICIAL" && entry.IsSelected)
-                .Select(entry => new ImportedStaff
+            var current = side == "A" ? Game.State.Casa : Game.State.Ospiti;
+            staff = Enumerable.Range(0, Math.Min(5, current.StaffNames.Length))
+                .Where(i => i < current.ActiveStaff.Length && current.ActiveStaff[i] &&
+                    !string.IsNullOrWhiteSpace(current.StaffLetters[i]) &&
+                    !string.IsNullOrWhiteSpace(current.StaffNames[i]))
+                .Select(i => new ImportedStaff
                 {
-                    Letter = entry.OfficialLetter,
-                    Name = Archivio.Data.People.FirstOrDefault(p => p.Id == entry.PersonId)?.FullName ?? ""
+                    Letter = current.StaffLetters[i],
+                    Name = current.StaffNames[i]
                 });
         }
         return staff.Where(x => !string.IsNullOrWhiteSpace(x.Name))
             .OrderBy(x => x.Letter, StringComparer.OrdinalIgnoreCase).ToList();
     }
 
-    private async Task ConvocaArchiveTeam(string side)
+    private Task ConvocaArchiveTeam(string side)
     {
         var teamId = side == "A" ? ArchiveSelectedHomeTeamId : ArchiveSelectedAwayTeamId;
         var team = Archivio.Data.Teams.FirstOrDefault(x => x.Id == teamId && x.IsActive);
-        if (team is null) return;
+        if (team is null) return Task.CompletedTask;
 
-        var target = side == "A" ? Game.State.Casa : Game.State.Ospiti;
-        target.Name = team.Name;
-        LoadPlayers(target, GetLiveRosterPlayers(side).ToArray());
-        LoadStaff(target, GetLiveRosterStaff(side).ToArray());
-        Game.State.Championship = Archivio.Data.Championships.FirstOrDefault(x => x.Id == ArchiveSelectedChampionshipId)?.Name ?? Game.State.Championship;
-        Game.State.Season = Archivio.Data.Seasons.FirstOrDefault(x => x.Id == ArchiveSelectedSeasonId)?.Name ?? Game.State.Season;
-        ArchiveRosterMessage = $"Squadra {team.Name} caricata dall'archivio. Apri la convocazione per scegliere o modificare atleti e dirigenti.";
-        await SaveRecoveryIfReady();
+        // La convocazione è sempre specifica della gara corrente: prima si apre
+        // la rosa completa, poi l'operatore sceglie i nominativi da inserire nel referto.
+        OpenRosterPage(side);
+        ArchiveRosterMessage = $"Rosa completa di {team.Name} caricata. Seleziona gli atleti e i dirigenti da convocare per questa gara.";
+        return Task.CompletedTask;
     }
 
     private void OpenRosterPage(string side)
@@ -1018,20 +1023,36 @@ else
         ArchiveStaffLetters.Clear();
         ArchiveStaffSelections.Clear();
         var teamId = side == "A" ? ArchiveSelectedHomeTeamId : ArchiveSelectedAwayTeamId;
+        var selectedTeam = Archivio.Data.Teams.FirstOrDefault(x => x.Id == teamId);
+        var current = side == "A" ? Game.State.Casa : Game.State.Ospiti;
+        var sameCurrentMatchTeam = selectedTeam is not null && ArchiveService.Same(current.Name, selectedTeam.Name);
         foreach (var entry in GetRosterEntries(teamId))
         {
             var person = Archivio.Data.People.FirstOrDefault(x => x.Id == entry.PersonId && x.IsActive);
             if (person is null) continue;
             if (person.PersonType == "PLAYER")
             {
-                // Il numero appartiene all'iscrizione in archivio; la convocazione è indipendente.
-                ArchiveNumbers[person.Id] = entry.ShirtNumber ?? "";
-                if (entry.IsSelected) ArchivePlayerSelections.Add(person.Id);
+                // I numeri appartengono alla rosa della squadra; la selezione resta
+                // nella GameState e quindi non viene ereditata da una gara successiva.
+                var currentIndex = sameCurrentMatchTeam
+                    ? Array.FindIndex(current.PlayerNames, x => ArchiveService.Same(x, person.FullName))
+                    : -1;
+                ArchiveNumbers[person.Id] = currentIndex >= 0
+                    ? current.NumberLabels[currentIndex] ?? ""
+                    : entry.ShirtNumber ?? "";
+                if (currentIndex >= 0 && current.ActivePlayers[currentIndex])
+                    ArchivePlayerSelections.Add(person.Id);
             }
             else if (person.PersonType == "OFFICIAL")
             {
-                ArchiveStaffLetters[person.Id] = string.IsNullOrWhiteSpace(entry.OfficialLetter) ? "" : entry.OfficialLetter;
-                if (entry.IsSelected) ArchiveStaffSelections.Add(person.Id);
+                var currentIndex = sameCurrentMatchTeam
+                    ? Array.FindIndex(current.StaffNames, x => ArchiveService.Same(x, person.FullName))
+                    : -1;
+                ArchiveStaffLetters[person.Id] = currentIndex >= 0
+                    ? current.StaffLetters[currentIndex] ?? ""
+                    : entry.OfficialLetter ?? "";
+                if (currentIndex >= 0 && current.ActiveStaff[currentIndex])
+                    ArchiveStaffSelections.Add(person.Id);
             }
         }
         ArchiveRosterMessage = "";
@@ -1215,14 +1236,12 @@ else
         if (isPlayer)
         {
             entry.ShirtNumber = value;
-            entry.IsSelected = true;
             ArchiveNumbers[person.Id] = value;
             ArchivePlayerSelections.Add(person.Id);
         }
         else
         {
             entry.OfficialLetter = value;
-            entry.IsSelected = true;
             ArchiveStaffLetters[person.Id] = value;
             ArchiveStaffSelections.Add(person.Id);
         }
@@ -1273,13 +1292,13 @@ else
             var person = Archivio.Data.People.FirstOrDefault(p => p.Id == entry.PersonId);
             if (person?.PersonType == "PLAYER")
             {
-                entry.IsSelected = ArchivePlayerSelections.Contains(person.Id);
+                // IsSelected non rappresenta la convocazione di una singola gara:
+                // i nominativi convocati sono salvati nella GameState del referto.
                 if (ArchiveNumbers.TryGetValue(person.Id, out var savedNumber))
                     entry.ShirtNumber = savedNumber.Trim();
             }
             else if (person?.PersonType == "OFFICIAL")
             {
-                entry.IsSelected = ArchiveStaffSelections.Contains(person.Id);
                 if (ArchiveStaffLetters.TryGetValue(person.Id, out var savedLetter))
                     entry.OfficialLetter = savedLetter;
             }
