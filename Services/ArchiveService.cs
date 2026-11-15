@@ -386,35 +386,23 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
         var resolvedTeamIds = new HashSet<string>(StringComparer.Ordinal);
         foreach (var teamRow in import.Teams)
         {
-            ArchiveTeam? team = string.IsNullOrWhiteSpace(teamRow.TeamId)
-                ? null
-                : Data.Teams.FirstOrDefault(x => x.Id == teamRow.TeamId);
+            ArchiveTeam? team = string.IsNullOrWhiteSpace(teamRow.TeamId) ? null : Data.Teams.FirstOrDefault(x => x.Id == teamRow.TeamId);
             if (!string.IsNullOrWhiteSpace(teamRow.TeamId) && team is null)
                 throw new InvalidOperationException("Una delle squadre selezionate non è presente nell'archivio.");
-
             if (team is null)
             {
                 var detectedName = (teamRow.DetectedName ?? "").Trim();
-                if (string.IsNullOrWhiteSpace(detectedName))
-                    throw new InvalidOperationException("Il nome della nuova squadra non è valido.");
+                if (string.IsNullOrWhiteSpace(detectedName)) throw new InvalidOperationException("Il nome della nuova squadra non è valido.");
                 team = Data.Teams.FirstOrDefault(x => Same(x.Name, detectedName));
-                if (team is null)
-                {
-                    team = new ArchiveTeam { Name = detectedName, IsActive = true };
-                    Data.Teams.Add(team);
-                }
+                if (team is null) { team = new ArchiveTeam { Name = detectedName, IsActive = true }; Data.Teams.Add(team); }
             }
-
             if (!resolvedTeamIds.Add(team.Id))
                 throw new InvalidOperationException("Le due rose risultano associate alla stessa squadra. Controlla l'abbinamento prima di confermare.");
-
             var teamRegistration = Data.TeamEntries.FirstOrDefault(x => x.TeamId == team.Id &&
                 x.ChampionshipId == championship.Id && x.SeasonId == season.Id && x.EntryType == "TEAM");
             if (teamRegistration is null)
-                Data.TeamEntries.Add(new ArchiveTeamEntry { TeamId = team.Id, ChampionshipId = championship.Id,
-                    SeasonId = season.Id, EntryType = "TEAM", IsActive = true });
-            else
-                teamRegistration.IsActive = true;
+                Data.TeamEntries.Add(new ArchiveTeamEntry { TeamId = team.Id, ChampionshipId = championship.Id, SeasonId = season.Id, EntryType = "TEAM", IsActive = true });
+            else teamRegistration.IsActive = true;
 
             foreach (var row in teamRow.People.Where(x => x.Selected))
             {
@@ -422,38 +410,54 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
                 var code = (row.NumberOrLetter ?? "").Trim().ToUpperInvariant();
                 if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(code)) { skipped++; continue; }
                 var isOfficial = row.PersonType == "OFFICIAL";
-                if (isOfficial ? !"ABCDE".Contains(code) : !(code == "0" || code == "00" || (int.TryParse(code, out var n) && n >= 1 && n <= 99)))
+                var type = isOfficial ? "OFFICIAL" : "PLAYER";
+                if (isOfficial ? ! "ABCDE".Contains(code) : !(code == "0" || code == "00" || (int.TryParse(code, out var n) && n >= 1 && n <= 99)))
                     throw new InvalidOperationException($"Numero/lettera non valido per {name}: {code}.");
-                var person = Data.People.FirstOrDefault(x => Same(x.FullName, name) && x.PersonType == (isOfficial ? "OFFICIAL" : "PLAYER"));
-                if (person is null)
+
+                ArchivePerson? person = null;
+                if (row.ImportChoice.StartsWith("EXISTING:", StringComparison.Ordinal))
                 {
-                    person = new ArchivePerson { FullName = name, PersonType = isOfficial ? "OFFICIAL" : "PLAYER" };
+                    var selectedId = row.ImportChoice.Substring("EXISTING:".Length);
+                    person = Data.People.FirstOrDefault(x => x.Id == selectedId && Same(x.FullName, name) && x.PersonType == type);
+                    if (person is null) throw new InvalidOperationException($"La persona selezionata per {name} non è più disponibile.");
+                }
+                else if (row.ImportChoice == "NEW")
+                {
+                    person = new ArchivePerson { FullName = name, PersonType = type };
                     Data.People.Add(person); addedPeople++;
                 }
+                else
+                {
+                    person = Data.People.FirstOrDefault(x => Same(x.FullName, name) && x.PersonType == type);
+                    if (person is null) { person = new ArchivePerson { FullName = name, PersonType = type }; Data.People.Add(person); addedPeople++; }
+                }
+
                 var entry = Data.TeamEntries.FirstOrDefault(x => x.PersonId == person.Id && x.TeamId == team.Id &&
-                    x.ChampionshipId == championship.Id && x.SeasonId == season.Id && x.EntryType == (isOfficial ? "OFFICIAL" : "PLAYER"));
-                var activeElsewhere = Data.TeamEntries.Any(x => x.PersonId == person.Id && x.ChampionshipId == championship.Id &&
-                    x.SeasonId == season.Id && x.EntryType == (isOfficial ? "OFFICIAL" : "PLAYER") && x.IsActive && x.TeamId != team.Id);
-                if (activeElsewhere) { skipped++; continue; }
+                    x.ChampionshipId == championship.Id && x.SeasonId == season.Id && x.EntryType == type);
+                var activeElsewhere = Data.TeamEntries.Where(x => x.PersonId == person.Id && x.ChampionshipId == championship.Id &&
+                    x.SeasonId == season.Id && x.EntryType == type && x.IsActive && x.TeamId != team.Id).ToList();
+                if (activeElsewhere.Count > 0)
+                {
+                    if (!row.ImportChoice.StartsWith("EXISTING:", StringComparison.Ordinal))
+                        throw new InvalidOperationException($"Per {name} devi scegliere se trasferire la persona già registrata oppure creare un nuovo omonimo.");
+                    foreach (var previous in activeElsewhere) previous.IsActive = false;
+                }
                 if (entry is null)
                 {
                     Data.TeamEntries.Add(new ArchiveTeamEntry { PersonId = person.Id, TeamId = team.Id, ChampionshipId = championship.Id,
-                        SeasonId = season.Id, EntryType = isOfficial ? "OFFICIAL" : "PLAYER",
-                        ShirtNumber = isOfficial ? "" : code, OfficialLetter = isOfficial ? code : "" });
+                        SeasonId = season.Id, EntryType = type, ShirtNumber = isOfficial ? "" : code, OfficialLetter = isOfficial ? code : "" });
                     addedEntries++;
                 }
                 else
                 {
                     var existing = isOfficial ? entry.OfficialLetter : entry.ShirtNumber;
-                    if (string.IsNullOrWhiteSpace(existing) || !entry.IsActive)
+                    if (string.IsNullOrWhiteSpace(existing))
                     {
-                        if (string.IsNullOrWhiteSpace(existing))
-                        {
-                            if (isOfficial) entry.OfficialLetter = code; else entry.ShirtNumber = code;
-                        }
-                        entry.IsActive = true; updatedEntries++;
+                        if (isOfficial) entry.OfficialLetter = code; else entry.ShirtNumber = code;
                     }
                     else if (!Same(existing, code)) skipped++;
+                    if (!entry.IsActive) updatedEntries++;
+                    entry.IsActive = true;
                 }
             }
         }
