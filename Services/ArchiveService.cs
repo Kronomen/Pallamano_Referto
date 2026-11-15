@@ -51,16 +51,12 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
             if (remote is null)
                 throw new InvalidOperationException("Il cloud segnala un archivio presente ma non ha restituito i dati.");
 
-            // Il cloud è la base; i record locali distinti vengono mantenuti.
-            // Le collisioni sullo stesso ID bloccano l'operazione senza perdere dati.
-            var added = await MergeRemoteArchiveAsync(remote);
+            // Il cloud è la fonte centrale unica. La copia locale precedente
+            // è già salvata nel backup prima di essere sostituita.
+            await ReplaceWithRemoteArchiveAsync(remote);
             await cloud.EnableAutoSyncAsync();
-            if (added > 0)
-                await cloud.TrySyncAsync(Data);
 
-            return added > 0
-                ? $"Archivio centrale aggiornato: recuperati e sincronizzati {added} record locali."
-                : "Archivio centrale aggiornato. Sincronizzazione automatica attiva.";
+            return "Archivio centrale caricato sul dispositivo. Backup locale conservato e sincronizzazione automatica attiva.";
         }
 
         await cloud.UploadInitialAsync(Data);
@@ -190,6 +186,35 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
         finally { _saveLock.Release(); }
     }
 
+
+    public async Task ReplaceWithRemoteArchiveAsync(ArchiveDatabase remote)
+    {
+        if (remote is null) throw new ArgumentNullException(nameof(remote));
+        remote.Championships ??= [];
+        remote.Seasons ??= [];
+        remote.Teams ??= [];
+        remote.People ??= [];
+        remote.TeamEntries ??= [];
+
+        await _saveLock.WaitAsync();
+        try
+        {
+            // La copia locale viene conservata prima di adottare la versione centrale.
+            // Questo evita collisioni artificiali con il vecchio seed e permette
+            // di recuperare eventuali dati locali non ancora sincronizzati.
+            var backup = JsonSerializer.Serialize(Data, JsonOptions);
+            await InvokeArchiveStorageVoidAsync("archiveStorage.set", BackupKey, backup);
+
+            Data = remote;
+            UpgradeSchema();
+            IsLoaded = true;
+
+            var json = JsonSerializer.Serialize(Data, JsonOptions);
+            await InvokeArchiveStorageVoidAsync("archiveStorage.saveArchive", StorageKey, BackupKey, json);
+            Changed?.Invoke();
+        }
+        finally { _saveLock.Release(); }
+    }
 
     public async Task<int> MergeRemoteArchiveAsync(ArchiveDatabase remote)
     {
