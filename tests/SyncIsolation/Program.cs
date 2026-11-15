@@ -122,3 +122,78 @@ Check(collisionStorageB.Read("pallamanoCloudPendingArchiveV1") is not null, "la 
 Check(collisionServer.PutCount == 2 && collisionServer.ConflictCount == 1, "non deve esserci un PUT di retry dopo il conflitto sui contenuti");
 
 Console.WriteLine("OK: 7 gruppi di test superati, inclusa integrazione CloudArchiveService su HTTP simulato.");
+
+
+// 8. Import PDF: crea squadre nuove e associa atleti/dirigenti senza duplicare.
+static async Task<(ArchiveService Service, TestJsRuntime Js)> NewArchiveService(ArchiveDatabase seed)
+{
+    var js = new TestJsRuntime();
+    js.Write("refertoPallamanoArchiveV1", System.Text.Json.JsonSerializer.Serialize(seed));
+    var cloud = new CloudArchiveService(new HttpClient(new MockArchiveHandler(new MockArchiveServer(seed, "sha-1"))), js, new TestNavigationManager());
+    var service = new ArchiveService(js, cloud);
+    await service.InitializeAsync();
+    return (service, js);
+}
+static ArchiveDatabase SeedImportArchive()
+{
+    var db = new ArchiveDatabase();
+    db.Championships.Add(new ArchiveChampionship { Id = "champ", Name = "Serie A" });
+    db.Seasons.Add(new ArchiveSeason { Id = "season", Name = "2026/2027" });
+    return db;
+}
+static ArchivePdfRosterTeam NewTeam(string name, params ArchivePdfRosterPerson[] people) =>
+    new() { DetectedName = name, People = people.ToList() };
+static ArchivePdfRosterPerson PdfPerson(string name, string code = "7", string type = "PLAYER", string choice = "") =>
+    new() { Name = name, NumberOrLetter = code, PersonType = type, ImportChoice = choice, Selected = true };
+
+var (newTeamService, _) = await NewArchiveService(SeedImportArchive());
+await newTeamService.ImportPdfRosterAsync(new ArchivePdfRosterImport {
+    Championship = "Serie A", Season = "2026/2027",
+    Teams = [NewTeam("Squadra Nuova A", PdfPerson("Atleta Nuovo")), NewTeam("Squadra Nuova B", PdfPerson("Dirigente Nuovo", "A", "OFFICIAL"))]
+});
+Check(newTeamService.Data.Teams.Count == 2, "devono essere create entrambe le nuove squadre");
+Check(newTeamService.Data.People.Count == 2, "devono essere create le due anagrafiche");
+Check(newTeamService.Data.TeamEntries.Count(x => x.EntryType == "TEAM") == 2, "ogni nuova squadra deve avere l'iscrizione TEAM");
+Check(newTeamService.Data.TeamEntries.Count(x => x.EntryType == "PLAYER" || x.EntryType == "OFFICIAL") == 2, "atleta e dirigente devono essere associati alle squadre");
+
+// 9. Trasferimento esplicito: stessa identità, vecchia iscrizione disattivata.
+var transferSeed = SeedImportArchive();
+transferSeed.Teams.Add(new ArchiveTeam { Id = "old", Name = "Squadra Vecchia" });
+transferSeed.People.Add(new ArchivePerson { Id = "person-transfer", FullName = "Mario Rossi", PersonType = "PLAYER" });
+transferSeed.TeamEntries.Add(new ArchiveTeamEntry { Id = "old-entry", TeamId = "old", PersonId = "person-transfer", ChampionshipId = "champ", SeasonId = "season", EntryType = "PLAYER", ShirtNumber = "9", IsActive = true });
+var (transferService, _) = await NewArchiveService(transferSeed);
+await transferService.ImportPdfRosterAsync(new ArchivePdfRosterImport {
+    Championship = "Serie A", Season = "2026/2027",
+    Teams = [NewTeam("Squadra Vecchia", PdfPerson("Altro atleta")), NewTeam("Squadra Nuova", PdfPerson("Mario Rossi", "11", "PLAYER", "EXISTING:person-transfer"))]
+});
+Check(transferService.Data.People.Count(x => x.Id == "person-transfer") == 1, "il trasferimento deve riutilizzare la stessa persona");
+Check(!transferService.Data.TeamEntries.Single(x => x.Id == "old-entry").IsActive, "l'iscrizione precedente deve essere disattivata");
+Check(transferService.Data.TeamEntries.Any(x => x.PersonId == "person-transfer" && x.TeamId != "old" && x.IsActive), "la nuova iscrizione deve risultare attiva");
+
+// 10. Omonimo distinto: la vecchia persona resta nella vecchia squadra.
+var (namesakeService, _) = await NewArchiveService(transferSeed);
+await namesakeService.ImportPdfRosterAsync(new ArchivePdfRosterImport {
+    Championship = "Serie A", Season = "2026/2027",
+    Teams = [NewTeam("Squadra Vecchia", PdfPerson("Altro atleta")), NewTeam("Squadra Nuova", PdfPerson("Mario Rossi", "11", "PLAYER", "NEW"))]
+});
+Check(namesakeService.Data.People.Count(x => x.FullName == "Mario Rossi") == 2, "NEW deve creare un'anagrafica omonima distinta");
+Check(namesakeService.Data.TeamEntries.Single(x => x.Id == "old-entry").IsActive, "la vecchia iscrizione deve restare attiva per l'omonimo distinto");
+
+// 11. Errore in una riga successiva: nessuna squadra/persona/iscrizione parziale resta in memoria.
+var (rollbackService, _) = await NewArchiveService(SeedImportArchive());
+var beforeRollback = rollbackService.Data;
+var failed = false;
+try
+{
+    await rollbackService.ImportPdfRosterAsync(new ArchivePdfRosterImport {
+        Championship = "Serie A", Season = "2026/2027",
+        Teams = [NewTeam("Squadra Parziale", PdfPerson("Atleta Valido")), NewTeam("Seconda Squadra", PdfPerson("Atleta Errato", "100"))]
+    });
+}
+catch (InvalidOperationException) { failed = true; }
+Check(failed, "un numero maglia non valido deve bloccare l'importazione");
+Check(ReferenceEquals(rollbackService.Data, beforeRollback), "in caso di errore il servizio deve ripristinare l'istanza originale");
+Check(rollbackService.Data.Teams.Count == 0 && rollbackService.Data.People.Count == 0 && rollbackService.Data.TeamEntries.Count == 0,
+    "nessuna modifica parziale deve restare nell'archivio");
+
+Console.WriteLine("OK: 11 gruppi di test superati, inclusi i casi di importazione PDF simulata.");
