@@ -39,6 +39,7 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js, Navigati
     public string? OperatorName { get; private set; }
     public string? DeviceId { get; private set; }
     public bool HasRemoteArchive { get; private set; }
+    public bool HasCheckedRemote { get; private set; }
     public string Status { get; private set; } = "Non collegato al cloud.";
     public string? RemoteSha => _sha;
     public bool HasPendingChanges { get; private set; }
@@ -232,7 +233,8 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js, Navigati
             await js.InvokeVoidAsync("localStorage.setItem", ShaKey, _sha);
         else
             await js.InvokeVoidAsync("localStorage.removeItem", ShaKey);
-        Status = HasRemoteArchive ? "Archivio cloud trovato. Scegli se caricarlo su questo dispositivo." : "Archivio cloud vuoto. Puoi caricare la copia locale iniziale.";
+        HasCheckedRemote = true;
+        Status = HasRemoteArchive ? "Archivio cloud trovato." : "Archivio cloud vuoto. La prima copia condivisa può essere creata da un dispositivo autorizzato.";
     }
 
     public async Task<ArchiveDatabase?> DownloadRemoteAsync()
@@ -246,6 +248,7 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js, Navigati
         using var document = JsonDocument.Parse(body);
         var root = document.RootElement;
         HasRemoteArchive = root.TryGetProperty("exists", out var exists) && exists.ValueKind == JsonValueKind.True;
+        HasCheckedRemote = true;
         _sha = ReadString(root, "sha");
         if (!string.IsNullOrWhiteSpace(_sha))
             await js.InvokeVoidAsync("localStorage.setItem", ShaKey, _sha);
@@ -264,6 +267,7 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js, Navigati
 
     public async Task UploadInitialAsync(ArchiveDatabase archive)
     {
+        if (!HasCheckedRemote) throw new InvalidOperationException("Prima di creare l'archivio condiviso occorre verificare lo stato del cloud.");
         if (HasRemoteArchive) throw new InvalidOperationException("Nel cloud esiste già un archivio. Per evitare sovrascritture, il caricamento iniziale è bloccato.");
         await PutAsync(archive, null);
         _autoSyncEnabled = true;
@@ -275,19 +279,84 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js, Navigati
     {
         if (IsTestMode || !_autoSyncEnabled || !IsAuthenticated) return;
         await _syncLock.WaitAsync();
-        try { await SavePendingAsync(archive); await PutAsync(archive, _sha); await ClearPendingAsync(); HasSyncConflict = false; Status = "Archivio salvato anche nel cloud."; }
-        catch (Exception ex) { Status = HasSyncConflict ? "Conflitto cloud: modifiche locali conservate, sincronizzazione sospesa." : "Modifiche locali conservate in attesa del cloud: " + ex.Message; }
+        try
+        {
+            await SavePendingAsync(archive);
+            try { await PutAsync(archive, _sha); }
+            catch when (HasSyncConflict) { await MergeLatestAndRetryAsync(archive); }
+            await ClearPendingAsync();
+            HasSyncConflict = false;
+            Status = "Archivio condiviso salvato nel cloud.";
+        }
+        catch (Exception ex)
+        {
+            Status = HasSyncConflict
+                ? "Conflitto su una modifica già esistente: i dati locali restano conservati e richiedono verifica. " + ex.Message
+                : "Modifiche locali conservate in attesa del cloud: " + ex.Message;
+        }
         finally { _syncLock.Release(); }
     }
 
     public async Task RetryPendingSyncAsync(ArchiveDatabase archive)
     {
-        if (IsTestMode) return;
-        if (!HasPendingChanges || !_autoSyncEnabled || !IsAuthenticated || HasSyncConflict) return;
+        if (IsTestMode || !HasPendingChanges || !_autoSyncEnabled || !IsAuthenticated) return;
         await _syncLock.WaitAsync();
-        try { await SavePendingAsync(archive); await PutAsync(archive, _sha); await ClearPendingAsync(); HasSyncConflict = false; Status = "Connessione ripristinata: archivio locale sincronizzato con il cloud."; }
-        catch (Exception ex) { Status = HasSyncConflict ? "Conflitto cloud: modifiche locali conservate e sincronizzazione sospesa." : "Modifiche locali conservate. Nuovo tentativo automatico in attesa della connessione: " + ex.Message; }
+        try
+        {
+            await SavePendingAsync(archive);
+            try { await PutAsync(archive, _sha); }
+            catch when (HasSyncConflict) { await MergeLatestAndRetryAsync(archive); }
+            await ClearPendingAsync();
+            HasSyncConflict = false;
+            Status = "Archivio locale e cloud riconciliati automaticamente.";
+        }
+        catch (Exception ex)
+        {
+            Status = HasSyncConflict
+                ? "Conflitto su una modifica già esistente: nessun dato è stato sovrascritto. Serve una verifica. " + ex.Message
+                : "Modifiche locali conservate. Nuovo tentativo automatico in attesa della connessione: " + ex.Message;
+        }
         finally { _syncLock.Release(); }
+    }
+
+    private async Task MergeLatestAndRetryAsync(ArchiveDatabase localArchive)
+    {
+        // I record con ID distinti vengono uniti. Una modifica divergente sullo stesso ID
+        // viene bloccata per evitare di perdere il lavoro di uno dei dispositivi.
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            using var response = await SendAuthorizedAsync(HttpMethod.Get, "/api/archive");
+            var body = await response.Content.ReadAsStringAsync();
+            if (!response.IsSuccessStatusCode)
+                throw new InvalidOperationException(ReadError(body, "Impossibile recuperare la versione cloud per il merge."));
+            using var document = JsonDocument.Parse(body);
+            var root = document.RootElement;
+            if (!root.TryGetProperty("exists", out var exists) || exists.ValueKind != JsonValueKind.True ||
+                !root.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Object)
+                throw new InvalidOperationException("L'archivio cloud non è disponibile per il merge automatico.");
+            var remote = JsonSerializer.Deserialize<ArchiveDatabase>(data.GetRawText(),
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                ?? throw new InvalidOperationException("La versione cloud non è un archivio valido.");
+            remote.Championships ??= [];
+            remote.Seasons ??= [];
+            remote.Teams ??= [];
+            remote.People ??= [];
+            remote.TeamEntries ??= [];
+            localArchive.MergeFrom(remote);
+            _sha = ReadString(root, "sha");
+            if (string.IsNullOrWhiteSpace(_sha))
+                throw new InvalidOperationException("Il cloud non ha restituito la versione dell'archivio.");
+            await js.InvokeVoidAsync("localStorage.setItem", ShaKey, _sha);
+            HasRemoteArchive = true;
+            HasCheckedRemote = true;
+            _autoSyncEnabled = true;
+            HasSyncConflict = false;
+            await js.InvokeVoidAsync("localStorage.removeItem", ConflictKey);
+            await SavePendingAsync(localArchive);
+            try { await PutAsync(localArchive, _sha); return; }
+            catch when (HasSyncConflict && attempt < 2) { }
+        }
+        throw new InvalidOperationException("L'archivio continua a cambiare su altri dispositivi. Le modifiche sono conservate e il merge verrà ritentato.");
     }
 
     public async Task<RemoteArchiveUpdate?> CheckRemoteUpdateAsync()
