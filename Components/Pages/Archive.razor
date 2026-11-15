@@ -633,7 +633,7 @@
     private async Task RetryCloudSync()
     {
         CloudBusy = true;
-        try { await Cloud.RetryPendingSyncAsync(Archivio.Data); if (!Cloud.HasPendingChanges && !Cloud.HasSyncConflict) await Archivio.SaveAsync(syncCloud: false); CloudMessage = Cloud.Status; }
+        try { await Cloud.ForceRetryPendingSyncAsync(Archivio.Data); if (!Cloud.HasPendingChanges && !Cloud.HasSyncConflict) await Archivio.SaveAsync(syncCloud: false); CloudMessage = Cloud.Status; }
         finally { CloudBusy = false; StateHasChanged(); }
     }
 
