@@ -74,7 +74,7 @@ sealed class MockArchiveServer
                     ConflictCount++;
                     return Json(HttpStatusCode.Conflict, """{"error":"conflict"}""");
                 }
-                var incoming = JsonSerializer.Deserialize<ArchiveDatabase>(root.GetProperty("data").GetRawText())!;
+                var incoming = JsonSerializer.Deserialize<ArchiveDatabase>(root.GetProperty("data").GetRawText(), new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
                 Data = Clone(incoming);
                 Sha = "sha-" + (int.Parse(Sha.AsSpan(4)) + 1).ToString();
                 return Json(HttpStatusCode.OK, JsonSerializer.Serialize(new { sha = Sha }));
