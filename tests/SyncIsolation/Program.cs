@@ -8,13 +8,6 @@ static void Check(bool condition, string message)
 
 static ArchiveDatabase Clone(ArchiveDatabase source) => MockArchiveServer.Clone(source);
 
-static ArchiveDatabase DeviceArchive(string personId, string name)
-{
-    var archive = new ArchiveDatabase();
-    archive.People.Add(new ArchivePerson { Id = personId, FullName = name });
-    return archive;
-}
-
 static CloudArchiveService NewClient(MockArchiveServer server, out TestJsRuntime js)
 {
     js = new TestJsRuntime();
