@@ -343,6 +343,19 @@
                                             <strong>@person.NumberOrLetter</strong>
                                             <input class="archive-inline-edit" @bind="person.Name" aria-label="Cognome e nome" disabled="@(!CanWriteArchive)" />
                                             <small>@(person.PersonType == "PLAYER" ? "Atleta" : "Dirigente") · @GetPdfPersonStatus(person, team.TeamId, PdfChampionship, PdfSeason)</small>
+                                            @if (HasActiveSameNameElsewhere(person, team.TeamId, PdfChampionship, PdfSeason))
+                                            {
+                                                <label class="archive-inline-choice">Omonimo già registrato: scegli come procedere
+                                                    <select class="archive-select" @bind="person.ImportChoice" disabled="@(!CanWriteArchive)">
+                                                        <option value="">Seleziona…</option>
+                                                        <option value="NEW">È un'altra persona: crea un nuovo omonimo</option>
+                                                        @foreach (var existingPerson in GetActiveSameNameElsewhere(person, team.TeamId, PdfChampionship, PdfSeason))
+                                                        {
+                                                            <option value="@($"EXISTING:{existingPerson.Id}")">È la stessa persona: trasferisci da @GetPersonActiveTeamNames(existingPerson.Id, PdfChampionship, PdfSeason)</option>
+                                                        }
+                                                    </select>
+                                                </label>
+                                            }
                                         </div>
                                     </div>
                                 }
@@ -562,7 +575,9 @@
     private bool CanImportPdfRoster => PdfRoster is not null && PdfRoster.Teams.Count == 2 &&
         PdfRoster.Teams.All(t => !string.IsNullOrWhiteSpace(t.DetectedName) && t.People.Count > 0) &&
         PdfRoster.Teams.Where(t => !string.IsNullOrWhiteSpace(t.TeamId)).Select(t => t.TeamId).Distinct(StringComparer.Ordinal).Count() == PdfRoster.Teams.Count(t => !string.IsNullOrWhiteSpace(t.TeamId)) &&
-        PdfRoster.Teams.SelectMany(t => t.People).All(p => !string.IsNullOrWhiteSpace(p.Name) && !string.IsNullOrWhiteSpace(p.NumberOrLetter));
+        PdfRoster.Teams.SelectMany(t => t.People).All(p => !string.IsNullOrWhiteSpace(p.Name) && !string.IsNullOrWhiteSpace(p.NumberOrLetter) &&
+            (!HasActiveSameNameElsewhere(p, PdfRoster.Teams.First(t => t.People.Contains(p)).TeamId, PdfChampionship, PdfSeason) ||
+             p.ImportChoice == "NEW" || p.ImportChoice.StartsWith("EXISTING:", StringComparison.Ordinal)));
 
     private string CloudPassword = "";
     private string OperatorCode = "";
@@ -1075,26 +1090,53 @@
         EntryNumber = ""; await Archivio.SaveAsync();
     }
 
+    private List<ArchivePerson> GetActiveSameNameElsewhere(ArchivePdfRosterPerson row, string teamId, string championshipName, string seasonName)
+    {
+        var championship = Archivio.Data.Championships.FirstOrDefault(x => ArchiveService.Same(x.Name, championshipName));
+        var season = Archivio.Data.Seasons.FirstOrDefault(x => ArchiveService.Same(x.Name, seasonName));
+        if (championship is null || season is null || string.IsNullOrWhiteSpace(row.Name)) return new();
+        var type = row.PersonType == "OFFICIAL" ? "OFFICIAL" : "PLAYER";
+        return Archivio.Data.People.Where(p => ArchiveService.Same(p.FullName, row.Name) && p.PersonType == type &&
+            Archivio.Data.TeamEntries.Any(e => e.PersonId == p.Id && e.ChampionshipId == championship.Id &&
+                e.SeasonId == season.Id && e.EntryType == type && e.IsActive && e.TeamId != teamId)).ToList();
+    }
+
+    private bool HasActiveSameNameElsewhere(ArchivePdfRosterPerson row, string teamId, string championshipName, string seasonName) =>
+        GetActiveSameNameElsewhere(row, teamId, championshipName, seasonName).Count > 0;
+
+    private string GetPersonActiveTeamNames(string personId, string championshipName, string seasonName)
+    {
+        var championship = Archivio.Data.Championships.FirstOrDefault(x => ArchiveService.Same(x.Name, championshipName));
+        var season = Archivio.Data.Seasons.FirstOrDefault(x => ArchiveService.Same(x.Name, seasonName));
+        if (championship is null || season is null) return "altra squadra";
+        var ids = Archivio.Data.TeamEntries.Where(e => e.PersonId == personId && e.ChampionshipId == championship.Id &&
+            e.SeasonId == season.Id && e.IsActive && e.EntryType != "TEAM").Select(e => e.TeamId).Distinct();
+        return string.Join(", ", Archivio.Data.Teams.Where(t => ids.Contains(t.Id)).Select(t => t.Name));
+    }
+
     private string GetPdfPersonStatus(ArchivePdfRosterPerson row, string teamId, string championshipName, string seasonName)
     {
         if (string.IsNullOrWhiteSpace(row.Name) || string.IsNullOrWhiteSpace(teamId)) return "Da completare";
         var type = row.PersonType == "OFFICIAL" ? "OFFICIAL" : "PLAYER";
-        var person = Archivio.Data.People.FirstOrDefault(p => ArchiveService.Same(p.FullName, row.Name) && p.PersonType == type);
-        if (person is null) return "Nuova anagrafica";
         var championship = Archivio.Data.Championships.FirstOrDefault(x => ArchiveService.Same(x.Name, championshipName));
         var season = Archivio.Data.Seasons.FirstOrDefault(x => ArchiveService.Same(x.Name, seasonName));
-        if (championship is null || season is null) return "Già in archivio";
-        var entry = Archivio.Data.TeamEntries.FirstOrDefault(x => x.PersonId == person.Id && x.TeamId == teamId &&
-            x.ChampionshipId == championship.Id && x.SeasonId == season.Id && x.EntryType == type);
-        if (entry is not null)
+        if (championship is null || season is null) return "Verifica archivio";
+        var sameTeamPerson = Archivio.Data.People.FirstOrDefault(p => ArchiveService.Same(p.FullName, row.Name) && p.PersonType == type &&
+            Archivio.Data.TeamEntries.Any(e => e.PersonId == p.Id && e.TeamId == teamId && e.ChampionshipId == championship.Id &&
+                e.SeasonId == season.Id && e.EntryType == type));
+        if (sameTeamPerson is not null)
         {
+            var entry = Archivio.Data.TeamEntries.First(e => e.PersonId == sameTeamPerson.Id && e.TeamId == teamId &&
+                e.ChampionshipId == championship.Id && e.SeasonId == season.Id && e.EntryType == type);
             var existing = type == "PLAYER" ? entry.ShirtNumber : entry.OfficialLetter;
             return string.IsNullOrWhiteSpace(existing) ? "Associazione presente: completa numero/lettera" :
                 ArchiveService.Same(existing, row.NumberOrLetter) ? "Già presente e correttamente associato" : $"Numero/lettera già registrato: {existing}";
         }
-        var elsewhere = Archivio.Data.TeamEntries.Any(x => x.PersonId == person.Id && x.ChampionshipId == championship.Id &&
-            x.SeasonId == season.Id && x.EntryType == type && x.IsActive && x.TeamId != teamId);
-        return elsewhere ? "Già attivo in un'altra società: non verrà duplicato" : "Persona presente: nuova associazione";
+        var existingPeople = Archivio.Data.People.Where(p => ArchiveService.Same(p.FullName, row.Name) && p.PersonType == type).ToList();
+        if (existingPeople.Count == 0) return "Nuova anagrafica";
+        if (HasActiveSameNameElsewhere(row, teamId, championshipName, seasonName))
+            return "Omonimo già registrato in altra squadra: scegli trasferimento oppure nuova persona";
+        return "Persona presente: nuova associazione";
     }
 
     private static string NormalizePdfTeamName(string? value)
