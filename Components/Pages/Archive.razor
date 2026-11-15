@@ -15,6 +15,11 @@
         <div class="archive-header-actions">@if (Cloud.IsAuthenticated) { <button type="button" @onclick="DisconnectCloud" style="border:2px solid #dc2626;border-radius:8px;background:#dc2626;color:#173b70;padding:10px 14px;font-weight:900;cursor:pointer;">@(Cloud.IsAdmin ? "ESCI DA AMMINISTRATORE" : "ESCI DA OPERATORE")</button> } <button class="archive-back" @onclick="BackToMatch">← TORNA ALLA GARA</button></div>
     </header>
 
+    @if (CloudBusy || !string.IsNullOrWhiteSpace(CloudMessage))
+    {
+        <div class="archive-message" role="status" style="margin:8px 12px;">@CloudMessage</div>
+    }
+
     @if (!Cloud.IsAuthenticated)
     {
         <div class="archive-message" role="status" style="margin:8px 12px;">
@@ -499,9 +504,14 @@
         public List<string> RemoveTeamIds { get; set; } = new();
         public List<string> RemoveTeamNames { get; set; } = new();
     }
-    private bool CanWriteArchive => Cloud.IsAuthenticated;
+    private bool CanWriteArchive => Cloud.IsAuthenticated && !CloudBusy;
     private bool RequireWriteAccess()
     {
+        if (CloudBusy)
+        {
+            CloudMessage = "Attendi il completamento del controllo dell'archivio condiviso prima di modificare i dati.";
+            return false;
+        }
         if (CanWriteArchive) return true;
         CloudMessage = "Operazione non consentita: accedi come amministratore o attiva questo dispositivo come operatore.";
         return false;
@@ -569,19 +579,51 @@
     private bool CloudBusy;
     private CancellationTokenSource? _syncMonitorCts;
 
+    private bool _cloudInitializationStarted;
+
     protected override async Task OnInitializedAsync()
     {
+        // Il caricamento locale deve essere sufficiente a mostrare la pagina.
+        // Le chiamate cloud vengono avviate dopo il primo render: un Worker lento
+        // o temporaneamente irraggiungibile non deve lasciare la schermata bloccata.
         await Archivio.InitializeAsync();
-        if (!Archivio.IsLoaded) return;
-        await Cloud.TryRestoreSessionAsync();
-        if (Cloud.IsAuthenticated && Cloud.HasCheckedRemote)
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _cloudInitializationStarted || !Archivio.IsLoaded) return;
+        _cloudInitializationStarted = true;
+        CloudBusy = true;
+        CloudMessage = "Archivio locale caricato. Verifica della sincronizzazione condivisa…";
+        await InvokeAsync(StateHasChanged);
+
+        try
         {
-            await BootstrapSharedArchiveAsync();
-            await CleanupDuplicatePlayerEnrollmentsOnLoadAsync();
+            await Cloud.TryRestoreSessionAsync();
+            if (Cloud.IsAuthenticated && Cloud.HasCheckedRemote)
+            {
+                await BootstrapSharedArchiveAsync();
+                await CleanupDuplicatePlayerEnrollmentsOnLoadAsync();
+            }
+            else if (Cloud.IsAuthenticated)
+            {
+                CloudMessage = Cloud.Status;
+            }
+
+            if (Cloud.IsAdmin) await LoadOperators();
         }
-        if (Cloud.IsAdmin) await LoadOperators();
-        _syncMonitorCts = new CancellationTokenSource();
-        _ = MonitorPendingSyncAsync(_syncMonitorCts.Token);
+        catch (Exception ex)
+        {
+            // L'archivio locale resta consultabile anche se il bootstrap cloud fallisce.
+            CloudMessage = "Archivio locale disponibile. Sincronizzazione cloud non completata: " + ex.Message;
+        }
+        finally
+        {
+            _syncMonitorCts ??= new CancellationTokenSource();
+            _ = MonitorPendingSyncAsync(_syncMonitorCts.Token);
+            CloudBusy = false;
+            await InvokeAsync(StateHasChanged);
+        }
     }
 
     private async Task MonitorPendingSyncAsync(CancellationToken cancellationToken)
