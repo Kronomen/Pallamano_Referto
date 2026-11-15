@@ -7910,10 +7910,15 @@ html:-webkit-full-screen, body:-webkit-full-screen{width:100%;height:100%;overfl
   z-index: 2 !important;
 }
 
-/* Intestazione persistente in tutte le sezioni della gestione archivio */
-.archive-sticky-shell{
+/* Barra superiore e titolo/schede persistenti durante lo scorrimento archivio */
+.archive-header{
   position:sticky;
   top:0;
+  z-index:110;
+}
+.archive-sticky-shell{
+  position:sticky;
+  top:64px;
   z-index:100;
   background:#eef2f7;
   padding-top:0;
