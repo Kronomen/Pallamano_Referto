@@ -383,10 +383,39 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
         var season = Data.Seasons.FirstOrDefault(x => Same(x.Name, import.Season))
             ?? throw new InvalidOperationException("La stagione selezionata non esiste più nell'archivio.");
         var addedPeople = 0; var addedEntries = 0; var updatedEntries = 0; var skipped = 0;
+        var resolvedTeamIds = new HashSet<string>(StringComparer.Ordinal);
         foreach (var teamRow in import.Teams)
         {
-            var team = Data.Teams.FirstOrDefault(x => x.Id == teamRow.TeamId)
-                ?? throw new InvalidOperationException("Una delle squadre selezionate non è presente nell'archivio.");
+            ArchiveTeam? team = string.IsNullOrWhiteSpace(teamRow.TeamId)
+                ? null
+                : Data.Teams.FirstOrDefault(x => x.Id == teamRow.TeamId);
+            if (!string.IsNullOrWhiteSpace(teamRow.TeamId) && team is null)
+                throw new InvalidOperationException("Una delle squadre selezionate non è presente nell'archivio.");
+
+            if (team is null)
+            {
+                var detectedName = (teamRow.DetectedName ?? "").Trim();
+                if (string.IsNullOrWhiteSpace(detectedName))
+                    throw new InvalidOperationException("Il nome della nuova squadra non è valido.");
+                team = Data.Teams.FirstOrDefault(x => Same(x.Name, detectedName));
+                if (team is null)
+                {
+                    team = new ArchiveTeam { Name = detectedName, IsActive = true };
+                    Data.Teams.Add(team);
+                }
+            }
+
+            if (!resolvedTeamIds.Add(team.Id))
+                throw new InvalidOperationException("Le due rose risultano associate alla stessa squadra. Controlla l'abbinamento prima di confermare.");
+
+            var teamRegistration = Data.TeamEntries.FirstOrDefault(x => x.TeamId == team.Id &&
+                x.ChampionshipId == championship.Id && x.SeasonId == season.Id && x.EntryType == "TEAM");
+            if (teamRegistration is null)
+                Data.TeamEntries.Add(new ArchiveTeamEntry { TeamId = team.Id, ChampionshipId = championship.Id,
+                    SeasonId = season.Id, EntryType = "TEAM", IsActive = true });
+            else
+                teamRegistration.IsActive = true;
+
             foreach (var row in teamRow.People.Where(x => x.Selected))
             {
                 var name = (row.Name ?? "").Trim();
