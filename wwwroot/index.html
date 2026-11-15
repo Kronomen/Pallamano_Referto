@@ -44,7 +44,9 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
 (function(){
-  const TEST_MODE = new URLSearchParams(window.location.search).get('modalita-prova') === 'locale';
+  const TEST_HOST = location.hostname === 'localhost' || location.hostname === '127.0.0.1'
+    || location.hostname.endsWith('.github.dev') || location.hostname.endsWith('.app.github.dev');
+  const TEST_MODE = TEST_HOST && new URLSearchParams(window.location.search).get('modalita-prova') === 'locale';
   const KEY = TEST_MODE ? 'refertoPallamanoRecoveryV4_TEST' : 'refertoPallamanoRecoveryV4';
   window.salvaPartitaLocale = function(json){ try { localStorage.setItem(KEY, json); return true; } catch(e){ return false; } };
   window.recuperaPartitaLocale = function(){ try { return localStorage.getItem(KEY) || (TEST_MODE ? null : (localStorage.getItem('refertoPallamanoRecoveryV3') || localStorage.getItem('refertoPallamanoRecoveryV2'))); } catch(e){ return null; } };
