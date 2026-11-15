@@ -15,6 +15,29 @@
         <div class="archive-header-actions">@if (Cloud.IsAuthenticated) { <button type="button" @onclick="DisconnectCloud" style="border:2px solid #dc2626;border-radius:8px;background:#dc2626;color:#173b70;padding:10px 14px;font-weight:900;cursor:pointer;">@(Cloud.IsAdmin ? "ESCI DA AMMINISTRATORE" : "ESCI DA OPERATORE")</button> } <button class="archive-back" @onclick="BackToMatch">← TORNA ALLA GARA</button></div>
     </header>
 
+    @if (IsNameEditOpen)
+    {
+        <div class="archive-person-modal-backdrop">
+            <section class="archive-person-modal" role="dialog" aria-modal="true" aria-labelledby="name-edit-title">
+                <div class="archive-card-title">
+                    <div><h2 id="name-edit-title">Variazione nominativo</h2><p>Modifica il nome e premi CONTINUA per memorizzare la variazione.</p></div>
+                    <button type="button" class="archive-small" @onclick="CancelNameEdit" disabled="@NameEditBusy">ANNULLA</button>
+                </div>
+                <label>Nuovo nome
+                    <input @bind="NameEditValue" @bind:event="oninput" disabled="@NameEditBusy" />
+                </label>
+                @if (!string.IsNullOrWhiteSpace(NameEditMessage))
+                {
+                    <div class="archive-message" role="alert">@NameEditMessage</div>
+                }
+                <div class="archive-form-grid">
+                    <button type="button" class="archive-primary" @onclick="ContinueNameEdit" disabled="@(!CanWriteArchive || NameEditBusy || string.IsNullOrWhiteSpace(NameEditValue))">@(NameEditBusy ? "SALVATAGGIO…" : "CONTINUA")</button>
+                    <button type="button" class="archive-small" @onclick="CancelNameEdit" disabled="@NameEditBusy">ANNULLA</button>
+                </div>
+            </section>
+        </div>
+    }
+
     @if (CloudBusy || !string.IsNullOrWhiteSpace(CloudMessage))
     {
         <div class="archive-message" role="status" style="margin:8px 12px;">@CloudMessage</div>
@@ -136,7 +159,7 @@
                 <div class="archive-list teams-grid">
                     @foreach (var t in Archivio.Data.Teams.OrderBy(x => x.Name))
                     {
-                        <div class="archive-list-row"><div class="archive-list-icon">🏐</div><div class="archive-list-main"><strong>@t.Name</strong><small>@string.Join(", ", Archivio.Data.TeamEntries.Where(x => x.TeamId == t.Id && x.EntryType == "TEAM").Select(x => Archivio.Data.Championships.FirstOrDefault(c => c.Id == x.ChampionshipId)?.Name).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct()) · @Archivio.Data.TeamEntries.Count(x => x.TeamId == t.Id && x.EntryType == "TEAM") iscrizioni</small></div><span class="archive-status @(t.IsActive ? "on" : "off")">@(t.IsActive ? "ATTIVA" : "ARCHIVIATA")</span><button class="archive-small" @onclick="() => ToggleTeam(t.Id)" disabled="@(!CanWriteArchive)">@(t.IsActive ? "ARCHIVIA" : "RIATTIVA")</button><button class="archive-small archive-delete-team" @onclick="() => DeleteTeam(t.Id)" disabled="@(!CanWriteArchive)">CANCELLA</button></div>
+                        <div class="archive-list-row"><div class="archive-list-icon">🏐</div><div class="archive-list-main"><strong>@t.Name</strong><small>@string.Join(", ", Archivio.Data.TeamEntries.Where(x => x.TeamId == t.Id && x.EntryType == "TEAM").Select(x => Archivio.Data.Championships.FirstOrDefault(c => c.Id == x.ChampionshipId)?.Name).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct()) · @Archivio.Data.TeamEntries.Count(x => x.TeamId == t.Id && x.EntryType == "TEAM") iscrizioni</small></div><span class="archive-status @(t.IsActive ? "on" : "off")">@(t.IsActive ? "ATTIVA" : "ARCHIVIATA")</span><button class="archive-small" @onclick="() => ToggleTeam(t.Id)" disabled="@(!CanWriteArchive)">@(t.IsActive ? "ARCHIVIA" : "RIATTIVA")</button><button class="archive-small" @onclick="() => OpenTeamNameEdit(t.Id)" disabled="@(!CanWriteArchive)">VARIAZIONE</button><button class="archive-small archive-delete-team" @onclick="() => DeleteTeam(t.Id)" disabled="@(!CanWriteArchive)">CANCELLA</button></div>
                     }
                 </div>
             </section>
@@ -257,7 +280,7 @@
                 <div class="archive-list">
                     @foreach (var p in Archivio.Data.People.OrderBy(x => x.FullName))
                     {
-                        <div class="archive-list-row"><div class="archive-list-icon">@(p.PersonType == "PLAYER" ? "👤" : "📋")</div><div class="archive-list-main"><button type="button" class="archive-person-name" @onclick="() => OpenPersonAssociations(p.Id)">@p.FullName</button><small>@(p.PersonType == "PLAYER" ? "Atleta" : "Dirigente") · @Archivio.Data.TeamEntries.Count(x => x.PersonId == p.Id && x.IsActive) iscrizioni attive</small></div><span class="archive-status @(p.IsActive ? "on" : "off")">@(p.IsActive ? "ATTIVO" : "ARCHIVIATO")</span><button class="archive-small" @onclick="() => TogglePerson(p.Id)" disabled="@(!CanWriteArchive)">@(p.IsActive ? "ARCHIVIA" : "RIATTIVA")</button><button class="archive-small archive-delete-team" @onclick="() => DeletePerson(p.Id)" disabled="@(!CanWriteArchive)">CANCELLA</button></div>
+                        <div class="archive-list-row"><div class="archive-list-icon">@(p.PersonType == "PLAYER" ? "👤" : "📋")</div><div class="archive-list-main"><button type="button" class="archive-person-name" @onclick="() => OpenPersonAssociations(p.Id)">@p.FullName</button><small>@(p.PersonType == "PLAYER" ? "Atleta" : "Dirigente") · @Archivio.Data.TeamEntries.Count(x => x.PersonId == p.Id && x.IsActive) iscrizioni attive</small></div><span class="archive-status @(p.IsActive ? "on" : "off")">@(p.IsActive ? "ATTIVO" : "ARCHIVIATO")</span><button class="archive-small" @onclick="() => TogglePerson(p.Id)" disabled="@(!CanWriteArchive)">@(p.IsActive ? "ARCHIVIA" : "RIATTIVA")</button><button class="archive-small" @onclick="() => OpenPersonNameEdit(p.Id)" disabled="@(!CanWriteArchive)">VARIAZIONE</button><button class="archive-small archive-delete-team" @onclick="() => DeletePerson(p.Id)" disabled="@(!CanWriteArchive)">CANCELLA</button></div>
                     }
                 </div>
                 @if (SelectedPerson is not null)
@@ -520,6 +543,12 @@
         public List<string> RemoveTeamNames { get; set; } = new();
     }
     private bool CanWriteArchive => Cloud.IsAuthenticated && !CloudBusy;
+    private bool IsNameEditOpen;
+    private bool NameEditBusy;
+    private string NameEditKind = "";
+    private string NameEditId = "";
+    private string NameEditValue = "";
+    private string NameEditMessage = "";
     private bool RequireWriteAccess()
     {
         if (CloudBusy)
@@ -884,6 +913,78 @@
     private async Task AddSeason() { if (!RequireWriteAccess()) return; if (string.IsNullOrWhiteSpace(SeasonName) || SeasonEnd < SeasonStart || Archivio.Data.Seasons.Any(x => ArchiveService.Same(x.Name, SeasonName))) return; Archivio.Data.Seasons.Add(new ArchiveSeason { Name = SeasonName.Trim(), StartDate = DateOnly.FromDateTime(SeasonStart), EndDate = DateOnly.FromDateTime(SeasonEnd) }); SeasonName = ""; await Archivio.SaveAsync(); }
     private async Task ToggleSeason(string id) { if (!RequireWriteAccess()) return; var x = Archivio.Data.Seasons.FirstOrDefault(x => x.Id == id); if (x is not null) { x.IsActive = !x.IsActive; await Archivio.SaveAsync(); } }
     private async Task ToggleTeam(string id) { if (!RequireWriteAccess()) return; var x = Archivio.Data.Teams.FirstOrDefault(x => x.Id == id); if (x is not null) { x.IsActive = !x.IsActive; await Archivio.SaveAsync(); } }
+    private void OpenTeamNameEdit(string id)
+    {
+        if (!RequireWriteAccess()) return;
+        var team = Archivio.Data.Teams.FirstOrDefault(x => x.Id == id);
+        if (team is null) return;
+        NameEditKind = "TEAM";
+        NameEditId = id;
+        NameEditValue = team.Name;
+        NameEditMessage = "";
+        IsNameEditOpen = true;
+    }
+
+    private void OpenPersonNameEdit(string id)
+    {
+        if (!RequireWriteAccess()) return;
+        var person = Archivio.Data.People.FirstOrDefault(x => x.Id == id);
+        if (person is null) return;
+        NameEditKind = "PERSON";
+        NameEditId = id;
+        NameEditValue = person.FullName;
+        NameEditMessage = "";
+        IsNameEditOpen = true;
+    }
+
+    private void CancelNameEdit()
+    {
+        if (NameEditBusy) return;
+        IsNameEditOpen = false;
+        NameEditKind = NameEditId = NameEditValue = NameEditMessage = "";
+    }
+
+    private async Task ContinueNameEdit()
+    {
+        if (!RequireWriteAccess() || NameEditBusy) return;
+        var newName = NameEditValue.Trim();
+        if (string.IsNullOrWhiteSpace(newName))
+        {
+            NameEditMessage = "Inserisci un nominativo valido.";
+            return;
+        }
+
+        var team = NameEditKind == "TEAM" ? Archivio.Data.Teams.FirstOrDefault(x => x.Id == NameEditId) : null;
+        var person = NameEditKind == "PERSON" ? Archivio.Data.People.FirstOrDefault(x => x.Id == NameEditId) : null;
+        if (team is null && person is null)
+        {
+            NameEditMessage = "Il record da modificare non è più disponibile. Riapri la pagina e riprova.";
+            return;
+        }
+        if (team is not null && Archivio.Data.Teams.Any(x => x.Id != team.Id && ArchiveService.Same(x.Name, newName)))
+        {
+            NameEditMessage = "Esiste già una squadra con questa denominazione.";
+            return;
+        }
+
+        NameEditBusy = true;
+        try
+        {
+            if (team is not null) team.Name = newName;
+            else if (person is not null) person.FullName = newName;
+
+            await Archivio.SaveAsync();
+            // Il salvataggio locale è completato prima del ricaricamento;
+            // eventuali errori di sincronizzazione sono mostrati senza cancellare la modifica locale.
+            Nav.NavigateTo(Nav.Uri, forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            NameEditMessage = "La variazione è stata applicata in memoria, ma il salvataggio/sincronizzazione non è stato confermato. Non chiudere la pagina. Dettaglio: " + ex.Message;
+            NameEditBusy = false;
+        }
+    }
+
     private async Task DeleteTeam(string id)
     {
         if (!RequireWriteAccess()) return;
