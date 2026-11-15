@@ -30,6 +30,39 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
         await js.InvokeVoidAsync(identifier, timeout.Token, args);
     }
 
+    public async Task<string> SynchronizeSharedArchiveAsync()
+    {
+        if (!cloud.IsAuthenticated || !cloud.HasCheckedRemote)
+            return "Archivio locale disponibile. Accesso cloud non attivo: sincronizzazione condivisa non eseguita.";
+
+        // Prima recupera le modifiche locali pendenti: non vengono mai scartate
+        // per fare spazio alla copia centrale.
+        if (cloud.HasPendingChanges)
+        {
+            await cloud.RetryPendingSyncAsync(Data);
+            if (cloud.HasPendingChanges || cloud.HasSyncConflict)
+                throw new InvalidOperationException(cloud.Status);
+            await SaveAsync(syncCloud: false);
+        }
+
+        if (cloud.HasRemoteArchive)
+        {
+            var remote = await cloud.DownloadRemoteAsync();
+            if (remote is null)
+                throw new InvalidOperationException("Il cloud segnala un archivio presente ma non ha restituito i dati.");
+
+            // Il cloud è la fonte centrale unica. La copia locale precedente
+            // è già salvata nel backup prima di essere sostituita.
+            await ReplaceWithRemoteArchiveAsync(remote);
+            await cloud.EnableAutoSyncAsync();
+
+            return "Archivio centrale caricato sul dispositivo. Backup locale conservato e sincronizzazione automatica attiva.";
+        }
+
+        await cloud.UploadInitialAsync(Data);
+        return "Prima copia dell'archivio condiviso creata automaticamente.";
+    }
+
     public async Task InitializeAsync()
     {
         if (IsLoaded || !string.IsNullOrWhiteSpace(LoadError)) return;
@@ -153,6 +186,35 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
         finally { _saveLock.Release(); }
     }
 
+
+    public async Task ReplaceWithRemoteArchiveAsync(ArchiveDatabase remote)
+    {
+        if (remote is null) throw new ArgumentNullException(nameof(remote));
+        remote.Championships ??= [];
+        remote.Seasons ??= [];
+        remote.Teams ??= [];
+        remote.People ??= [];
+        remote.TeamEntries ??= [];
+
+        await _saveLock.WaitAsync();
+        try
+        {
+            // La copia locale viene conservata prima di adottare la versione centrale.
+            // Questo evita collisioni artificiali con il vecchio seed e permette
+            // di recuperare eventuali dati locali non ancora sincronizzati.
+            var backup = JsonSerializer.Serialize(Data, JsonOptions);
+            await InvokeArchiveStorageVoidAsync("archiveStorage.set", BackupKey, backup);
+
+            Data = remote;
+            UpgradeSchema();
+            IsLoaded = true;
+
+            var json = JsonSerializer.Serialize(Data, JsonOptions);
+            await InvokeArchiveStorageVoidAsync("archiveStorage.saveArchive", StorageKey, BackupKey, json);
+            Changed?.Invoke();
+        }
+        finally { _saveLock.Release(); }
+    }
 
     public async Task<int> MergeRemoteArchiveAsync(ArchiveDatabase remote)
     {

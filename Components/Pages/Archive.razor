@@ -1178,36 +1178,7 @@
     }
     private async Task BootstrapSharedArchiveAsync()
     {
-        if (!Cloud.IsAuthenticated || !Cloud.HasCheckedRemote) return;
-
-        // Prima tenta di recuperare eventuali modifiche locali rimaste in sospeso.
-        if (Cloud.HasPendingChanges)
-        {
-            await Cloud.RetryPendingSyncAsync(Archivio.Data);
-            if (Cloud.HasPendingChanges || Cloud.HasSyncConflict)
-            {
-                CloudMessage = Cloud.Status;
-                return;
-            }
-            await Archivio.SaveAsync(syncCloud: false);
-        }
-
-        if (Cloud.HasRemoteArchive)
-        {
-            var remote = await Cloud.DownloadRemoteAsync();
-            if (remote is null) throw new InvalidOperationException("Il cloud segnala un archivio presente ma non ha restituito i dati.");
-            var added = await Archivio.MergeRemoteArchiveAsync(remote);
-            await Cloud.EnableAutoSyncAsync();
-            if (added > 0) await Cloud.TrySyncAsync(Archivio.Data);
-            CloudMessage = added > 0
-                ? $"Archivio condiviso aggiornato: recuperati e sincronizzati {added} record locali."
-                : "Archivio condiviso aggiornato. Sincronizzazione automatica attiva.";
-        }
-        else
-        {
-            await Cloud.UploadInitialAsync(Archivio.Data);
-            CloudMessage = "Prima copia dell'archivio condiviso creata automaticamente.";
-        }
+        CloudMessage = await Archivio.SynchronizeSharedArchiveAsync();
     }
 
     private async Task ConnectCloud()

@@ -1515,7 +1515,25 @@ else
         {
             // Ripristina la sessione cloud anche nella pagina principale,
             // così il nominativo dell'operatore resta visibile durante la gara.
-            await Cloud.TryRestoreSessionAsync();
+            await Archivio.InitializeAsync();
+            var sessionRestored = await Cloud.TryRestoreSessionAsync();
+            if (sessionRestored && Archivio.IsLoaded && Cloud.HasCheckedRemote)
+            {
+                try
+                {
+                    ArchiveRosterMessage = await Archivio.SynchronizeSharedArchiveAsync();
+                }
+                catch (Exception ex)
+                {
+                    // La copia locale resta disponibile; eventuali modifiche pendenti
+                    // o conflitti non vengono cancellati né sovrascritti.
+                    ArchiveRosterMessage = "Archivio locale conservato. Sincronizzazione centrale non completata: " + ex.Message;
+                }
+            }
+            else if (!Archivio.IsLoaded && !string.IsNullOrWhiteSpace(Archivio.LoadError))
+            {
+                ArchiveRosterMessage = Archivio.LoadError;
+            }
             StateHasChanged();
 
             // Leggiamo prima il recovery esistente. L'app non deve mai
