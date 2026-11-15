@@ -481,7 +481,16 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
         }
 
         // Il commit locale/cloud avviene solo dopo che tutte le righe sono state elaborate.
-        await SaveAsync();
+        // Se fallisce anche il salvataggio, ripristina l'istanza precedente in memoria.
+        try
+        {
+            await SaveAsync();
+        }
+        catch
+        {
+            Data = originalData;
+            throw;
+        }
         return result;
     }
 
