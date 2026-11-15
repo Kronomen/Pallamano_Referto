@@ -263,7 +263,7 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js, Navigati
         return archive;
     }
 
-    public async Task EnableAutoSyncAsync() { _autoSyncEnabled = true; await js.InvokeVoidAsync("localStorage.setItem", AutoSyncKey, "true"); Status = HasPendingChanges ? "Modifiche locali in attesa di sincronizzazione." : "Archivio cloud caricato. Sincronizzazione automatica attiva."; }
+    public async Task EnableAutoSyncAsync() { _autoSyncEnabled = true; await js.InvokeVoidAsync("localStorage.setItem", AutoSyncKey, "true"); Status = HasPendingChanges ? "Modifiche locali in attesa di sincronizzazione." : "Sincronizzazione automatica dell’archivio condiviso attiva."; }
 
     public async Task UploadInitialAsync(ArchiveDatabase archive)
     {
@@ -317,6 +317,16 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js, Navigati
                 : "Modifiche locali conservate. Nuovo tentativo automatico in attesa della connessione: " + ex.Message;
         }
         finally { _syncLock.Release(); }
+    }
+
+    public async Task ForceRetryPendingSyncAsync(ArchiveDatabase archive)
+    {
+        if (IsTestMode || !IsAuthenticated || !HasPendingChanges) return;
+        HasSyncConflict = false;
+        _autoSyncEnabled = true;
+        await js.InvokeVoidAsync("localStorage.removeItem", ConflictKey);
+        await js.InvokeVoidAsync("localStorage.setItem", AutoSyncKey, "true");
+        await RetryPendingSyncAsync(archive);
     }
 
     private async Task MergeLatestAndRetryAsync(ArchiveDatabase localArchive)
