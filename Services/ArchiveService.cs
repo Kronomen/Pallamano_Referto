@@ -378,6 +378,16 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
 
     public async Task<(int AddedPeople, int AddedEntries, int UpdatedEntries, int Skipped)> ImportPdfRosterAsync(ArchivePdfRosterImport import)
     {
+        // Esegue l'importazione su una copia di lavoro: se una riga successiva
+        // non supera i controlli, nessuna modifica parziale resta nell'archivio in memoria.
+        var originalData = Data;
+        var workingData = JsonSerializer.Deserialize<ArchiveDatabase>(
+            JsonSerializer.Serialize(originalData, JsonOptions), JsonOptions)
+            ?? throw new InvalidOperationException("Impossibile preparare una copia di sicurezza dell'archivio.");
+
+        Data = workingData;
+        try
+        {
         var championship = Data.Championships.FirstOrDefault(x => Same(x.Name, import.Championship))
             ?? throw new InvalidOperationException("Il campionato selezionato non esiste più nell'archivio.");
         var season = Data.Seasons.FirstOrDefault(x => Same(x.Name, import.Season))
@@ -463,6 +473,12 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
         }
         await SaveAsync();
         return (addedPeople, addedEntries, updatedEntries, skipped);
+        }
+        catch
+        {
+            Data = originalData;
+            throw;
+        }
     }
 
     public ArchiveChampionship GetOrAddChampionship(string name)
