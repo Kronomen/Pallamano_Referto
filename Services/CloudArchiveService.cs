@@ -2,12 +2,15 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.JSInterop;
+using Microsoft.AspNetCore.Components;
 using RefertoPallamano_Blazor.Models;
 
 namespace RefertoPallamano_Blazor.Services;
 
-public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
+public sealed class CloudArchiveService(HttpClient http, IJSRuntime js, NavigationManager navigation)
 {
+    // Modalità di prova attivabile solo con ?modalita-prova=locale. Non usa API cloud.
+    public bool IsTestMode { get; } = navigation.Uri.Contains("modalita-prova=locale", StringComparison.OrdinalIgnoreCase);
     private const string ApiBase = "https://pallamano-referto-api.kronomen.workers.dev";
     private const string TokenKey = "pallamanoCloudApiToken";
     private const string PendingKey = "pallamanoCloudPendingArchiveV1";
@@ -19,7 +22,7 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
     private bool _autoSyncEnabled;
     private readonly SemaphoreSlim _syncLock = new(1, 1);
 
-    public bool IsAuthenticated => !string.IsNullOrWhiteSpace(_token);
+    public bool IsAuthenticated => IsTestMode || !string.IsNullOrWhiteSpace(_token);
     public bool IsAdmin { get; private set; }
     public bool IsOperator => IsAuthenticated && !IsAdmin;
     public string? OperatorName { get; private set; }
@@ -148,6 +151,13 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
 
     public async Task<bool> TryRestoreSessionAsync()
     {
+        if (IsTestMode)
+        {
+            IsAdmin = true;
+            OperatorName = "AMBIENTE DI PROVA LOCALE";
+            Status = "Modalità di prova locale: nessuna connessione o sincronizzazione cloud.";
+            return true;
+        }
         try
         {
             await EnsureTokenAsync();
@@ -247,7 +257,7 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
 
     public async Task TrySyncAsync(ArchiveDatabase archive)
     {
-        if (!_autoSyncEnabled || !IsAuthenticated) return;
+        if (IsTestMode || !_autoSyncEnabled || !IsAuthenticated) return;
         await _syncLock.WaitAsync();
         try { await SavePendingAsync(archive); await PutAsync(archive, _sha); await ClearPendingAsync(); HasSyncConflict = false; Status = "Archivio salvato anche nel cloud."; }
         catch (Exception ex) { Status = HasSyncConflict ? "Conflitto cloud: modifiche locali conservate, sincronizzazione sospesa." : "Modifiche locali conservate in attesa del cloud: " + ex.Message; }
@@ -256,6 +266,7 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js)
 
     public async Task RetryPendingSyncAsync(ArchiveDatabase archive)
     {
+        if (IsTestMode) return;
         if (!HasPendingChanges || !_autoSyncEnabled || !IsAuthenticated || HasSyncConflict) return;
         await _syncLock.WaitAsync();
         try { await SavePendingAsync(archive); await PutAsync(archive, _sha); await ClearPendingAsync(); HasSyncConflict = false; Status = "Connessione ripristinata: archivio locale sincronizzato con il cloud."; }
