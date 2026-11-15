@@ -7,7 +7,7 @@ using RefertoPallamano_Blazor.Models;
 
 sealed class TestNavigationManager : NavigationManager
 {
-    public TestNavigationManager() : base("https://prod.test/", "https://prod.test/") { }
+    public TestNavigationManager() { Initialize("https://prod.test/", "https://prod.test/"); }
     protected override void NavigateToCore(string uri, bool forceLoad) { }
 }
 
