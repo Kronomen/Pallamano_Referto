@@ -1,0 +1,39 @@
+name: Build ramo di prova
+
+on:
+  push:
+    branches:
+      - fix/roster-completo-per-gara
+  pull_request:
+    branches:
+      - versione-definitiva
+    paths:
+      - '**.cs'
+      - '**.razor'
+      - '**.csproj'
+      - '**.json'
+      - '.github/workflows/feature-branch-build.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Compilazione .NET 10 (senza pubblicazione)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout del ramo in prova
+        uses: actions/checkout@v4
+
+      - name: Installa .NET SDK 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Ripristina dipendenze
+        run: dotnet restore RefertoPallamano_Blazor.csproj
+
+      - name: Compila in Release
+        run: dotnet build RefertoPallamano_Blazor.csproj --configuration Release --no-restore

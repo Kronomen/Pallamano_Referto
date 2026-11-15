@@ -84,9 +84,14 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
         {
             var json = JsonSerializer.Serialize(Data, JsonOptions);
             await js.InvokeVoidAsync("archiveStorage.saveArchive", StorageKey, BackupKey, json);
-            // Il salvataggio locale resta prioritario; il cloud viene aggiornato solo
-            // dopo il collegamento e la sincronizzazione iniziale scelti dall'utente.
-            if (syncCloud) await cloud.TrySyncAsync(Data);
+            // Il salvataggio locale resta prioritario. Dopo il tentativo cloud
+            // risalviamo anche l'eventuale merge automatico ricevuto dal server.
+            if (syncCloud)
+            {
+                await cloud.TrySyncAsync(Data);
+                var reconciledJson = JsonSerializer.Serialize(Data, JsonOptions);
+                await js.InvokeVoidAsync("archiveStorage.saveArchive", StorageKey, BackupKey, reconciledJson);
+            }
             Changed?.Invoke();
         }
         finally { _saveLock.Release(); }
@@ -124,6 +129,38 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
         finally { _saveLock.Release(); }
     }
 
+
+    public async Task<int> MergeRemoteArchiveAsync(ArchiveDatabase remote)
+    {
+        if (remote is null) throw new ArgumentNullException(nameof(remote));
+        remote.Championships ??= [];
+        remote.Seasons ??= [];
+        remote.Teams ??= [];
+        remote.People ??= [];
+        remote.TeamEntries ??= [];
+
+        // Serializza il merge con i normali salvataggi: altrimenti una modifica
+        // locale concorrente potrebbe essere esclusa dalla copia appena preparata.
+        await _saveLock.WaitAsync();
+        try
+        {
+            // Il cloud resta la base; il merge lavora su una copia e non tocca Data
+            // finché tutte le collezioni non hanno superato i controlli di conflitto.
+            var merged = JsonSerializer.Deserialize<ArchiveDatabase>(JsonSerializer.Serialize(remote), JsonOptions)
+                ?? throw new InvalidOperationException("Impossibile preparare la copia cloud per il merge.");
+            var added = merged.MergeFrom(Data);
+
+            var backup = JsonSerializer.Serialize(Data, JsonOptions);
+            await js.InvokeVoidAsync("archiveStorage.set", BackupKey, backup);
+            Data = merged;
+            IsLoaded = true;
+            var json = JsonSerializer.Serialize(Data, JsonOptions);
+            await js.InvokeVoidAsync("archiveStorage.saveArchive", StorageKey, BackupKey, json);
+            Changed?.Invoke();
+            return added;
+        }
+        finally { _saveLock.Release(); }
+    }
 
     public async Task<string> ExportJsonAsync()
     {

@@ -1,0 +1,19 @@
+{
+  "name": "Referto Pallamano - ambiente di prova",
+  "image": "mcr.microsoft.com/devcontainers/dotnet:10.0",
+  "forwardPorts": [5080],
+  "portsAttributes": {
+    "5080": {
+      "label": "Referto Pallamano - prova locale",
+      "onAutoForward": "openBrowser"
+    }
+  },
+  "postCreateCommand": "dotnet restore RefertoPallamano_Blazor.csproj",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-dotnettools.csdevkit"
+      ]
+    }
+  }
+}
