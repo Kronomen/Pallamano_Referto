@@ -1040,7 +1040,11 @@ else
                 ArchiveNumbers[person.Id] = currentIndex >= 0
                     ? current.NumberLabels[currentIndex] ?? ""
                     : entry.ShirtNumber ?? "";
-                if (currentIndex >= 0 && current.ActivePlayers[currentIndex])
+                // Per la stessa squadra riprende la distinta della gara corrente;
+                // su una nuova gara/dispositivo usa la convocazione predefinita condivisa.
+                if (sameCurrentMatchTeam && currentIndex >= 0 && current.ActivePlayers[currentIndex])
+                    ArchivePlayerSelections.Add(person.Id);
+                else if (currentIndex < 0 && entry.IsSelected)
                     ArchivePlayerSelections.Add(person.Id);
             }
             else if (person.PersonType == "OFFICIAL")
@@ -1051,7 +1055,9 @@ else
                 ArchiveStaffLetters[person.Id] = currentIndex >= 0
                     ? current.StaffLetters[currentIndex] ?? ""
                     : entry.OfficialLetter ?? "";
-                if (currentIndex >= 0 && current.ActiveStaff[currentIndex])
+                if (sameCurrentMatchTeam && currentIndex >= 0 && current.ActiveStaff[currentIndex])
+                    ArchiveStaffSelections.Add(person.Id);
+                else if (!sameCurrentMatchTeam && entry.IsSelected)
                     ArchiveStaffSelections.Add(person.Id);
             }
         }
@@ -1292,15 +1298,17 @@ else
             var person = Archivio.Data.People.FirstOrDefault(p => p.Id == entry.PersonId);
             if (person?.PersonType == "PLAYER")
             {
-                // IsSelected non rappresenta la convocazione di una singola gara:
-                // i nominativi convocati sono salvati nella GameState del referto.
                 if (ArchiveNumbers.TryGetValue(person.Id, out var savedNumber))
                     entry.ShirtNumber = savedNumber.Trim();
+                // La selezione corrente diventa il valore predefinito condiviso
+                // per la prossima gara della stessa squadra/campionato/stagione.
+                entry.IsSelected = ArchivePlayerSelections.Contains(person.Id);
             }
             else if (person?.PersonType == "OFFICIAL")
             {
                 if (ArchiveStaffLetters.TryGetValue(person.Id, out var savedLetter))
                     entry.OfficialLetter = savedLetter;
+                entry.IsSelected = ArchiveStaffSelections.Contains(person.Id);
             }
         }
         await Archivio.SaveAsync();
