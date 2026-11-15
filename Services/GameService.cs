@@ -1399,6 +1399,8 @@ public sealed class GameService : IAsyncDisposable
         }
         State.MiniTimerRunning = false; ClearPending(); PendingShootout = null;
         ShowNextPeriod = false; ShowShootoutStart = false; ShowShootoutFirstTeam = false; ShowShootoutWinner = false;
+        ShowConfiguration = !State.MatchStarted && !State.ShootoutStarted;
+        ShowReadyPopup = false;
         var phaseAtEnd = State.Phase is >= 1 and <= 6 && State.TimerSeconds >= GetCurrentPeriodEndSeconds() && State.PhaseScores.ContainsKey(State.Phase);
         ShowPeriodEnd = !State.MatchFinished && !State.ShootoutStarted && phaseAtEnd && !State.PeriodEndAcknowledged;
         ShowMatchEnd = State.MatchFinished;
