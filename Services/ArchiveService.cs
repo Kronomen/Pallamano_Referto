@@ -16,12 +16,27 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
 
     public string? LoadError { get; private set; }
 
+    private static readonly TimeSpan LocalStorageTimeout = TimeSpan.FromSeconds(10);
+
+    private async Task<T?> InvokeArchiveStorageAsync<T>(string identifier, params object?[] args)
+    {
+        using var timeout = new CancellationTokenSource(LocalStorageTimeout);
+        return await js.InvokeAsync<T?>(identifier, timeout.Token, args);
+    }
+
+    private async Task InvokeArchiveStorageVoidAsync(string identifier, params object?[] args)
+    {
+        using var timeout = new CancellationTokenSource(LocalStorageTimeout);
+        await js.InvokeVoidAsync(identifier, timeout.Token, args);
+    }
+
     public async Task InitializeAsync()
     {
         if (IsLoaded || !string.IsNullOrWhiteSpace(LoadError)) return;
         try
         {
-            var json = await js.InvokeAsync<string?>("archiveStorage.get", StorageKey);
+            var shouldPersist = false;
+            var json = await InvokeArchiveStorageAsync<string>("archiveStorage.get", StorageKey);
             if (!string.IsNullOrWhiteSpace(json))
             {
                 // Un archivio locale presente ma non leggibile non deve mai essere
@@ -36,7 +51,8 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
             }
             else
             {
-                var seedJson = await js.InvokeAsync<string?>("archiveStorage.getSeed");
+                var seedJson = await InvokeArchiveStorageAsync<string>("archiveStorage.getSeed");
+                shouldPersist = true;
                 if (!string.IsNullOrWhiteSpace(seedJson))
                     Data = JsonSerializer.Deserialize<ArchiveDatabase>(seedJson, JsonOptions)
                         ?? throw new InvalidOperationException("Il catalogo iniziale non è valido.");
@@ -48,17 +64,25 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
             return;
         }
 
+        var previousSchemaVersion = Data.SchemaVersion;
         UpgradeSchema();
+        if (Data.SchemaVersion != previousSchemaVersion) shouldPersist = true;
         if (Data.Seasons.Count == 0)
+        {
             Data.Seasons.Add(new ArchiveSeason { Name = "2026/2027", StartDate = new DateOnly(2026, 7, 1), EndDate = new DateOnly(2027, 6, 30), IsActive = true });
+            shouldPersist = true;
+        }
         if (Data.Championships.Count == 0)
         {
             Data.Championships.Add(new ArchiveChampionship { Name = "Serie A1 Femminile", Category = "Senior", Gender = "Femminile" });
             Data.Championships.Add(new ArchiveChampionship { Name = "Serie B Maschile", Category = "Senior", Gender = "Maschile" });
             Data.Championships.Add(new ArchiveChampionship { Name = "Serie Giovanile", Category = "Giovanile", Gender = "" });
+            shouldPersist = true;
         }
+        // Non riscrivere l'archivio IndexedDB a ogni apertura: basta leggere
+        // i dati esistenti. Persistiamo solo seed, valori predefiniti o migrazioni.
+        if (shouldPersist) await SaveAsync(syncCloud: false);
         IsLoaded = true;
-        await SaveAsync(syncCloud: false);
     }
 
     public async Task<string?> ExportStoredArchiveRawAsync()
@@ -83,14 +107,14 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
         try
         {
             var json = JsonSerializer.Serialize(Data, JsonOptions);
-            await js.InvokeVoidAsync("archiveStorage.saveArchive", StorageKey, BackupKey, json);
+            await InvokeArchiveStorageVoidAsync("archiveStorage.saveArchive", StorageKey, BackupKey, json);
             // Il salvataggio locale resta prioritario. Dopo il tentativo cloud
             // risalviamo anche l'eventuale merge automatico ricevuto dal server.
             if (syncCloud)
             {
                 await cloud.TrySyncAsync(Data);
                 var reconciledJson = JsonSerializer.Serialize(Data, JsonOptions);
-                await js.InvokeVoidAsync("archiveStorage.saveArchive", StorageKey, BackupKey, reconciledJson);
+                await InvokeArchiveStorageVoidAsync("archiveStorage.saveArchive", StorageKey, BackupKey, reconciledJson);
             }
             Changed?.Invoke();
         }
