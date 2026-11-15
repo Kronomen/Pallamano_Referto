@@ -6,6 +6,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <Compile Include="../../Models/ArchiveModels.cs" Link="ArchiveModels.cs" />
+    <Compile Include="../../Services/CloudArchiveService.cs" Link="CloudArchiveService.cs" />
   </ItemGroup>
 </Project>
