@@ -15,6 +15,7 @@ sealed class TestJsRuntime : IJSRuntime
 {
     private readonly Dictionary<string, string> _storage = new(StringComparer.Ordinal);
     public string? Read(string key) => _storage.TryGetValue(key, out var value) ? value : null;
+    public void Write(string key, string value) => _storage[key] = value;
 
     public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args) =>
         InvokeAsync<TValue>(identifier, CancellationToken.None, args);
@@ -24,12 +25,18 @@ sealed class TestJsRuntime : IJSRuntime
         cancellationToken.ThrowIfCancellationRequested();
         object? result = null;
         var key = args is { Length: > 0 } ? args[0]?.ToString() ?? "" : "";
-        if (identifier == "localStorage.getItem")
+        if (identifier == "localStorage.getItem" || identifier == "archiveStorage.get")
             result = _storage.TryGetValue(key, out var value) ? value : null;
         else if (identifier == "localStorage.setItem" && args is { Length: > 1 })
             _storage[key] = args[1]?.ToString() ?? "";
         else if (identifier == "localStorage.removeItem")
             _storage.Remove(key);
+        else if (identifier == "archiveStorage.saveArchive" && args is { Length: > 2 })
+        {
+            var backupKey = args[1]?.ToString() ?? "";
+            if (_storage.TryGetValue(key, out var previous)) _storage[backupKey] = previous;
+            _storage[key] = args[2]?.ToString() ?? "";
+        }
         else
             throw new NotSupportedException("Chiamata JS non prevista: " + identifier);
         return ValueTask.FromResult((TValue)result!);

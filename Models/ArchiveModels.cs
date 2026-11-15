@@ -125,4 +125,7 @@ public sealed class ArchivePdfRosterPerson
     public string PersonType { get; set; } = "PLAYER";
     public bool Selected { get; set; } = true;
     public string Status { get; set; } = "";
+    // Scelta esplicita quando esiste già un omonimo attivo in un'altra squadra:
+    // NEW crea una distinta anagrafica; EXISTING:<id> trasferisce la persona selezionata.
+    public string ImportChoice { get; set; } = "";
 }

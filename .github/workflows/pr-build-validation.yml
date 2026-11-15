@@ -23,3 +23,5 @@ jobs:
         run: dotnet restore RefertoPallamano_Blazor.csproj
       - name: Build
         run: dotnet build RefertoPallamano_Blazor.csproj --configuration Release --no-restore
+      - name: Test isolati archivio e import PDF
+        run: dotnet run --project tests/SyncIsolation/SyncIsolation.csproj --configuration Release
