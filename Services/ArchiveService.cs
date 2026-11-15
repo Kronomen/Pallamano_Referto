@@ -125,6 +125,27 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
     }
 
 
+    public async Task<int> MergeRemoteArchiveAsync(ArchiveDatabase remote)
+    {
+        if (remote is null) throw new ArgumentNullException(nameof(remote));
+        remote.Championships ??= [];
+        remote.Seasons ??= [];
+        remote.Teams ??= [];
+        remote.People ??= [];
+        remote.TeamEntries ??= [];
+
+        // Il cloud resta la base autorevole; aggiungiamo le registrazioni locali mancanti.
+        // Il merge rileva gli ID modificati in modo divergente e si ferma senza sovrascrivere.
+        var merged = JsonSerializer.Deserialize<ArchiveDatabase>(JsonSerializer.Serialize(remote), JsonOptions)
+            ?? throw new InvalidOperationException("Impossibile preparare la copia cloud per il merge.");
+        var added = merged.MergeFrom(Data);
+        await CreateBackupAsync();
+        Data = merged;
+        IsLoaded = true;
+        await SaveAsync(syncCloud: false);
+        return added;
+    }
+
     public async Task<string> ExportJsonAsync()
     {
         return JsonSerializer.Serialize(Data, new JsonSerializerOptions { WriteIndented = true });
