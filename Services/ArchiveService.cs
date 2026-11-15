@@ -30,6 +30,43 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
         await js.InvokeVoidAsync(identifier, timeout.Token, args);
     }
 
+    public async Task<string> SynchronizeSharedArchiveAsync()
+    {
+        if (!cloud.IsAuthenticated || !cloud.HasCheckedRemote)
+            return "Archivio locale disponibile. Accesso cloud non attivo: sincronizzazione condivisa non eseguita.";
+
+        // Prima recupera le modifiche locali pendenti: non vengono mai scartate
+        // per fare spazio alla copia centrale.
+        if (cloud.HasPendingChanges)
+        {
+            await cloud.RetryPendingSyncAsync(Data);
+            if (cloud.HasPendingChanges || cloud.HasSyncConflict)
+                throw new InvalidOperationException(cloud.Status);
+            await SaveAsync(syncCloud: false);
+        }
+
+        if (cloud.HasRemoteArchive)
+        {
+            var remote = await cloud.DownloadRemoteAsync();
+            if (remote is null)
+                throw new InvalidOperationException("Il cloud segnala un archivio presente ma non ha restituito i dati.");
+
+            // Il cloud è la base; i record locali distinti vengono mantenuti.
+            // Le collisioni sullo stesso ID bloccano l'operazione senza perdere dati.
+            var added = await MergeRemoteArchiveAsync(remote);
+            await cloud.EnableAutoSyncAsync();
+            if (added > 0)
+                await cloud.TrySyncAsync(Data);
+
+            return added > 0
+                ? $"Archivio centrale aggiornato: recuperati e sincronizzati {added} record locali."
+                : "Archivio centrale aggiornato. Sincronizzazione automatica attiva.";
+        }
+
+        await cloud.UploadInitialAsync(Data);
+        return "Prima copia dell'archivio condiviso creata automaticamente.";
+    }
+
     public async Task InitializeAsync()
     {
         if (IsLoaded || !string.IsNullOrWhiteSpace(LoadError)) return;
