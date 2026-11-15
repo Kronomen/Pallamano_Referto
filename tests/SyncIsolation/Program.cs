@@ -102,7 +102,7 @@ await serviceB.TrySyncAsync(localB);
 Check(sharedServer.ConflictCount == 1, "client B deve ricevere un conflitto sulla revisione obsoleta");
 Check(sharedServer.PutCount == 3, "la sequenza deve includere PUT A, PUT B in conflitto e PUT B di retry");
 Check(sharedServer.Data.People.Select(x => x.Id).ToHashSet().SetEquals(new[] { "cloud-A", "cloud-B" }),
-    "il server deve conservare i record di entrambi i dispositivi");
+    "il server deve conservare entrambi; trovati: " + string.Join(",", sharedServer.Data.People.Select(x => x.Id)) + "; PUT=" + sharedServer.PutCount + "; 409=" + sharedServer.ConflictCount + "; SHA=" + sharedServer.Sha);
 Check(sharedServer.Sha == "sha-3", "il retry deve avanzare alla versione successiva");
 Check(!serviceB.HasPendingChanges && !serviceB.HasSyncConflict, "pending e conflitto B devono essere azzerati dopo il retry");
 Check(storageB.Read("pallamanoCloudPendingArchiveV1") is null, "pending B deve essere rimosso da localStorage");
