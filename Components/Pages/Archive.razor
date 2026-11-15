@@ -645,11 +645,15 @@
 
     private async Task MonitorPendingSyncAsync(CancellationToken cancellationToken)
     {
-        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
+        // In caso di indisponibilità temporanea del Worker evita richieste continue:
+        // 5, 10, 20, 40 e poi 60 secondi. Dopo una risposta valida riparte da 5.
+        var retrySeconds = 5;
+        var hadConnectionError = false;
         try
         {
-            while (await timer.WaitForNextTickAsync(cancellationToken))
+            while (!cancellationToken.IsCancellationRequested)
             {
+                await Task.Delay(TimeSpan.FromSeconds(retrySeconds), cancellationToken);
                 if (!Cloud.IsAuthenticated) continue;
 
                 try
@@ -659,6 +663,8 @@
                         await Cloud.RetryPendingSyncAsync(Archivio.Data);
                         if (!Cloud.HasPendingChanges && !Cloud.HasSyncConflict)
                             await Archivio.SaveAsync(syncCloud: false);
+                        if (Cloud.HasPendingChanges || Cloud.HasSyncConflict)
+                            throw new InvalidOperationException(Cloud.Status);
                     }
                     else
                     {
@@ -671,6 +677,12 @@
                         }
                     }
 
+                    if (hadConnectionError)
+                    {
+                        CloudMessage = "Collegamento al cloud ripristinato. Controllo automatico nuovamente attivo.";
+                        hadConnectionError = false;
+                    }
+                    retrySeconds = 5;
                     await InvokeAsync(StateHasChanged);
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -679,10 +691,10 @@
                 }
                 catch (Exception ex)
                 {
-                    // Un errore temporaneo di rete o una risposta non valida non deve
-                    // terminare definitivamente il monitor: il controllo riparte al tick successivo.
-                    CloudMessage = "Controllo sincronizzazione non riuscito. Nuovo tentativo automatico tra 5 secondi. Dettaglio: " + ex.Message;
+                    hadConnectionError = true;
+                    CloudMessage = $"Collegamento al cloud non disponibile. I dati locali restano sul dispositivo; nuovo tentativo tra {retrySeconds} secondi. Dettaglio: {ex.Message}";
                     await InvokeAsync(StateHasChanged);
+                    retrySeconds = Math.Min(retrySeconds * 2, 60);
                 }
             }
         }
