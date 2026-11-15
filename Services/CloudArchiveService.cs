@@ -10,7 +10,18 @@ namespace RefertoPallamano_Blazor.Services;
 public sealed class CloudArchiveService(HttpClient http, IJSRuntime js, NavigationManager navigation)
 {
     // Modalità di prova attivabile solo con ?modalita-prova=locale. Non usa API cloud.
-    public bool IsTestMode { get; } = navigation.Uri.Contains("modalita-prova=locale", StringComparison.OrdinalIgnoreCase);
+    public bool IsTestMode { get; } = IsLocalTestUri(navigation.Uri);
+
+    private static bool IsLocalTestUri(string address)
+    {
+        if (!Uri.TryCreate(address, UriKind.Absolute, out var uri)) return false;
+        var host = uri.Host;
+        var isDevelopmentHost = uri.IsLoopback
+            || host.EndsWith(".github.dev", StringComparison.OrdinalIgnoreCase)
+            || host.EndsWith(".app.github.dev", StringComparison.OrdinalIgnoreCase);
+        return isDevelopmentHost
+            && uri.Query.Contains("modalita-prova=locale", StringComparison.OrdinalIgnoreCase);
+    }
     private const string ApiBase = "https://pallamano-referto-api.kronomen.workers.dev";
     private const string TokenKey = "pallamanoCloudApiToken";
     private const string PendingKey = "pallamanoCloudPendingArchiveV1";
