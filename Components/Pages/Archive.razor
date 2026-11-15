@@ -1106,9 +1106,7 @@
 
         // Se esistono omonimi in più squadre, mostra anche l'eventuale persona
         // già attiva nella squadra di destinazione: l'operatore può scegliere l'identità corretta.
-        return matchingPeople.Where(p => Archivio.Data.TeamEntries.Any(e => e.PersonId == p.Id &&
-            e.ChampionshipId == championship.Id && e.SeasonId == season.Id && e.EntryType == type &&
-            e.IsActive && (e.TeamId == teamId || e.TeamId != teamId))).ToList();
+        return matchingPeople;
     }
 
     private bool HasActiveSameNameElsewhere(ArchivePdfRosterPerson row, string teamId, string championshipName, string seasonName) =>
