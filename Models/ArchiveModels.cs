@@ -1,7 +1,52 @@
+using System.Text.Json;
+
 namespace RefertoPallamano_Blazor.Models;
 
 public sealed class ArchiveDatabase
 {
+    // Unisce due snapshot senza cancellare record: gli ID sono l'identità stabile.
+    // Se lo stesso ID contiene valori diversi, il merge si interrompe per non perdere modifiche.
+    public int MergeFrom(ArchiveDatabase other)
+    {
+        var championships = MergeById(Championships, other.Championships, x => x.Id, "campionati");
+        var seasons = MergeById(Seasons, other.Seasons, x => x.Id, "stagioni");
+        var teams = MergeById(Teams, other.Teams, x => x.Id, "squadre");
+        var people = MergeById(People, other.People, x => x.Id, "persone");
+        var entries = MergeById(TeamEntries, other.TeamEntries, x => x.Id, "iscrizioni");
+
+        var added = championships.Added + seasons.Added + teams.Added + people.Added + entries.Added;
+        Championships = championships.Items;
+        Seasons = seasons.Items;
+        Teams = teams.Items;
+        People = people.Items;
+        TeamEntries = entries.Items;
+        SchemaVersion = Math.Max(SchemaVersion, other.SchemaVersion);
+        return added;
+    }
+
+    private static (List<T> Items, int Added) MergeById<T>(
+        IEnumerable<T> current, IEnumerable<T> incoming, Func<T, string> getId, string label)
+    {
+        var result = current.ToList();
+        var byId = result.ToDictionary(getId, StringComparer.Ordinal);
+        var added = 0;
+        foreach (var item in incoming)
+        {
+            var id = getId(item);
+            if (!byId.TryGetValue(id, out var existing))
+            {
+                result.Add(item);
+                byId.Add(id, item);
+                added++;
+                continue;
+            }
+
+            if (!string.Equals(JsonSerializer.Serialize(existing), JsonSerializer.Serialize(item), StringComparison.Ordinal))
+                throw new InvalidOperationException($"Modifica concorrente rilevata su {label} (ID {id}). I dati sono stati conservati: serve una verifica prima di sincronizzare.");
+        }
+        return (result, added);
+    }
+
     public int SchemaVersion { get; set; } = 2;
     public List<ArchiveChampionship> Championships { get; set; } = [];
     public List<ArchiveSeason> Seasons { get; set; } = [];
