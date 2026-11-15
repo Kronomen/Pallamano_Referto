@@ -351,7 +351,7 @@
                                                         <option value="NEW">È un'altra persona: crea un nuovo omonimo</option>
                                                         @foreach (var existingPerson in GetActiveSameNameElsewhere(person, team.TeamId, PdfChampionship, PdfSeason))
                                                         {
-                                                            <option value="@($"EXISTING:{existingPerson.Id}")">È la stessa persona: trasferisci da @GetPersonActiveTeamNames(existingPerson.Id, PdfChampionship, PdfSeason)</option>
+                                                            <option value="@($"EXISTING:{existingPerson.Id}")">È la stessa persona: @GetPersonImportChoiceLabel(existingPerson.Id, team.TeamId, PdfChampionship, PdfSeason)</option>
                                                         }
                                                     </select>
                                                 </label>
@@ -1111,6 +1111,18 @@
 
     private bool HasActiveSameNameElsewhere(ArchivePdfRosterPerson row, string teamId, string championshipName, string seasonName) =>
         GetActiveSameNameElsewhere(row, teamId, championshipName, seasonName).Count > 0;
+
+    private string GetPersonImportChoiceLabel(string personId, string targetTeamId, string championshipName, string seasonName)
+    {
+        var championship = Archivio.Data.Championships.FirstOrDefault(x => ArchiveService.Same(x.Name, championshipName));
+        var season = Archivio.Data.Seasons.FirstOrDefault(x => ArchiveService.Same(x.Name, seasonName));
+        if (championship is null || season is null) return "usa/trasferisci persona";
+        var isAlreadyInTarget = Archivio.Data.TeamEntries.Any(e => e.PersonId == personId && e.TeamId == targetTeamId &&
+            e.ChampionshipId == championship.Id && e.SeasonId == season.Id && e.IsActive && e.EntryType != "TEAM");
+        return isAlreadyInTarget
+            ? "usa la persona già presente in questa squadra"
+            : "trasferisci da " + GetPersonActiveTeamNames(personId, championshipName, seasonName);
+    }
 
     private string GetPersonActiveTeamNames(string personId, string championshipName, string seasonName)
     {
