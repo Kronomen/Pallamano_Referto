@@ -184,6 +184,11 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js, Navigati
 
     public async Task LogoutAsync()
     {
+        if (IsTestMode)
+        {
+            Status = "Modalità di prova locale: nessuna sessione cloud da chiudere.";
+            return;
+        }
         // L'uscita esplicita deve riuscire a rimuovere il token persistente:
         // se localStorage non è accessibile, non dichiariamo la sessione chiusa.
         await js.InvokeVoidAsync("localStorage.removeItem", TokenKey);
