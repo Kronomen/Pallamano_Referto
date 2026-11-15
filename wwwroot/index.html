@@ -47,7 +47,7 @@
   const TEST_MODE = new URLSearchParams(window.location.search).get('modalita-prova') === 'locale';
   const KEY = TEST_MODE ? 'refertoPallamanoRecoveryV4_TEST' : 'refertoPallamanoRecoveryV4';
   window.salvaPartitaLocale = function(json){ try { localStorage.setItem(KEY, json); return true; } catch(e){ return false; } };
-  window.recuperaPartitaLocale = function(){ try { return localStorage.getItem(KEY) || (!TEST_MODE && (localStorage.getItem('refertoPallamanoRecoveryV3') || localStorage.getItem('refertoPallamanoRecoveryV2'))); } catch(e){ return null; } };
+  window.recuperaPartitaLocale = function(){ try { return localStorage.getItem(KEY) || (TEST_MODE ? null : (localStorage.getItem('refertoPallamanoRecoveryV3') || localStorage.getItem('refertoPallamanoRecoveryV2'))); } catch(e){ return null; } };
   window.esisteRecupero = function(){ try { return !!localStorage.getItem(KEY); } catch(e){ return false; } };
   let recoveryTimer = null;
   window.avviaAutoRecovery = function(dotnetRef){
