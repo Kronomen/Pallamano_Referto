@@ -33,9 +33,9 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
     public async Task InitializeAsync()
     {
         if (IsLoaded || !string.IsNullOrWhiteSpace(LoadError)) return;
+        var shouldPersist = false;
         try
         {
-            var shouldPersist = false;
             var json = await InvokeArchiveStorageAsync<string>("archiveStorage.get", StorageKey);
             if (!string.IsNullOrWhiteSpace(json))
             {
