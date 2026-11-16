@@ -443,24 +443,6 @@
                                     <input @bind="NewOperatorName" placeholder="Nome e cognome dell'operatore" />
                                     <button class="archive-primary" @onclick="CreateOperator" disabled="@CloudBusy">CREA OPERATORE</button>
                                 </div>
-                                @if (CreatedOperatorCode is not null)
-                                {
-                                    <div class="operator-code-result">
-                                        <strong>Codice personale da comunicare all'operatore</strong>
-                                        <code>@CreatedOperatorCode</code>
-                                        <button class="archive-small" @onclick="CopyOperatorCode">COPIA CODICE</button>
-                                        <small>Il codice resta visibile nell’elenco operatori, solo per l’amministratore.</small>
-                                    </div>
-                                }
-                                @if (RotatedOperatorCode is not null)
-                                {
-                                    <div class="operator-code-result">
-                                        <strong>Nuovo codice personale per @RotatedOperatorName</strong>
-                                        <code>@RotatedOperatorCode</code>
-                                        <button class="archive-small" @onclick="CopyRotatedOperatorCode">COPIA CODICE</button>
-                                        <small>Il codice precedente non è più valido. I dispositivi già attivati restano autorizzati.</small>
-                                    </div>
-                                }
                                 @if (Operators.Count > 0)
                                 {
                                     <div class="operator-list">
@@ -470,8 +452,9 @@
                                                 <div class="operator-row-identity"><strong>@op.Name</strong><small>@op.ActiveDeviceCount dispositivi attivi · @op.DeviceCount registrati</small></div>
                                                 <div class="operator-code-display"><span>CODICE PERSONALE</span><code>@(string.IsNullOrWhiteSpace(op.Code) ? "DA RIGENERARE" : (IsOperatorCodeVisible(op.Id) ? op.Code : MaskOperatorCode(op.Code)))</code>@if (!string.IsNullOrWhiteSpace(op.Code)) { <button class="archive-small" @onclick="() => ToggleOperatorCodeVisibility(op.Id)">@(IsOperatorCodeVisible(op.Id) ? "NASCONDI" : "VISUALIZZA")</button><button class="archive-small" @onclick="() => CopyOperatorCode(op.Code)">COPIA</button> }</div>
                                                 <span class="archive-status @(op.Active ? "on" : "off")">@(op.Active ? "ATTIVO" : "DISATTIVATO")</span>
-                                                <button class="archive-small" @onclick="() => ToggleOperator(op)">@((op.Active) ? "DISATTIVA" : "RIATTIVA")</button>
-                                                <button class="archive-small" @onclick="() => RotateOperatorCode(op)" disabled="@CloudBusy">RIGENERA CODICE</button>
+                                                <button class="archive-small operator-toggle @(op.Active ? "operator-deactivate" : "operator-reactivate")" @onclick="() => ToggleOperator(op)">@((op.Active) ? "DISATTIVA" : "RIATTIVA")</button>
+                                                <button class="archive-small operator-rotate" @onclick="() => RotateOperatorCode(op)" disabled="@CloudBusy">RIGENERA CODICE</button>
+                                                <button class="archive-small operator-delete" @onclick="() => DeleteOperator(op)" disabled="@CloudBusy">CANCELLA</button>
                                             </div>
                                         }
                                     </div>
@@ -1532,6 +1515,34 @@
         if (!await JS.InvokeAsync<bool>("confirm", $"Vuoi {(next ? "riattivare" : "disattivare")} l'operatore {op.Name}?")) return;
         CloudBusy = true;
         try { await Cloud.SetOperatorActiveAsync(op.Id, next); await LoadOperators(); }
+        catch (Exception ex) { OperatorMessage = ex.Message; }
+        finally { CloudBusy = false; }
+    }
+
+    private async Task DeleteOperator(OperatorInfo op)
+    {
+        if (!await JS.InvokeAsync<bool>("confirm",
+            $"Cancellare definitivamente l'operatore {op.Name}? Saranno eliminati anche tutti i dispositivi registrati e il codice personale. L'operazione non è reversibile.")) return;
+
+        CloudBusy = true;
+        OperatorMessage = "";
+        try
+        {
+            await Cloud.DeleteOperatorAsync(op.Id);
+            VisibleOperatorCodes.Remove(op.Id);
+            if (ExpandedOperatorId == op.Id)
+            {
+                ExpandedOperatorId = null;
+                OperatorDevices.Clear();
+            }
+            if (RotatedOperatorName == op.Name)
+            {
+                RotatedOperatorCode = null;
+                RotatedOperatorName = "";
+            }
+            await LoadOperators();
+            OperatorMessage = $"Operatore {op.Name} cancellato definitivamente.";
+        }
         catch (Exception ex) { OperatorMessage = ex.Message; }
         finally { CloudBusy = false; }
     }

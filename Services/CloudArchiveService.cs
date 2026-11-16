@@ -155,6 +155,13 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js, Navigati
         if (!response.IsSuccessStatusCode) throw new InvalidOperationException(ReadError(body, "Modifica operatore non riuscita."));
     }
 
+    public async Task DeleteOperatorAsync(string id)
+    {
+        using var response = await SendAuthorizedAsync(HttpMethod.Delete, "/api/admin/operators/" + Uri.EscapeDataString(id));
+        var body = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode) throw new InvalidOperationException(ReadError(body, "Cancellazione operatore non riuscita."));
+    }
+
     public async Task RevokeDeviceAsync(string id)
     {
         using var response = await SendAuthorizedAsync(HttpMethod.Post, "/api/admin/devices/" + Uri.EscapeDataString(id) + "/revoke", new { });
