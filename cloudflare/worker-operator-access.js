@@ -16,7 +16,7 @@ const decoder = new TextDecoder();
 function corsHeaders(origin) {
   return {
     'Access-Control-Allow-Origin': ALLOWED_ORIGINS.has(origin) ? origin : 'null',
-    'Access-Control-Allow-Methods': 'GET, PUT, POST, PATCH, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, PUT, POST, PATCH, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Max-Age': '86400',
     'Vary': 'Origin'
