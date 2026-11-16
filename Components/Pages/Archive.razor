@@ -804,7 +804,21 @@
         await Archivio.SaveAsync();
     }
     private async Task ToggleChampionship(string id) { if (!RequireWriteAccess()) return; var x = Archivio.Data.Championships.FirstOrDefault(x => x.Id == id); if (x is not null) { x.IsActive = !x.IsActive; await Archivio.SaveAsync(); } }
-    private async Task DeleteChampionship(string id) { if (!RequireWriteAccess()) return; var x = Archivio.Data.Championships.FirstOrDefault(x => x.Id == id); if (x is null) return; if (Archivio.Data.TeamEntries.Any(e => e.ChampionshipId == id)) { ImportMessage = "Non è possibile eliminare un campionato già utilizzato: archivialo per conservarne lo storico."; return; } Archivio.Data.Championships.Remove(x); await Archivio.SaveAsync(); }
+    private async Task DeleteChampionship(string id)
+    {
+        if (!RequireWriteAccess()) return;
+        var item = Archivio.Data.Championships.FirstOrDefault(x => x.Id == id);
+        if (item is null) return;
+        if (Archivio.Data.TeamEntries.Any(e => e.ChampionshipId == id))
+        {
+            ImportMessage = "Non è possibile eliminare un campionato già utilizzato: conserva lo storico e crea la nuova stagione.";
+            return;
+        }
+        if (!await JS.InvokeAsync<bool>("confirm", $"Vuoi eliminare definitivamente il campionato {item.Name}?")) return;
+        Archivio.Data.DeletedChampionshipIds.Add(id);
+        Archivio.Data.Championships.Remove(item);
+        await Archivio.SaveAsync();
+    }
     private async Task AddTeam()
     {
         if (!RequireWriteAccess()) return;
@@ -1018,6 +1032,9 @@
             : $"ATTENZIONE: stai forzando la cancellazione di \"{team.Name}\".\n\nSaranno eliminate {registrations} iscrizioni squadra, {players} associazioni atleta e {officials} associazioni dirigente.\n\nLe schede anagrafiche di atleti e dirigenti resteranno nell'archivio, senza questa squadra. I referti già salvati non saranno modificati.\n\nVuoi procedere definitivamente?";
         if (!await JS.InvokeAsync<bool>("confirm", message)) return;
 
+        Archivio.Data.DeletedTeamIds.Add(id);
+        foreach (var entry in linkedEntries)
+            Archivio.Data.DeletedTeamEntryIds.Add(entry.Id);
         Archivio.Data.TeamEntries.RemoveAll(e => e.TeamId == id);
         Archivio.Data.Teams.Remove(team);
         await Archivio.SaveAsync();
@@ -1132,6 +1149,9 @@
             ? $"Vuoi cancellare definitivamente {person.FullName}? L'operazione non può essere annullata."
             : $"Vuoi cancellare definitivamente {person.FullName}? Verranno eliminate anche le {associations.Count} associazioni con squadre, campionati e stagioni presenti nell'archivio. I referti già salvati non vengono modificati.";
         if (!await JS.InvokeAsync<bool>("confirm", message)) return;
+        Archivio.Data.DeletedPersonIds.Add(id);
+        foreach (var entry in associations)
+            Archivio.Data.DeletedTeamEntryIds.Add(entry.Id);
         Archivio.Data.TeamEntries.RemoveAll(e => e.PersonId == id);
         Archivio.Data.People.Remove(person);
         await Archivio.SaveAsync();
