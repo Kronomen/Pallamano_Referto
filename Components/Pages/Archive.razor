@@ -1008,13 +1008,17 @@
         if (!RequireWriteAccess()) return;
         var team = Archivio.Data.Teams.FirstOrDefault(x => x.Id == id);
         if (team is null) return;
-        if (Archivio.Data.TeamEntries.Any(e => e.TeamId == id))
-        {
-            await JS.InvokeVoidAsync("alert", "Non è possibile cancellare questa squadra perché è collegata a iscrizioni, atleti o dirigenti. Per conservarne lo storico, utilizza ARCHIVIA.");
-            return;
-        }
-        var confirmed = await JS.InvokeAsync<bool>("confirm", $"Vuoi cancellare definitivamente la squadra \"{team.Name}\"? L'operazione non può essere annullata.");
-        if (!confirmed) return;
+
+        var linkedEntries = Archivio.Data.TeamEntries.Where(e => e.TeamId == id).ToList();
+        var registrations = linkedEntries.Count(e => e.EntryType == "TEAM");
+        var players = linkedEntries.Count(e => e.EntryType == "PLAYER");
+        var officials = linkedEntries.Count(e => e.EntryType == "OFFICIAL");
+        var message = linkedEntries.Count == 0
+            ? $"Vuoi cancellare definitivamente la squadra \"{team.Name}\"? L'operazione non può essere annullata."
+            : $"ATTENZIONE: stai forzando la cancellazione di \"{team.Name}\".\\n\\nSaranno eliminate {registrations} iscrizioni squadra, {players} associazioni atleta e {officials} associazioni dirigente.\\n\\nLe schede anagrafiche di atleti e dirigenti resteranno nell'archivio, senza questa squadra. I referti già salvati non saranno modificati.\\n\\nVuoi procedere definitivamente?";
+        if (!await JS.InvokeAsync<bool>("confirm", message)) return;
+
+        Archivio.Data.TeamEntries.RemoveAll(e => e.TeamId == id);
         Archivio.Data.Teams.Remove(team);
         await Archivio.SaveAsync();
     }
@@ -1199,13 +1203,18 @@
         if (!isPlayer && value.Length > 0 && !"ABCDE".Contains(value)) { ImportMessage = "Per i dirigenti utilizza una lettera da A a E."; return; }
         var existing = Archivio.Data.TeamEntries.FirstOrDefault(x => x.PersonId == EntryPersonId && x.TeamId == EntryTeamId && x.ChampionshipId == EntryChampionshipId && x.SeasonId == EntrySeasonId && x.EntryType == (isPlayer ? "PLAYER" : "OFFICIAL"));
         if (existing is not null) { ImportMessage = "La persona risulta già associata a questa squadra, campionato e stagione."; return; }
-        var previous = Archivio.Data.TeamEntries.Where(x => x.PersonId == EntryPersonId).ToList();
-        if (previous.Any(x => x.TeamId != EntryTeamId))
+        var previous = Archivio.Data.TeamEntries.Where(x => x.PersonId == EntryPersonId && x.EntryType != "TEAM").ToList();
+        var otherTeamEntries = previous.Where(x => x.TeamId != EntryTeamId).ToList();
+        if (otherTeamEntries.Count > 0)
         {
-            var oldTeams = string.Join(", ", previous.Where(x => x.TeamId != EntryTeamId)
+            var oldTeams = string.Join(", ", otherTeamEntries
                 .Select(x => Archivio.Data.Teams.FirstOrDefault(t => t.Id == x.TeamId)?.Name ?? "Squadra non trovata").Distinct());
-            if (!await JS.InvokeAsync<bool>("confirm", $"La persona è già associata a {oldTeams}. Vuoi trasferirla a {Archivio.Data.Teams.First(x => x.Id == EntryTeamId).Name}? Le precedenti società saranno sostituite.")) return;
-            foreach (var oldEntry in previous) oldEntry.TeamId = EntryTeamId;
+            var targetTeam = Archivio.Data.Teams.First(x => x.Id == EntryTeamId).Name;
+            var rule = isPlayer
+                ? "Un atleta può essere associato a una sola squadra. Le associazioni precedenti saranno trasferite."
+                : "Il dirigente sarà trasferito alla nuova società; le associazioni precedenti saranno sostituite.";
+            if (!await JS.InvokeAsync<bool>("confirm", $"{person.FullName} risulta già associat{(isPlayer ? "o" : "o")} a {oldTeams}.\\n\\n{rule}\\n\\nVuoi associarl{(isPlayer ? "o" : "o")} a {targetTeam}?")) return;
+            foreach (var oldEntry in otherTeamEntries) oldEntry.TeamId = EntryTeamId;
         }
         Archivio.Data.TeamEntries.Add(new ArchiveTeamEntry { PersonId = EntryPersonId, TeamId = EntryTeamId, ChampionshipId = EntryChampionshipId, SeasonId = EntrySeasonId, EntryType = isPlayer ? "PLAYER" : "OFFICIAL", ShirtNumber = isPlayer ? value : "", OfficialLetter = isPlayer ? "" : value });
         EntryNumber = ""; await Archivio.SaveAsync();
