@@ -81,6 +81,11 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
                 Data.Teams ??= [];
                 Data.People ??= [];
                 Data.TeamEntries ??= [];
+                Data.DeletedChampionshipIds ??= [];
+                Data.DeletedSeasonIds ??= [];
+                Data.DeletedTeamIds ??= [];
+                Data.DeletedPersonIds ??= [];
+                Data.DeletedTeamEntryIds ??= [];
             }
             else
             {
