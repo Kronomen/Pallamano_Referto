@@ -238,7 +238,17 @@ async function listOperators(env) {
   const operators = [];
   for (const row of result.results || []) {
     const { code_ciphertext, ...operator } = row;
-    operators.push({ ...operator, code: await decryptOperatorCode(env, code_ciphertext) });
+    let code = null;
+    let codeUnavailable = false;
+    if (code_ciphertext) {
+      try {
+        code = await decryptOperatorCode(env, code_ciphertext);
+      } catch {
+        // Un codice non leggibile non deve impedire il caricamento di tutti gli operatori.
+        codeUnavailable = true;
+      }
+    }
+    operators.push({ ...operator, code, codeUnavailable });
   }
   return operators;
 }
