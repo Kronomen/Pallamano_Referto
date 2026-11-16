@@ -113,7 +113,7 @@
                 <div class="archive-list championship-grid">
                     @foreach (var c in Archivio.Data.Championships.OrderBy(x => x.Name))
                     {
-                        <div class="archive-list-row championship-row"><div class="archive-list-icon">🏆</div><div class="archive-list-main"><strong>@c.Name</strong><small>@(string.IsNullOrWhiteSpace(c.Category) ? "Categoria non specificata" : c.Category) · @(string.IsNullOrWhiteSpace(c.Gender) ? "Genere non specificato" : c.Gender)</small></div><span class="archive-status @(c.IsActive ? "on" : "off")">@(c.IsActive ? "ATTIVO" : "ARCHIVIATO")</span><button class="archive-small" @onclick="() => ToggleChampionship(c.Id)" disabled="@(!CanWriteArchive)">@(c.IsActive ? "ARCHIVIA" : "RIATTIVA")</button><button class="archive-small danger" @onclick="() => DeleteChampionship(c.Id)" disabled="@(!CanWriteArchive)">ELIMINA</button></div>
+                        <div class="archive-list-row championship-row"><div class="archive-list-icon">🏆</div><div class="archive-list-main"><strong>@c.Name</strong><small>@(string.IsNullOrWhiteSpace(c.Category) ? "Categoria non specificata" : c.Category) · @(string.IsNullOrWhiteSpace(c.Gender) ? "Genere non specificato" : c.Gender)</small></div><span class="archive-status @(c.IsActive ? "on" : "off")">@(c.IsActive ? "ATTIVO" : "ARCHIVIATO")</span><button class="archive-small danger" @onclick="() => DeleteChampionship(c.Id)" disabled="@(!CanWriteArchive)">ELIMINA</button></div>
                     }
                 </div>
             </section>
@@ -159,7 +159,7 @@
                 <div class="archive-list teams-grid">
                     @foreach (var t in Archivio.Data.Teams.OrderBy(x => x.Name))
                     {
-                        <div class="archive-list-row"><div class="archive-list-icon">🏐</div><div class="archive-list-main"><strong>@t.Name</strong><small>@string.Join(", ", Archivio.Data.TeamEntries.Where(x => x.TeamId == t.Id && x.EntryType == "TEAM").Select(x => Archivio.Data.Championships.FirstOrDefault(c => c.Id == x.ChampionshipId)?.Name).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct()) · @Archivio.Data.TeamEntries.Count(x => x.TeamId == t.Id && x.EntryType == "TEAM") iscrizioni</small></div><span class="archive-status @(t.IsActive ? "on" : "off")">@(t.IsActive ? "ATTIVA" : "ARCHIVIATA")</span><button class="archive-small" @onclick="() => ToggleTeam(t.Id)" disabled="@(!CanWriteArchive)">@(t.IsActive ? "ARCHIVIA" : "RIATTIVA")</button><button class="archive-small" @onclick="() => OpenTeamNameEdit(t.Id)" disabled="@(!CanWriteArchive)">VARIAZIONE</button><button class="archive-small archive-delete-team" @onclick="() => DeleteTeam(t.Id)" disabled="@(!CanWriteArchive)">CANCELLA</button></div>
+                        <div class="archive-list-row"><div class="archive-list-icon">🏐</div><div class="archive-list-main"><strong>@t.Name</strong><small>@string.Join(", ", Archivio.Data.TeamEntries.Where(x => x.TeamId == t.Id && x.EntryType == "TEAM").Select(x => Archivio.Data.Championships.FirstOrDefault(c => c.Id == x.ChampionshipId)?.Name).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct()) · @Archivio.Data.TeamEntries.Count(x => x.TeamId == t.Id && x.EntryType == "TEAM") iscrizioni</small></div><span class="archive-status @(t.IsActive ? "on" : "off")">@(t.IsActive ? "ATTIVA" : "ARCHIVIATA")</span><button class="archive-small" @onclick="() => OpenTeamNameEdit(t.Id)" disabled="@(!CanWriteArchive)">VARIAZIONE</button><button class="archive-small archive-delete-team" @onclick="() => DeleteTeam(t.Id)" disabled="@(!CanWriteArchive)">CANCELLA</button></div>
                     }
                 </div>
             </section>
@@ -280,7 +280,7 @@
                 <div class="archive-list">
                     @foreach (var p in Archivio.Data.People.OrderBy(x => x.FullName))
                     {
-                        <div class="archive-list-row"><div class="archive-list-icon">@(p.PersonType == "PLAYER" ? "👤" : "📋")</div><div class="archive-list-main"><button type="button" class="archive-person-name" @onclick="() => OpenPersonAssociations(p.Id)">@p.FullName</button><small>@(p.PersonType == "PLAYER" ? "Atleta" : "Dirigente") · @Archivio.Data.TeamEntries.Count(x => x.PersonId == p.Id && x.IsActive) iscrizioni attive</small></div><span class="archive-status @(p.IsActive ? "on" : "off")">@(p.IsActive ? "ATTIVO" : "ARCHIVIATO")</span><button class="archive-small" @onclick="() => TogglePerson(p.Id)" disabled="@(!CanWriteArchive)">@(p.IsActive ? "ARCHIVIA" : "RIATTIVA")</button><button class="archive-small" @onclick="() => OpenPersonNameEdit(p.Id)" disabled="@(!CanWriteArchive)">VARIAZIONE</button><button class="archive-small archive-delete-team" @onclick="() => DeletePerson(p.Id)" disabled="@(!CanWriteArchive)">CANCELLA</button></div>
+                        <div class="archive-list-row"><div class="archive-list-icon">@(p.PersonType == "PLAYER" ? "👤" : "📋")</div><div class="archive-list-main"><button type="button" class="archive-person-name" @onclick="() => OpenPersonAssociations(p.Id)">@p.FullName</button><small>@(p.PersonType == "PLAYER" ? "Atleta" : "Dirigente") · @Archivio.Data.TeamEntries.Count(x => x.PersonId == p.Id && x.IsActive) iscrizioni attive</small></div><span class="archive-status @(p.IsActive ? "on" : "off")">@(p.IsActive ? "ATTIVO" : "ARCHIVIATO")</span><button class="archive-small" @onclick="() => OpenPersonNameEdit(p.Id)" disabled="@(!CanWriteArchive)">VARIAZIONE</button><button class="archive-small archive-delete-team" @onclick="() => DeletePerson(p.Id)" disabled="@(!CanWriteArchive)">CANCELLA</button></div>
                     }
                 </div>
                 @if (SelectedPerson is not null)
@@ -822,7 +822,21 @@
         await Archivio.SaveAsync();
     }
     private async Task ToggleChampionship(string id) { if (!RequireWriteAccess()) return; var x = Archivio.Data.Championships.FirstOrDefault(x => x.Id == id); if (x is not null) { x.IsActive = !x.IsActive; await Archivio.SaveAsync(); } }
-    private async Task DeleteChampionship(string id) { if (!RequireWriteAccess()) return; var x = Archivio.Data.Championships.FirstOrDefault(x => x.Id == id); if (x is null) return; if (Archivio.Data.TeamEntries.Any(e => e.ChampionshipId == id)) { ImportMessage = "Non è possibile eliminare un campionato già utilizzato: archivialo per conservarne lo storico."; return; } Archivio.Data.Championships.Remove(x); await Archivio.SaveAsync(); }
+    private async Task DeleteChampionship(string id)
+    {
+        if (!RequireWriteAccess()) return;
+        var item = Archivio.Data.Championships.FirstOrDefault(x => x.Id == id);
+        if (item is null) return;
+        if (Archivio.Data.TeamEntries.Any(e => e.ChampionshipId == id))
+        {
+            ImportMessage = "Non è possibile eliminare un campionato già utilizzato: conserva lo storico e crea la nuova stagione.";
+            return;
+        }
+        if (!await JS.InvokeAsync<bool>("confirm", $"Vuoi eliminare definitivamente il campionato {item.Name}?")) return;
+        Archivio.Data.DeletedChampionshipIds.Add(id);
+        Archivio.Data.Championships.Remove(item);
+        await Archivio.SaveAsync();
+    }
     private async Task AddTeam()
     {
         if (!RequireWriteAccess()) return;
@@ -1031,13 +1045,20 @@
         if (!RequireWriteAccess()) return;
         var team = Archivio.Data.Teams.FirstOrDefault(x => x.Id == id);
         if (team is null) return;
-        if (Archivio.Data.TeamEntries.Any(e => e.TeamId == id))
-        {
-            await JS.InvokeVoidAsync("alert", "Non è possibile cancellare questa squadra perché è collegata a iscrizioni, atleti o dirigenti. Per conservarne lo storico, utilizza ARCHIVIA.");
-            return;
-        }
-        var confirmed = await JS.InvokeAsync<bool>("confirm", $"Vuoi cancellare definitivamente la squadra \"{team.Name}\"? L'operazione non può essere annullata.");
-        if (!confirmed) return;
+
+        var linkedEntries = Archivio.Data.TeamEntries.Where(e => e.TeamId == id).ToList();
+        var registrations = linkedEntries.Count(e => e.EntryType == "TEAM");
+        var players = linkedEntries.Count(e => e.EntryType == "PLAYER");
+        var officials = linkedEntries.Count(e => e.EntryType == "OFFICIAL");
+        var message = linkedEntries.Count == 0
+            ? $"Vuoi cancellare definitivamente la squadra \"{team.Name}\"? L'operazione non può essere annullata."
+            : $"ATTENZIONE: stai forzando la cancellazione di \"{team.Name}\".\n\nSaranno eliminate {registrations} iscrizioni squadra, {players} associazioni atleta e {officials} associazioni dirigente.\n\nLe schede anagrafiche di atleti e dirigenti resteranno nell'archivio, senza questa squadra. I referti già salvati non saranno modificati.\n\nVuoi procedere definitivamente?";
+        if (!await JS.InvokeAsync<bool>("confirm", message)) return;
+
+        Archivio.Data.DeletedTeamIds.Add(id);
+        foreach (var entry in linkedEntries)
+            Archivio.Data.DeletedTeamEntryIds.Add(entry.Id);
+        Archivio.Data.TeamEntries.RemoveAll(e => e.TeamId == id);
         Archivio.Data.Teams.Remove(team);
         await Archivio.SaveAsync();
     }
@@ -1151,6 +1172,9 @@
             ? $"Vuoi cancellare definitivamente {person.FullName}? L'operazione non può essere annullata."
             : $"Vuoi cancellare definitivamente {person.FullName}? Verranno eliminate anche le {associations.Count} associazioni con squadre, campionati e stagioni presenti nell'archivio. I referti già salvati non vengono modificati.";
         if (!await JS.InvokeAsync<bool>("confirm", message)) return;
+        Archivio.Data.DeletedPersonIds.Add(id);
+        foreach (var entry in associations)
+            Archivio.Data.DeletedTeamEntryIds.Add(entry.Id);
         Archivio.Data.TeamEntries.RemoveAll(e => e.PersonId == id);
         Archivio.Data.People.Remove(person);
         await Archivio.SaveAsync();
@@ -1222,13 +1246,18 @@
         if (!isPlayer && value.Length > 0 && !"ABCDE".Contains(value)) { ImportMessage = "Per i dirigenti utilizza una lettera da A a E."; return; }
         var existing = Archivio.Data.TeamEntries.FirstOrDefault(x => x.PersonId == EntryPersonId && x.TeamId == EntryTeamId && x.ChampionshipId == EntryChampionshipId && x.SeasonId == EntrySeasonId && x.EntryType == (isPlayer ? "PLAYER" : "OFFICIAL"));
         if (existing is not null) { ImportMessage = "La persona risulta già associata a questa squadra, campionato e stagione."; return; }
-        var previous = Archivio.Data.TeamEntries.Where(x => x.PersonId == EntryPersonId).ToList();
-        if (previous.Any(x => x.TeamId != EntryTeamId))
+        var previous = Archivio.Data.TeamEntries.Where(x => x.PersonId == EntryPersonId && x.EntryType != "TEAM").ToList();
+        var otherTeamEntries = previous.Where(x => x.TeamId != EntryTeamId).ToList();
+        if (otherTeamEntries.Count > 0)
         {
-            var oldTeams = string.Join(", ", previous.Where(x => x.TeamId != EntryTeamId)
+            var oldTeams = string.Join(", ", otherTeamEntries
                 .Select(x => Archivio.Data.Teams.FirstOrDefault(t => t.Id == x.TeamId)?.Name ?? "Squadra non trovata").Distinct());
-            if (!await JS.InvokeAsync<bool>("confirm", $"La persona è già associata a {oldTeams}. Vuoi trasferirla a {Archivio.Data.Teams.First(x => x.Id == EntryTeamId).Name}? Le precedenti società saranno sostituite.")) return;
-            foreach (var oldEntry in previous) oldEntry.TeamId = EntryTeamId;
+            var targetTeam = Archivio.Data.Teams.First(x => x.Id == EntryTeamId).Name;
+            var rule = isPlayer
+                ? "Un atleta può essere associato a una sola squadra. Le associazioni precedenti saranno trasferite."
+                : "Il dirigente sarà trasferito alla nuova società; le associazioni precedenti saranno sostituite.";
+            if (!await JS.InvokeAsync<bool>("confirm", $"{person.FullName} risulta già associat{(isPlayer ? "o" : "o")} a {oldTeams}.\n\n{rule}\n\nVuoi associarl{(isPlayer ? "o" : "o")} a {targetTeam}?")) return;
+            foreach (var oldEntry in otherTeamEntries) oldEntry.TeamId = EntryTeamId;
         }
         Archivio.Data.TeamEntries.Add(new ArchiveTeamEntry { PersonId = EntryPersonId, TeamId = EntryTeamId, ChampionshipId = EntryChampionshipId, SeasonId = EntrySeasonId, EntryType = isPlayer ? "PLAYER" : "OFFICIAL", ShirtNumber = isPlayer ? value : "", OfficialLetter = isPlayer ? "" : value });
         EntryNumber = ""; await Archivio.SaveAsync();

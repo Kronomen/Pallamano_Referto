@@ -8,11 +8,27 @@ public sealed class ArchiveDatabase
     // Se lo stesso ID contiene valori diversi, il merge si interrompe per non perdere modifiche.
     public int MergeFrom(ArchiveDatabase other)
     {
-        var championships = MergeById(Championships, other.Championships, x => x.Id, "campionati");
-        var seasons = MergeById(Seasons, other.Seasons, x => x.Id, "stagioni");
-        var teams = MergeById(Teams, other.Teams, x => x.Id, "squadre");
-        var people = MergeById(People, other.People, x => x.Id, "persone");
-        var entries = MergeById(TeamEntries, other.TeamEntries, x => x.Id, "iscrizioni");
+        DeletedChampionshipIds = MergeIds(DeletedChampionshipIds, other.DeletedChampionshipIds);
+        DeletedSeasonIds = MergeIds(DeletedSeasonIds, other.DeletedSeasonIds);
+        DeletedTeamIds = MergeIds(DeletedTeamIds, other.DeletedTeamIds);
+        DeletedPersonIds = MergeIds(DeletedPersonIds, other.DeletedPersonIds);
+        DeletedTeamEntryIds = MergeIds(DeletedTeamEntryIds, other.DeletedTeamEntryIds);
+
+        var championships = MergeById(
+            Championships.Where(x => !DeletedChampionshipIds.Contains(x.Id, StringComparer.Ordinal)),
+            other.Championships.Where(x => !DeletedChampionshipIds.Contains(x.Id, StringComparer.Ordinal)), x => x.Id, "campionati");
+        var seasons = MergeById(
+            Seasons.Where(x => !DeletedSeasonIds.Contains(x.Id, StringComparer.Ordinal)),
+            other.Seasons.Where(x => !DeletedSeasonIds.Contains(x.Id, StringComparer.Ordinal)), x => x.Id, "stagioni");
+        var teams = MergeById(
+            Teams.Where(x => !DeletedTeamIds.Contains(x.Id, StringComparer.Ordinal)),
+            other.Teams.Where(x => !DeletedTeamIds.Contains(x.Id, StringComparer.Ordinal)), x => x.Id, "squadre");
+        var people = MergeById(
+            People.Where(x => !DeletedPersonIds.Contains(x.Id, StringComparer.Ordinal)),
+            other.People.Where(x => !DeletedPersonIds.Contains(x.Id, StringComparer.Ordinal)), x => x.Id, "persone");
+        var entries = MergeById(
+            TeamEntries.Where(x => !IsDeletedEntry(x)),
+            other.TeamEntries.Where(x => !IsDeletedEntry(x)), x => x.Id, "iscrizioni");
 
         var added = championships.Added + seasons.Added + teams.Added + people.Added + entries.Added;
         Championships = championships.Items;
@@ -23,6 +39,17 @@ public sealed class ArchiveDatabase
         SchemaVersion = Math.Max(SchemaVersion, other.SchemaVersion);
         return added;
     }
+
+    private bool IsDeletedEntry(ArchiveTeamEntry entry) =>
+        DeletedTeamEntryIds.Contains(entry.Id, StringComparer.Ordinal) ||
+        DeletedTeamIds.Contains(entry.TeamId, StringComparer.Ordinal) ||
+        DeletedPersonIds.Contains(entry.PersonId, StringComparer.Ordinal) ||
+        DeletedChampionshipIds.Contains(entry.ChampionshipId, StringComparer.Ordinal) ||
+        DeletedSeasonIds.Contains(entry.SeasonId, StringComparer.Ordinal);
+
+    private static List<string> MergeIds(IEnumerable<string>? current, IEnumerable<string>? incoming) =>
+        (current ?? []).Concat(incoming ?? []).Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.Ordinal).ToList();
 
     private static (List<T> Items, int Added) MergeById<T>(
         IEnumerable<T> current, IEnumerable<T> incoming, Func<T, string> getId, string label)
@@ -47,12 +74,20 @@ public sealed class ArchiveDatabase
         return (result, added);
     }
 
-    public int SchemaVersion { get; set; } = 2;
+    public int SchemaVersion { get; set; } = 3;
     public List<ArchiveChampionship> Championships { get; set; } = [];
     public List<ArchiveSeason> Seasons { get; set; } = [];
     public List<ArchiveTeam> Teams { get; set; } = [];
     public List<ArchivePerson> People { get; set; } = [];
     public List<ArchiveTeamEntry> TeamEntries { get; set; } = [];
+
+    // Tombstone replicati tra dispositivi: impediscono al merge di far ricomparire
+    // record cancellati su un altro dispositivo.
+    public List<string> DeletedChampionshipIds { get; set; } = [];
+    public List<string> DeletedSeasonIds { get; set; } = [];
+    public List<string> DeletedTeamIds { get; set; } = [];
+    public List<string> DeletedPersonIds { get; set; } = [];
+    public List<string> DeletedTeamEntryIds { get; set; } = [];
 }
 
 public sealed class ArchiveChampionship
