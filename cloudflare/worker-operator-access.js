@@ -359,24 +359,6 @@ export default {
         return jsonResponse({ code }, 200, origin);
       }
 
-      // TEMPORARY: one-time administrator-only code assignment. Remove after use.
-      const setCodeMatch = url.pathname.match(/^\/api\/admin\/operators\/([A-Za-z0-9_-]+)\/set-code-once$/);
-      if (setCodeMatch && request.method === 'POST') {
-        if (!requireAdmin(auth)) return jsonResponse({ error: 'Operazione riservata all’amministratore.' }, 403, origin);
-        const operatorId = setCodeMatch[1];
-        const body = await readRequestJson(request);
-        const code = typeof body.code === 'string' ? body.code.trim() : '';
-        if (!/^PH-[A-Z0-9_-]{12,64}$/i.test(code)) return jsonResponse({ error: 'Formato codice non valido.' }, 400, origin);
-        const operator = await env.DB.prepare('SELECT id FROM operators WHERE id = ?').bind(operatorId).first();
-        if (!operator) return jsonResponse({ error: 'Operatore non trovato.' }, 404, origin);
-        await saveOperatorCode(env, operatorId, code);
-        const result = await env.DB.prepare(
-          'UPDATE operators SET code_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
-        ).bind(await sha256Hex(code), operatorId).run();
-        if (!result.meta?.changes) return jsonResponse({ error: 'Assegnazione del codice non riuscita.' }, 500, origin);
-        return jsonResponse({ ok: true, message: 'Codice assegnato.' }, 200, origin);
-      }
-
       const operatorMatch = url.pathname.match(/^\/api\/admin\/operators\/([A-Za-z0-9_-]+)$/);
       if (operatorMatch && request.method === 'DELETE') {
         if (!requireAdmin(auth)) return jsonResponse({ error: 'Operazione riservata all’amministratore.' }, 403, origin);
