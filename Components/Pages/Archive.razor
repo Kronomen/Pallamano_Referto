@@ -413,7 +413,7 @@
                             <label>Password amministratore
                                 <input type="password" @bind="CloudPassword" autocomplete="current-password" placeholder="Password amministratore" />
                             </label>
-                            <button class="archive-primary" @onclick="ConnectCloud" disabled="@CloudBusy">ACCEDI COME AMMINISTRATORE</button>
+                            <button class="archive-primary operator-access-action" @onclick="ConnectCloud" disabled="@CloudBusy">ACCEDI COME AMMINISTRATORE</button>
                             <hr />
                             <h3>Attivazione operatore</h3>
                             <p>Inserisci il codice personale ricevuto dall'amministratore. Il dispositivo resterà autorizzato anche dopo la chiusura del browser.</p>
@@ -423,7 +423,7 @@
                             <label>Nome dispositivo
                                 <input @bind="DeviceName" placeholder="Es. Tablet segnapunti" />
                             </label>
-                            <button class="archive-primary" @onclick="ActivateOperator" disabled="@CloudBusy">ATTIVA QUESTO DISPOSITIVO</button>
+                            <button class="archive-primary operator-access-action" @onclick="ActivateOperator" disabled="@CloudBusy">ATTIVA QUESTO DISPOSITIVO</button>
                         </div>
                     }
                     @if (Cloud.IsAuthenticated)
