@@ -472,6 +472,7 @@
                                                 <span class="archive-status @(op.Active ? "on" : "off")">@(op.Active ? "ATTIVO" : "DISATTIVATO")</span>
                                                 <button class="archive-small" @onclick="() => ToggleOperator(op)">@((op.Active) ? "DISATTIVA" : "RIATTIVA")</button>
                                                 <button class="archive-small" @onclick="() => RotateOperatorCode(op)" disabled="@CloudBusy">RIGENERA CODICE</button>
+                                                <button class="archive-small danger" @onclick="() => DeleteOperator(op)" disabled="@CloudBusy">CANCELLA</button>
                                             </div>
                                         }
                                     </div>
@@ -1532,6 +1533,34 @@
         if (!await JS.InvokeAsync<bool>("confirm", $"Vuoi {(next ? "riattivare" : "disattivare")} l'operatore {op.Name}?")) return;
         CloudBusy = true;
         try { await Cloud.SetOperatorActiveAsync(op.Id, next); await LoadOperators(); }
+        catch (Exception ex) { OperatorMessage = ex.Message; }
+        finally { CloudBusy = false; }
+    }
+
+    private async Task DeleteOperator(OperatorInfo op)
+    {
+        if (!await JS.InvokeAsync<bool>("confirm",
+            $"Cancellare definitivamente l'operatore {op.Name}? Saranno eliminati anche tutti i dispositivi registrati e il codice personale. L'operazione non è reversibile.")) return;
+
+        CloudBusy = true;
+        OperatorMessage = "";
+        try
+        {
+            await Cloud.DeleteOperatorAsync(op.Id);
+            VisibleOperatorCodes.Remove(op.Id);
+            if (ExpandedOperatorId == op.Id)
+            {
+                ExpandedOperatorId = null;
+                OperatorDevices.Clear();
+            }
+            if (RotatedOperatorName == op.Name)
+            {
+                RotatedOperatorCode = null;
+                RotatedOperatorName = "";
+            }
+            await LoadOperators();
+            OperatorMessage = $"Operatore {op.Name} cancellato definitivamente.";
+        }
         catch (Exception ex) { OperatorMessage = ex.Message; }
         finally { CloudBusy = false; }
     }
