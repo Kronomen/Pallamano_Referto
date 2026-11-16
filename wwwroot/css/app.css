@@ -7951,10 +7951,11 @@ html:-webkit-full-screen, body:-webkit-full-screen{width:100%;height:100%;overfl
 
 /* Gestione operatori: colori delle azioni */
 .operator-row .operator-deactivate{background:#facc15;border-color:#eab308;color:#713f12}
-.operator-row .operator-reactivate{background:#facc15;border-color:#eab308;color:#713f12}
+.operator-row .operator-reactivate{background:#16a34a;border-color:#15803d;color:#fff}
 .operator-row .operator-rotate{background:#16a34a;border-color:#15803d;color:#fff}
 .operator-row .operator-delete{background:#dc2626;border-color:#b91c1c;color:#fff}
-.operator-row .operator-deactivate:hover,.operator-row .operator-reactivate:hover{background:#eab308}
+.operator-row .operator-deactivate:hover{background:#eab308}
+.operator-row .operator-reactivate:hover{background:#15803d}
 .operator-row .operator-rotate:hover{background:#15803d}
 .operator-row .operator-delete:hover{background:#b91c1c}
 .operator-row button:disabled{opacity:.55;cursor:not-allowed}
