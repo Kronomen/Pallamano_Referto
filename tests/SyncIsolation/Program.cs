@@ -197,3 +197,32 @@ Check(rollbackService.Data.Teams.Count == 0 && rollbackService.Data.People.Count
     "nessuna modifica parziale deve restare nell'archivio");
 
 Console.WriteLine("OK: 11 gruppi di test superati, inclusi i casi di importazione PDF simulata.");
+
+
+// 12. Le cancellazioni sono replicate come tombstone e prevalgono su copie cloud obsolete.
+var deletedBase = new ArchiveDatabase();
+deletedBase.Teams.Add(new ArchiveTeam { Id = "deleted-team", Name = "Squadra da eliminare" });
+deletedBase.People.Add(new ArchivePerson { Id = "kept-person", FullName = "Atleta senza squadra" });
+deletedBase.TeamEntries.Add(new ArchiveTeamEntry { Id = "deleted-entry", TeamId = "deleted-team", PersonId = "kept-person", EntryType = "PLAYER" });
+var deletingDevice = Clone(deletedBase);
+deletingDevice.DeletedTeamIds.Add("deleted-team");
+deletingDevice.DeletedTeamEntryIds.Add("deleted-entry");
+deletingDevice.Teams.RemoveAll(x => x.Id == "deleted-team");
+deletingDevice.TeamEntries.RemoveAll(x => x.Id == "deleted-entry");
+var staleDevice = Clone(deletedBase);
+deletingDevice.MergeFrom(staleDevice);
+Check(!deletingDevice.Teams.Any(x => x.Id == "deleted-team"), "una squadra cancellata non deve ricomparire dal dispositivo obsoleto");
+Check(!deletingDevice.TeamEntries.Any(x => x.Id == "deleted-entry"), "le associazioni cancellate non devono ricomparire");
+Check(deletingDevice.People.Any(x => x.Id == "kept-person"), "l'anagrafica deve restare dopo la cancellazione della squadra");
+
+// 13. La cancellazione di una persona elimina anche le sue associazioni nel merge.
+var deletingPerson = Clone(deletedBase);
+deletingPerson.DeletedPersonIds.Add("kept-person");
+deletingPerson.DeletedTeamEntryIds.Add("deleted-entry");
+deletingPerson.People.RemoveAll(x => x.Id == "kept-person");
+deletingPerson.TeamEntries.RemoveAll(x => x.PersonId == "kept-person");
+deletingPerson.MergeFrom(deletedBase);
+Check(!deletingPerson.People.Any(x => x.Id == "kept-person"), "una persona cancellata non deve essere ripristinata dal cloud");
+Check(!deletingPerson.TeamEntries.Any(x => x.PersonId == "kept-person"), "le associazioni della persona cancellata non devono ricomparire");
+
+Console.WriteLine("OK: test tombstone superati, le cancellazioni prevalgono sui dati obsoleti.");
