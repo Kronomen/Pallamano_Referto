@@ -642,14 +642,16 @@
 
         try
         {
-            await Cloud.TryRestoreSessionAsync();
-        }
-        catch (Exception ex)
-        {
-            CloudMessage = "Archivio locale disponibile. Ripristino della sessione cloud non riuscito: " + ex.Message;
-        }
+            try
+            {
+                await Cloud.TryRestoreSessionAsync();
+            }
+            catch (Exception ex)
+            {
+                CloudMessage = "Archivio locale disponibile. Ripristino della sessione cloud non riuscito: " + ex.Message;
+            }
 
-        // Il caricamento degli operatori è indipendente dal recupero dell'archivio gare:
+            // Il caricamento degli operatori è indipendente dal recupero dell'archivio gare:
         // un problema di sincronizzazione dell'archivio non deve nascondere l'elenco admin.
         if (Cloud.IsAuthenticated && Cloud.HasCheckedRemote)
         {
@@ -668,8 +670,9 @@
             CloudMessage = Cloud.Status;
         }
 
-        if (Cloud.IsAdmin)
-            await LoadOperators();
+            if (Cloud.IsAdmin)
+                await LoadOperators();
+        }
         finally
         {
             _syncMonitorCts ??= new CancellationTokenSource();
