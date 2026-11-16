@@ -96,7 +96,8 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js, Navigati
                     ReadString(item, "name") ?? "",
                     item.TryGetProperty("active", out var active) && active.ValueKind == JsonValueKind.Number && active.GetInt32() == 1,
                     item.TryGetProperty("device_count", out var count) ? count.GetInt32() : 0,
-                    item.TryGetProperty("active_device_count", out var activeCount) && activeCount.ValueKind == JsonValueKind.Number ? activeCount.GetInt32() : 0));
+                    item.TryGetProperty("active_device_count", out var activeCount) && activeCount.ValueKind == JsonValueKind.Number ? activeCount.GetInt32() : 0,
+                    ReadString(item, "code")));
         }
         return list;
     }
@@ -492,7 +493,7 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js, Navigati
 }
 
 public sealed record RemoteArchiveUpdate(ArchiveDatabase Data, string Sha, string PreviousSha);
-public sealed record OperatorInfo(string Id, string Name, bool Active, int DeviceCount, int ActiveDeviceCount);
+public sealed record OperatorInfo(string Id, string Name, bool Active, int DeviceCount, int ActiveDeviceCount, string? Code);
 public sealed record CreatedOperator(string Id, string Name, string Code);
 public sealed record OperatorDeviceInfo(string Id, string DeviceName, string? CreatedAt, string? LastSeenAt, string? RevokedAt)
 { public bool IsRevoked => !string.IsNullOrWhiteSpace(RevokedAt); }
