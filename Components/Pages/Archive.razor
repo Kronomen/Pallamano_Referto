@@ -1015,7 +1015,7 @@
         var officials = linkedEntries.Count(e => e.EntryType == "OFFICIAL");
         var message = linkedEntries.Count == 0
             ? $"Vuoi cancellare definitivamente la squadra \"{team.Name}\"? L'operazione non può essere annullata."
-            : $"ATTENZIONE: stai forzando la cancellazione di \"{team.Name}\".\\n\\nSaranno eliminate {registrations} iscrizioni squadra, {players} associazioni atleta e {officials} associazioni dirigente.\\n\\nLe schede anagrafiche di atleti e dirigenti resteranno nell'archivio, senza questa squadra. I referti già salvati non saranno modificati.\\n\\nVuoi procedere definitivamente?";
+            : $"ATTENZIONE: stai forzando la cancellazione di \"{team.Name}\".\n\nSaranno eliminate {registrations} iscrizioni squadra, {players} associazioni atleta e {officials} associazioni dirigente.\n\nLe schede anagrafiche di atleti e dirigenti resteranno nell'archivio, senza questa squadra. I referti già salvati non saranno modificati.\n\nVuoi procedere definitivamente?";
         if (!await JS.InvokeAsync<bool>("confirm", message)) return;
 
         Archivio.Data.TeamEntries.RemoveAll(e => e.TeamId == id);
@@ -1213,7 +1213,7 @@
             var rule = isPlayer
                 ? "Un atleta può essere associato a una sola squadra. Le associazioni precedenti saranno trasferite."
                 : "Il dirigente sarà trasferito alla nuova società; le associazioni precedenti saranno sostituite.";
-            if (!await JS.InvokeAsync<bool>("confirm", $"{person.FullName} risulta già associat{(isPlayer ? "o" : "o")} a {oldTeams}.\\n\\n{rule}\\n\\nVuoi associarl{(isPlayer ? "o" : "o")} a {targetTeam}?")) return;
+            if (!await JS.InvokeAsync<bool>("confirm", $"{person.FullName} risulta già associat{(isPlayer ? "o" : "o")} a {oldTeams}.\n\n{rule}\n\nVuoi associarl{(isPlayer ? "o" : "o")} a {targetTeam}?")) return;
             foreach (var oldEntry in otherTeamEntries) oldEntry.TeamId = EntryTeamId;
         }
         Archivio.Data.TeamEntries.Add(new ArchiveTeamEntry { PersonId = EntryPersonId, TeamId = EntryTeamId, ChampionshipId = EntryChampionshipId, SeasonId = EntrySeasonId, EntryType = isPlayer ? "PLAYER" : "OFFICIAL", ShirtNumber = isPlayer ? value : "", OfficialLetter = isPlayer ? "" : value });
