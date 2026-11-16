@@ -862,10 +862,8 @@ else
         ArchiveSelectedChampionshipId = championship?.Id ?? Archivio.Data.Championships.FirstOrDefault(x => x.IsActive)?.Id ?? "";
         var season = Archivio.Data.Seasons.FirstOrDefault(x => ArchiveService.Same(x.Name, Game.State.Season));
         ArchiveSelectedSeasonId = season?.Id ?? Archivio.Data.Seasons.FirstOrDefault(x => x.IsActive)?.Id ?? "";
-        // Ripristina le squadre già impostate nella gara come selezione iniziale.
-        // Le rose vengono poi lette dall'archivio remoto tramite Archivio.Data.
-        // Se il nome non corrisponde a una squadra iscritta al campionato/stagione,
-        // l'utente può comunque selezionarla manualmente dai menu.
+        // Le squadre sono selezionabili anche se iscritte a campionati differenti.
+        // La stagione resta il riferimento comune della gara.
         var availableTeams = GetArchiveTeams().ToList();
         ArchiveSelectedHomeTeamId = availableTeams.FirstOrDefault(x => ArchiveService.Same(x.Name, Game.State.Casa.Name))?.Id ?? "";
         ArchiveSelectedAwayTeamId = availableTeams.FirstOrDefault(x => ArchiveService.Same(x.Name, Game.State.Ospiti.Name))?.Id ?? "";
@@ -878,14 +876,23 @@ else
 
     private IEnumerable<ArchiveTeam> GetArchiveTeams()
     {
-        if (string.IsNullOrWhiteSpace(ArchiveSelectedChampionshipId) || string.IsNullOrWhiteSpace(ArchiveSelectedSeasonId))
+        if (string.IsNullOrWhiteSpace(ArchiveSelectedSeasonId))
             return Enumerable.Empty<ArchiveTeam>();
         var ids = Archivio.Data.TeamEntries
-            .Where(x => x.EntryType == "TEAM" && x.IsActive &&
-                        x.ChampionshipId == ArchiveSelectedChampionshipId &&
-                        x.SeasonId == ArchiveSelectedSeasonId)
-            .Select(x => x.TeamId).ToHashSet();
+            .Where(x => x.EntryType == "TEAM" && x.IsActive && x.SeasonId == ArchiveSelectedSeasonId)
+            .Select(x => x.TeamId).ToHashSet(StringComparer.Ordinal);
         return Archivio.Data.Teams.Where(x => x.IsActive && ids.Contains(x.Id)).OrderBy(x => x.Name);
+    }
+
+    private string GetArchiveTeamChampionshipId(string teamId)
+    {
+        var registrations = Archivio.Data.TeamEntries
+            .Where(x => x.EntryType == "TEAM" && x.IsActive &&
+                        x.TeamId == teamId && x.SeasonId == ArchiveSelectedSeasonId)
+            .ToList();
+        return registrations.FirstOrDefault(x => x.ChampionshipId == ArchiveSelectedChampionshipId)?.ChampionshipId
+            ?? registrations.FirstOrDefault()?.ChampionshipId
+            ?? "";
     }
 
     private void OnArchiveChampionshipChanged()
@@ -927,8 +934,10 @@ else
     private List<ArchiveTeamEntry> GetRosterEntries(string teamId)
     {
         if (string.IsNullOrWhiteSpace(teamId)) return new();
+        var teamChampionshipId = GetArchiveTeamChampionshipId(teamId);
+        if (string.IsNullOrWhiteSpace(teamChampionshipId)) return new();
         return Archivio.Data.TeamEntries.Where(x => x.IsActive && x.TeamId == teamId &&
-            x.ChampionshipId == ArchiveSelectedChampionshipId && x.SeasonId == ArchiveSelectedSeasonId &&
+            x.ChampionshipId == teamChampionshipId && x.SeasonId == ArchiveSelectedSeasonId &&
             !string.IsNullOrWhiteSpace(x.PersonId)).ToList();
     }
 
