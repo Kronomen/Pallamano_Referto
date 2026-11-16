@@ -468,7 +468,7 @@
                                         {
                                             <div class="operator-row">
                                                 <div class="operator-row-identity"><strong>@op.Name</strong><small>@op.ActiveDeviceCount dispositivi attivi · @op.DeviceCount registrati</small></div>
-                                                <div class="operator-code-display"><span>CODICE PERSONALE</span><code>@(string.IsNullOrWhiteSpace(op.Code) ? "DA RIGENERARE" : op.Code)</code>@if (!string.IsNullOrWhiteSpace(op.Code)) { <button class="archive-small" @onclick="() => CopyOperatorCode(op.Code)">COPIA</button> }</div>
+                                                <div class="operator-code-display"><span>CODICE PERSONALE</span><code>@(string.IsNullOrWhiteSpace(op.Code) ? "DA RIGENERARE" : (IsOperatorCodeVisible(op.Id) ? op.Code : MaskOperatorCode(op.Code)))</code>@if (!string.IsNullOrWhiteSpace(op.Code)) { <button class="archive-small" @onclick="() => ToggleOperatorCodeVisibility(op.Id)">@(IsOperatorCodeVisible(op.Id) ? "NASCONDI" : "VISUALIZZA")</button><button class="archive-small" @onclick="() => CopyOperatorCode(op.Code)">COPIA</button> }</div>
                                                 <span class="archive-status @(op.Active ? "on" : "off")">@(op.Active ? "ATTIVO" : "DISATTIVATO")</span>
                                                 <button class="archive-small" @onclick="() => ToggleOperator(op)">@((op.Active) ? "DISATTIVA" : "RIATTIVA")</button>
                                                 <button class="archive-small" @onclick="() => RotateOperatorCode(op)" disabled="@CloudBusy">RIGENERA CODICE</button>
@@ -622,6 +622,7 @@
     private string RotatedOperatorName = "";
     private string OperatorMessage = "";
     private List<OperatorInfo> Operators = new();
+    private HashSet<string> VisibleOperatorCodes = new();
     private List<OperatorDeviceInfo> OperatorDevices = new();
     private string? ExpandedOperatorId;
     private string CloudMessage = "";
@@ -1492,7 +1493,9 @@
             NewOperatorName = "";
             CreatedOperatorCode = created.Code;
             await LoadOperators();
-            OperatorMessage = "Operatore creato. Copia e comunica il codice personale.";
+            Operators = Operators.Select(op => op.Id == created.Id ? op with { Code = created.Code } : op).ToList();
+            VisibleOperatorCodes.Remove(created.Id);
+            OperatorMessage = "Operatore creato. Il codice è presente nell’elenco, coperto per sicurezza.";
         }
         catch (Exception ex) { OperatorMessage = ex.Message; }
         finally { CloudBusy = false; }
@@ -1509,7 +1512,9 @@
             RotatedOperatorCode = await Cloud.RotateOperatorCodeAsync(op.Id);
             RotatedOperatorName = op.Name;
             await LoadOperators();
-            OperatorMessage = "Nuovo codice generato e salvato nell'elenco operatori.";
+            Operators = Operators.Select(item => item.Id == op.Id ? item with { Code = RotatedOperatorCode } : item).ToList();
+            VisibleOperatorCodes.Remove(op.Id);
+            OperatorMessage = "Nuovo codice aggiornato nell’elenco, coperto per sicurezza.";
         }
         catch (Exception ex) { OperatorMessage = ex.Message; }
         finally { CloudBusy = false; }
@@ -1534,6 +1539,19 @@
     private async Task CopyOperatorCode()
     {
         if (CreatedOperatorCode is not null) await JS.InvokeVoidAsync("navigator.clipboard.writeText", CreatedOperatorCode);
+    }
+
+    private bool IsOperatorCodeVisible(string operatorId) => VisibleOperatorCodes.Contains(operatorId);
+
+    private static string MaskOperatorCode(string? code)
+    {
+        if (string.IsNullOrEmpty(code)) return "";
+        return new string(code.Select(ch => char.IsLetterOrDigit(ch) ? '*' : ch).ToArray());
+    }
+
+    private void ToggleOperatorCodeVisibility(string operatorId)
+    {
+        if (!VisibleOperatorCodes.Add(operatorId)) VisibleOperatorCodes.Remove(operatorId);
     }
 
     private async Task CopyOperatorCode(string? code)
