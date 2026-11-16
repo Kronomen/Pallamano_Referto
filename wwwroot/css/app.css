@@ -7942,3 +7942,9 @@ html:-webkit-full-screen, body:-webkit-full-screen{width:100%;height:100%;overfl
 .operator-code-display code{font-size:10px;font-weight:900;color:#173f68;overflow-wrap:anywhere}
 .operator-row-identity{display:flex;flex:1 1 150px;min-width:130px;flex-direction:column;gap:3px}
 @media(max-width:650px){.operator-code-display{flex:1 1 100%}.operator-row-identity{flex-basis:100%}}
+
+
+/* Pulsanti mostra/nascondi codice personale nella gestione operatori. */
+.operator-code-display{gap:7px}
+.operator-code-display code{min-width:150px;letter-spacing:.7px}
+.operator-code-display .archive-small{white-space:nowrap}
