@@ -7924,3 +7924,8 @@ html:-webkit-full-screen, body:-webkit-full-screen{width:100%;height:100%;overfl
   padding-top:0;
   padding-bottom:1px;
 }
+
+
+/* Pulsante VARIAZIONE nella gestione squadre: sfondo blu e testo rosso. */
+.archive-small.archive-team-variation{background:#1557a6;border-color:#1557a6;color:#dc2626;font-weight:900}
+.archive-small.archive-team-variation:hover{background:#0e468b;border-color:#0e468b;color:#dc2626}
