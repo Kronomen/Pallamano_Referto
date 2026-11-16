@@ -350,6 +350,20 @@ export default {
       }
 
       const operatorMatch = url.pathname.match(/^\/api\/admin\/operators\/([A-Za-z0-9_-]+)$/);
+      if (operatorMatch && request.method === 'DELETE') {
+        if (!requireAdmin(auth)) return jsonResponse({ error: 'Operazione riservata all’amministratore.' }, 403, origin);
+        const operatorId = operatorMatch[1];
+        const operator = await env.DB.prepare('SELECT id FROM operators WHERE id = ?').bind(operatorId).first();
+        if (!operator) return jsonResponse({ error: 'Operatore non trovato.' }, 404, origin);
+        await ensureOperatorCodesTable(env);
+        await env.DB.batch([
+          env.DB.prepare('DELETE FROM devices WHERE operator_id = ?').bind(operatorId),
+          env.DB.prepare('DELETE FROM operator_codes WHERE operator_id = ?').bind(operatorId),
+          env.DB.prepare('DELETE FROM operators WHERE id = ?').bind(operatorId)
+        ]);
+        return jsonResponse({ ok: true }, 200, origin);
+      }
+
       if (operatorMatch && request.method === 'PATCH') {
         if (!requireAdmin(auth)) return jsonResponse({ error: 'Operazione riservata all’amministratore.' }, 403, origin);
         const body = await readRequestJson(request);
