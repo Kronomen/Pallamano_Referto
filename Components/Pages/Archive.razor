@@ -449,7 +449,7 @@
                                         <strong>Codice personale da comunicare all'operatore</strong>
                                         <code>@CreatedOperatorCode</code>
                                         <button class="archive-small" @onclick="CopyOperatorCode">COPIA CODICE</button>
-                                        <small>Conservalo: per sicurezza viene mostrato soltanto adesso.</small>
+                                        <small>Il codice resta visibile nell’elenco operatori, solo per l’amministratore.</small>
                                     </div>
                                 }
                                 @if (RotatedOperatorCode is not null)
@@ -467,7 +467,8 @@
                                         @foreach (var op in Operators)
                                         {
                                             <div class="operator-row">
-                                                <div><strong>@op.Name</strong><small>@op.ActiveDeviceCount dispositivi attivi · @op.DeviceCount registrati</small></div>
+                                                <div class="operator-row-identity"><strong>@op.Name</strong><small>@op.ActiveDeviceCount dispositivi attivi · @op.DeviceCount registrati</small></div>
+                                                <div class="operator-code-display"><span>CODICE PERSONALE</span><code>@(string.IsNullOrWhiteSpace(op.Code) ? "DA RIGENERARE" : op.Code)</code>@if (!string.IsNullOrWhiteSpace(op.Code)) { <button class="archive-small" @onclick="() => CopyOperatorCode(op.Code)">COPIA</button> }</div>
                                                 <span class="archive-status @(op.Active ? "on" : "off")">@(op.Active ? "ATTIVO" : "DISATTIVATO")</span>
                                                 <button class="archive-small" @onclick="() => ToggleOperator(op)">@((op.Active) ? "DISATTIVA" : "RIATTIVA")</button>
                                                 <button class="archive-small" @onclick="() => RotateOperatorCode(op)" disabled="@CloudBusy">RIGENERA CODICE</button>
@@ -1507,7 +1508,8 @@
         {
             RotatedOperatorCode = await Cloud.RotateOperatorCodeAsync(op.Id);
             RotatedOperatorName = op.Name;
-            OperatorMessage = "Nuovo codice generato. Copialo e comunicalo all'operatore.";
+            await LoadOperators();
+            OperatorMessage = "Nuovo codice generato e salvato nell'elenco operatori.";
         }
         catch (Exception ex) { OperatorMessage = ex.Message; }
         finally { CloudBusy = false; }
@@ -1532,6 +1534,11 @@
     private async Task CopyOperatorCode()
     {
         if (CreatedOperatorCode is not null) await JS.InvokeVoidAsync("navigator.clipboard.writeText", CreatedOperatorCode);
+    }
+
+    private async Task CopyOperatorCode(string? code)
+    {
+        if (!string.IsNullOrWhiteSpace(code)) await JS.InvokeVoidAsync("navigator.clipboard.writeText", code);
     }
 
     private async Task DisconnectCloud()

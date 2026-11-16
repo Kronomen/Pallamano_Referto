@@ -72,6 +72,33 @@ function randomSecret(bytes = 32) {
   return base64UrlEncode(data);
 }
 function makeId(prefix) { return prefix + '_' + randomSecret(12); }
+async function operatorCodeEncryptionKey(env) {
+  const material = await crypto.subtle.importKey('raw', encoder.encode(env.APP_PASSWORD), 'HKDF', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name: 'HKDF', hash: 'SHA-256', salt: encoder.encode('RefertoPallamanoOperatorCodesV1'), info: encoder.encode('operator-code-encryption') },
+    material, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']
+  );
+}
+async function encryptOperatorCode(env, code) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encrypted = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await operatorCodeEncryptionKey(env), encoder.encode(code)));
+  return base64UrlEncode(iv) + '.' + base64UrlEncode(encrypted);
+}
+async function decryptOperatorCode(env, value) {
+  if (!value) return null;
+  const parts = value.split('.');
+  if (parts.length !== 2) throw new Error('Codice operatore cifrato non valido.');
+  const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: base64UrlDecodeToBytes(parts[0]) }, await operatorCodeEncryptionKey(env), base64UrlDecodeToBytes(parts[1]));
+  return decoder.decode(plain);
+}
+async function ensureOperatorCodesTable(env) {
+  await env.DB.prepare('CREATE TABLE IF NOT EXISTS operator_codes (operator_id TEXT PRIMARY KEY, code_ciphertext TEXT NOT NULL, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)').run();
+}
+async function saveOperatorCode(env, operatorId, code) {
+  await ensureOperatorCodesTable(env);
+  const encrypted = await encryptOperatorCode(env, code);
+  await env.DB.prepare('INSERT INTO operator_codes (operator_id, code_ciphertext, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT(operator_id) DO UPDATE SET code_ciphertext = excluded.code_ciphertext, updated_at = CURRENT_TIMESTAMP').bind(operatorId, encrypted).run();
+}
 
 async function rateLimitState(env, key, limit = 8, windowSeconds = 900) {
   const now = Math.floor(Date.now() / 1000);
@@ -195,17 +222,25 @@ async function createOperator(env, body) {
   await env.DB.prepare(
     'INSERT INTO operators (id, name, code_hash, active) VALUES (?, ?, ?, 1)'
   ).bind(id, name, await sha256Hex(code)).run();
+  await saveOperatorCode(env, id, code);
   return { id, name, code, active: true, createdAt: new Date().toISOString() };
 }
 async function listOperators(env) {
+  await ensureOperatorCodesTable(env);
   const result = await env.DB.prepare(
     `SELECT o.id, o.name, o.active, o.created_at,
        COUNT(d.id) AS device_count,
-       SUM(CASE WHEN d.id IS NOT NULL AND d.revoked_at IS NULL THEN 1 ELSE 0 END) AS active_device_count
+       SUM(CASE WHEN d.id IS NOT NULL AND d.revoked_at IS NULL THEN 1 ELSE 0 END) AS active_device_count,
+       (SELECT code_ciphertext FROM operator_codes c WHERE c.operator_id = o.id LIMIT 1) AS code_ciphertext
      FROM operators o LEFT JOIN devices d ON d.operator_id = o.id
      GROUP BY o.id ORDER BY o.name COLLATE NOCASE`
   ).all();
-  return result.results || [];
+  const operators = [];
+  for (const row of result.results || []) {
+    const { code_ciphertext, ...operator } = row;
+    operators.push({ ...operator, code: await decryptOperatorCode(env, code_ciphertext) });
+  }
+  return operators;
 }
 
 export default {
@@ -310,6 +345,7 @@ export default {
           'UPDATE operators SET code_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
         ).bind(await sha256Hex(code), operatorId).run();
         if (!result.meta?.changes) return jsonResponse({ error: 'Rigenerazione del codice non riuscita.' }, 500, origin);
+        await saveOperatorCode(env, operatorId, code);
         return jsonResponse({ code }, 200, origin);
       }
 
