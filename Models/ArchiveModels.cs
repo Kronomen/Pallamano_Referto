@@ -8,36 +8,48 @@ public sealed class ArchiveDatabase
     // Se lo stesso ID contiene valori diversi, il merge si interrompe per non perdere modifiche.
     public int MergeFrom(ArchiveDatabase other)
     {
-        var championships = MergeById(Championships, other.Championships, x => x.Id, "campionati");
-        var seasons = MergeById(Seasons, other.Seasons, x => x.Id, "stagioni");
-        var teams = MergeById(Teams, other.Teams, x => x.Id, "squadre");
-        var people = MergeById(People, other.People, x => x.Id, "persone");
-        var entries = MergeById(TeamEntries, other.TeamEntries, x => x.Id, "iscrizioni");
-
         DeletedChampionshipIds = MergeIds(DeletedChampionshipIds, other.DeletedChampionshipIds);
         DeletedSeasonIds = MergeIds(DeletedSeasonIds, other.DeletedSeasonIds);
         DeletedTeamIds = MergeIds(DeletedTeamIds, other.DeletedTeamIds);
         DeletedPersonIds = MergeIds(DeletedPersonIds, other.DeletedPersonIds);
         DeletedTeamEntryIds = MergeIds(DeletedTeamEntryIds, other.DeletedTeamEntryIds);
 
+        var championships = MergeById(
+            Championships.Where(x => !DeletedChampionshipIds.Contains(x.Id, StringComparer.Ordinal)),
+            other.Championships.Where(x => !DeletedChampionshipIds.Contains(x.Id, StringComparer.Ordinal)), x => x.Id, "campionati");
+        var seasons = MergeById(
+            Seasons.Where(x => !DeletedSeasonIds.Contains(x.Id, StringComparer.Ordinal)),
+            other.Seasons.Where(x => !DeletedSeasonIds.Contains(x.Id, StringComparer.Ordinal)), x => x.Id, "stagioni");
+        var teams = MergeById(
+            Teams.Where(x => !DeletedTeamIds.Contains(x.Id, StringComparer.Ordinal)),
+            other.Teams.Where(x => !DeletedTeamIds.Contains(x.Id, StringComparer.Ordinal)), x => x.Id, "squadre");
+        var people = MergeById(
+            People.Where(x => !DeletedPersonIds.Contains(x.Id, StringComparer.Ordinal)),
+            other.People.Where(x => !DeletedPersonIds.Contains(x.Id, StringComparer.Ordinal)), x => x.Id, "persone");
+        var entries = MergeById(
+            TeamEntries.Where(x => !IsDeletedEntry(x)),
+            other.TeamEntries.Where(x => !IsDeletedEntry(x)), x => x.Id, "iscrizioni");
+
         var added = championships.Added + seasons.Added + teams.Added + people.Added + entries.Added;
-        Championships = championships.Items.Where(x => !DeletedChampionshipIds.Contains(x.Id, StringComparer.Ordinal)).ToList();
-        Seasons = seasons.Items.Where(x => !DeletedSeasonIds.Contains(x.Id, StringComparer.Ordinal)).ToList();
-        Teams = teams.Items.Where(x => !DeletedTeamIds.Contains(x.Id, StringComparer.Ordinal)).ToList();
-        People = people.Items.Where(x => !DeletedPersonIds.Contains(x.Id, StringComparer.Ordinal)).ToList();
-        TeamEntries = entries.Items.Where(x =>
-            !DeletedTeamEntryIds.Contains(x.Id, StringComparer.Ordinal) &&
-            !DeletedTeamIds.Contains(x.TeamId, StringComparer.Ordinal) &&
-            !DeletedPersonIds.Contains(x.PersonId, StringComparer.Ordinal) &&
-            !DeletedChampionshipIds.Contains(x.ChampionshipId, StringComparer.Ordinal) &&
-            !DeletedSeasonIds.Contains(x.SeasonId, StringComparer.Ordinal)).ToList();
+        Championships = championships.Items;
+        Seasons = seasons.Items;
+        Teams = teams.Items;
+        People = people.Items;
+        TeamEntries = entries.Items;
         SchemaVersion = Math.Max(SchemaVersion, other.SchemaVersion);
         return added;
+    }
+
+    private bool IsDeletedEntry(ArchiveTeamEntry entry) =>
+        DeletedTeamEntryIds.Contains(entry.Id, StringComparer.Ordinal) ||
+        DeletedTeamIds.Contains(entry.TeamId, StringComparer.Ordinal) ||
+        DeletedPersonIds.Contains(entry.PersonId, StringComparer.Ordinal) ||
+        DeletedChampionshipIds.Contains(entry.ChampionshipId, StringComparer.Ordinal) ||
+        DeletedSeasonIds.Contains(entry.SeasonId, StringComparer.Ordinal);
 
     private static List<string> MergeIds(IEnumerable<string>? current, IEnumerable<string>? incoming) =>
         (current ?? []).Concat(incoming ?? []).Where(x => !string.IsNullOrWhiteSpace(x))
             .Distinct(StringComparer.Ordinal).ToList();
-    }
 
     private static (List<T> Items, int Added) MergeById<T>(
         IEnumerable<T> current, IEnumerable<T> incoming, Func<T, string> getId, string label)
