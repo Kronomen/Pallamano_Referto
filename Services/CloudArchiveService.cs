@@ -352,6 +352,11 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js, Navigati
             remote.Teams ??= [];
             remote.People ??= [];
             remote.TeamEntries ??= [];
+            remote.DeletedChampionshipIds ??= [];
+            remote.DeletedSeasonIds ??= [];
+            remote.DeletedTeamIds ??= [];
+            remote.DeletedPersonIds ??= [];
+            remote.DeletedTeamEntryIds ??= [];
             localArchive.MergeFrom(remote);
             _sha = ReadString(root, "sha");
             if (string.IsNullOrWhiteSpace(_sha))
