@@ -643,23 +643,33 @@
         try
         {
             await Cloud.TryRestoreSessionAsync();
-            if (Cloud.IsAuthenticated && Cloud.HasCheckedRemote)
+        }
+        catch (Exception ex)
+        {
+            CloudMessage = "Archivio locale disponibile. Ripristino della sessione cloud non riuscito: " + ex.Message;
+        }
+
+        // Il caricamento degli operatori è indipendente dal recupero dell'archivio gare:
+        // un problema di sincronizzazione dell'archivio non deve nascondere l'elenco admin.
+        if (Cloud.IsAuthenticated && Cloud.HasCheckedRemote)
+        {
+            try
             {
                 await BootstrapSharedArchiveAsync();
                 await CleanupDuplicatePlayerEnrollmentsOnLoadAsync();
             }
-            else if (Cloud.IsAuthenticated)
+            catch (Exception ex)
             {
-                CloudMessage = Cloud.Status;
+                CloudMessage = "Archivio locale disponibile. Sincronizzazione cloud non completata: " + ex.Message;
             }
-
-            if (Cloud.IsAdmin) await LoadOperators();
         }
-        catch (Exception ex)
+        else if (Cloud.IsAuthenticated && string.IsNullOrWhiteSpace(CloudMessage))
         {
-            // L'archivio locale resta consultabile anche se il bootstrap cloud fallisce.
-            CloudMessage = "Archivio locale disponibile. Sincronizzazione cloud non completata: " + ex.Message;
+            CloudMessage = Cloud.Status;
         }
+
+        if (Cloud.IsAdmin)
+            await LoadOperators();
         finally
         {
             _syncMonitorCts ??= new CancellationTokenSource();
