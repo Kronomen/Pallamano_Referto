@@ -360,7 +360,7 @@ export default {
       }
 
       // TEMPORARY: one-time administrator-only code assignment. Remove after use.
-      const setCodeMatch = url.pathname.match(/^\\/api\\/admin\\/operators\\/([A-Za-z0-9_-]+)\\/set-code-once$/);
+      const setCodeMatch = url.pathname.match(/^\/api\/admin\/operators\/([A-Za-z0-9_-]+)\/set-code-once$/);
       if (setCodeMatch && request.method === 'POST') {
         if (!requireAdmin(auth)) return jsonResponse({ error: 'Operazione riservata all’amministratore.' }, 403, origin);
         const operatorId = setCodeMatch[1];
