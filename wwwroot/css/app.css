@@ -7965,3 +7965,43 @@ html:-webkit-full-screen, body:-webkit-full-screen{width:100%;height:100%;overfl
 .team-score-info span,.panel-title,.archive-list-team-name{ text-transform:uppercase; }
 .player-name,.staff-card small{font-size:12px!important;line-height:1.2}
 .archive-person-name,.archive-list-main strong{font-size:13px!important;line-height:1.25}
+
+
+/* Riordino comandi archivio: chiusura accanto a REFERTO GARA e uscita nella barra inferiore. */
+.archive-header-actions .archive-header-close{
+    min-height:36px;
+    padding:0 12px;
+    border:1px solid #dc2626;
+    border-radius:8px;
+    background:#dc2626;
+    color:#fff;
+    font-size:10px;
+    font-weight:900;
+    white-space:nowrap;
+    cursor:pointer;
+}
+.archive-header-actions .archive-header-close:hover{background:#b91c1c;border-color:#b91c1c}
+.archive-header-actions .archive-header-close:disabled{opacity:.55;cursor:wait}
+.archive-tabs .archive-logout-small{
+    margin-left:auto;
+    flex:0 0 auto;
+    align-self:center;
+    min-height:28px;
+    padding:0 9px;
+    border:1px solid #dc2626;
+    border-radius:6px;
+    background:#dc2626;
+    color:#fff;
+    font-size:9px;
+    font-weight:900;
+    letter-spacing:.15px;
+    white-space:nowrap;
+    cursor:pointer;
+}
+.archive-tabs .archive-logout-small:hover{background:#b91c1c;border-color:#b91c1c}
+@media(max-width:650px){
+    .archive-header-actions{gap:5px}
+    .archive-header-actions .archive-back,
+    .archive-header-actions .archive-header-close{padding:0 8px;font-size:9px;min-height:34px}
+    .archive-tabs .archive-logout-small{margin-left:0}
+}
