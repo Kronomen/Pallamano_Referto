@@ -1170,8 +1170,10 @@
     private void OpenPersonAssociations(string id)
     {
         SelectedPersonId = id;
+        // Se non esiste un tesseramento attivo, la persona è in standby:
+        // il selettore deve mostrare l'opzione vuota e non una vecchia squadra storica.
         SelectedPersonTeamId = Archivio.Data.TeamEntries
-            .Where(x => x.PersonId == id)
+            .Where(x => x.PersonId == id && x.IsActive && x.EntryType != "TEAM")
             .OrderByDescending(x => Archivio.Data.Seasons.FirstOrDefault(season => season.Id == x.SeasonId)?.StartDate ?? DateOnly.MinValue)
             .Select(x => x.TeamId)
             .FirstOrDefault() ?? "";
