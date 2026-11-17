@@ -1379,6 +1379,14 @@ public sealed class GameService : IAsyncDisposable
         error = ""; return true;
     }
 
+    // True solo quando il servizio contiene ancora la gara iniziale vuota.
+    // Serve a ripristinare la bozza dal browser senza sovrascrivere una gara
+    // già presente in memoria quando si rientra dalla Gestione archivio.
+    public bool IsPristine => string.Equals(
+        JsonSerializer.Serialize(State),
+        JsonSerializer.Serialize(CreateNewGame()),
+        StringComparison.Ordinal);
+
     public string ExportJson() => JsonSerializer.Serialize(State, new JsonSerializerOptions { WriteIndented = true });
     public void ImportJson(string json)
     {
@@ -1397,7 +1405,7 @@ public sealed class GameService : IAsyncDisposable
             State.TimeoutAOpponentPossessionObserved = TimeoutCount("A") == 0;
             State.TimeoutBOpponentPossessionObserved = TimeoutCount("B") == 0;
         }
-        State.MiniTimerRunning = false; ClearPending(); PendingShootout = null;
+        State.Running = false; State.MiniTimerRunning = false; ClearPending(); PendingShootout = null;
         ShowNextPeriod = false; ShowShootoutStart = false; ShowShootoutFirstTeam = false; ShowShootoutWinner = false;
         ShowConfiguration = !State.MatchStarted && !State.ShootoutStarted;
         ShowReadyPopup = false;
