@@ -226,18 +226,45 @@
                         }
                         else
                         {
-                            <div class="archive-list">
-                                @foreach (var person in foundBySurname)
+                            <div class="people-search-group people-search-assigned">
+                                <h4>PERSONE GIÀ ASSOCIATE A UNA SQUADRA <span>@foundBySurname.Count(HasActiveTeam)</span></h4>
+                                @if (foundBySurname.Any(HasActiveTeam))
                                 {
-                                    <div class="archive-list-row">
-                                        <div class="archive-list-icon">@(person.PersonType == "PLAYER" ? "👤" : "📋")</div>
-                                        <div class="archive-list-main">
-                                            <button type="button" class="archive-person-name" @onclick="() => OpenPersonAssociations(person.Id)">@person.FullName</button>
-                                            <small>@(person.PersonType == "PLAYER" ? "Atleta" : "Dirigente") · @GetPersonTeamNames(person.Id)</small>
-                                        </div>
-                                        <span class="archive-status @(person.IsActive ? "on" : "off")">@(person.IsActive ? "ATTIVO" : "ARCHIVIATO")</span>
+                                    <div class="archive-list people-search-grid">
+                                        @foreach (var person in foundBySurname.Where(HasActiveTeam))
+                                        {
+                                            <div class="archive-list-row person-card search-person-card">
+                                                <div class="archive-list-icon">@(person.PersonType == "PLAYER" ? "👤" : "📋")</div>
+                                                <div class="archive-list-main">
+                                                    <button type="button" class="archive-person-name" @onclick="() => OpenPersonAssociations(person.Id)">@person.FullName</button>
+                                                    <small>@(person.PersonType == "PLAYER" ? "Atleta" : "Dirigente") · @GetPersonTeamNames(person.Id)</small>
+                                                </div>
+                                                <span class="archive-status @(person.IsActive ? "on" : "off")">@(person.IsActive ? "ATTIVO" : "ARCHIVIATO")</span>
+                                            </div>
+                                        }
                                     </div>
                                 }
+                                else { <div class="archive-empty">Nessuna persona associata a una squadra.</div> }
+                            </div>
+                            <div class="people-search-group people-search-unassigned">
+                                <h4>PERSONE SENZA SQUADRA <span>@foundBySurname.Count(p => !HasActiveTeam(p))</span></h4>
+                                @if (foundBySurname.Any(p => !HasActiveTeam(p)))
+                                {
+                                    <div class="archive-list people-search-grid">
+                                        @foreach (var person in foundBySurname.Where(p => !HasActiveTeam(p)))
+                                        {
+                                            <div class="archive-list-row person-card search-person-card">
+                                                <div class="archive-list-icon">@(person.PersonType == "PLAYER" ? "👤" : "📋")</div>
+                                                <div class="archive-list-main">
+                                                    <button type="button" class="archive-person-name" @onclick="() => OpenPersonAssociations(person.Id)">@person.FullName</button>
+                                                    <small>@(person.PersonType == "PLAYER" ? "Atleta" : "Dirigente") · Nessuna squadra associata</small>
+                                                </div>
+                                                <span class="archive-status @(person.IsActive ? "on" : "off")">@(person.IsActive ? "ATTIVO" : "ARCHIVIATO")</span>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                                else { <div class="archive-empty">Tutte le persone trovate risultano associate a una squadra.</div> }
                             </div>
                         }
                     }
@@ -255,27 +282,52 @@
                     </label>
                     @if (!string.IsNullOrWhiteSpace(PersonSearchTeamId))
                     {
-                        <p class="archive-note">Persone associate: @PeopleFoundByTeam.Count</p>
-                        @if (PeopleFoundByTeam.Count == 0)
-                        {
-                            <div class="archive-empty">Nessun atleta o dirigente associato a questa società.</div>
-                        }
-                        else
-                        {
-                            <div class="archive-list">
-                                @foreach (var person in PeopleFoundByTeam)
-                                {
-                                    <div class="archive-list-row">
-                                        <div class="archive-list-icon">@(person.PersonType == "PLAYER" ? "👤" : "📋")</div>
-                                        <div class="archive-list-main">
-                                            <button type="button" class="archive-person-name" @onclick="() => OpenPersonAssociations(person.Id)">@person.FullName</button>
-                                            <small>@(person.PersonType == "PLAYER" ? "Atleta" : "Dirigente") · @GetTeamEntryDetails(person.Id, PersonSearchTeamId)</small>
+                        <div class="people-search-group people-search-assigned">
+                            <h4>PERSONE GIÀ DELLA SQUADRA <span>@PeopleFoundByTeam.Count</span></h4>
+                            @if (PeopleFoundByTeam.Count == 0)
+                            {
+                                <div class="archive-empty">Nessun atleta o dirigente associato a questa società.</div>
+                            }
+                            else
+                            {
+                                <div class="archive-list people-search-grid">
+                                    @foreach (var person in PeopleFoundByTeam)
+                                    {
+                                        <div class="archive-list-row person-card search-person-card">
+                                            <div class="archive-list-icon">@(person.PersonType == "PLAYER" ? "👤" : "📋")</div>
+                                            <div class="archive-list-main">
+                                                <button type="button" class="archive-person-name" @onclick="() => OpenPersonAssociations(person.Id)">@person.FullName</button>
+                                                <small>@(person.PersonType == "PLAYER" ? "Atleta" : "Dirigente") · @GetTeamEntryDetails(person.Id, PersonSearchTeamId)</small>
+                                            </div>
+                                            <span class="archive-status @(person.IsActive ? "on" : "off")">@(person.IsActive ? "ATTIVO" : "ARCHIVIATO")</span>
                                         </div>
-                                        <span class="archive-status @(person.IsActive ? "on" : "off")">@(person.IsActive ? "ATTIVO" : "ARCHIVIATO")</span>
-                                    </div>
-                                }
-                            </div>
-                        }
+                                    }
+                                </div>
+                            }
+                        </div>
+                        <div class="people-search-group people-search-unassigned">
+                            <h4>PERSONE SENZA SQUADRA <span>@PeopleWithoutTeam.Count</span></h4>
+                            @if (PeopleWithoutTeam.Count == 0)
+                            {
+                                <div class="archive-empty">Non ci sono persone senza squadra nell'archivio.</div>
+                            }
+                            else
+                            {
+                                <div class="archive-list people-search-grid">
+                                    @foreach (var person in PeopleWithoutTeam)
+                                    {
+                                        <div class="archive-list-row person-card search-person-card">
+                                            <div class="archive-list-icon">@(person.PersonType == "PLAYER" ? "👤" : "📋")</div>
+                                            <div class="archive-list-main">
+                                                <button type="button" class="archive-person-name" @onclick="() => OpenPersonAssociations(person.Id)">@person.FullName</button>
+                                                <small>@(person.PersonType == "PLAYER" ? "Atleta" : "Dirigente") · Nessuna squadra associata</small>
+                                            </div>
+                                            <span class="archive-status @(person.IsActive ? "on" : "off")">@(person.IsActive ? "ATTIVO" : "ARCHIVIATO")</span>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
                     }
                 </section>
                 <div class="archive-list people-grid">
@@ -573,6 +625,13 @@
         ? new()
         : Archivio.Data.People.Where(p => Archivio.Data.TeamEntries.Any(e => e.PersonId == p.Id && e.TeamId == PersonSearchTeamId && e.IsActive && e.EntryType != "TEAM"))
             .OrderBy(p => p.PersonType).ThenBy(p => p.FullName).ToList();
+    private bool HasActiveTeam(ArchivePerson person) => Archivio.Data.TeamEntries.Any(e =>
+        e.PersonId == person.Id && e.IsActive && e.EntryType != "TEAM" &&
+        Archivio.Data.Teams.Any(t => t.Id == e.TeamId && t.IsActive));
+    private List<ArchivePerson> PeopleWithoutTeam => Archivio.Data.People
+        .Where(p => p.IsActive && !HasActiveTeam(p))
+        .OrderBy(p => p.FullName)
+        .ToList();
     private string GetPersonTeamNames(string personId) => string.Join(", ", Archivio.Data.TeamEntries
         .Where(e => e.PersonId == personId && e.IsActive && e.EntryType != "TEAM")
         .Select(e => Archivio.Data.Teams.FirstOrDefault(t => t.Id == e.TeamId)?.Name)
