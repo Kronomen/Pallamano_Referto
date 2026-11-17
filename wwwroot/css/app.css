@@ -8100,3 +8100,7 @@ html:-webkit-full-screen, body:-webkit-full-screen{width:100%;height:100%;overfl
 .archive-list.teams-grid button.archive-small.archive-delete-team:hover{
  color:#fff!important;
 }
+
+
+/* Protezione visiva durante il recupero della bozza prima di mostrare la gara. */
+.recovery-loading-overlay{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(238,242,247,.96);color:#17324d;font-weight:900;font-size:14px;text-align:center;letter-spacing:.3px}

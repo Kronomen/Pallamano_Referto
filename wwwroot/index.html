@@ -64,11 +64,36 @@
     } catch(e) { return false; }
   };
   let recoveryTimer = null;
+  let recoveryReference = null;
+  let recoveryPageHandler = null;
   window.avviaAutoRecovery = function(dotnetRef){
     if (recoveryTimer) clearInterval(recoveryTimer);
-    recoveryTimer = setInterval(function(){ try { dotnetRef.invokeMethodAsync('AutoSaveRecovery').catch(function(){}); } catch(e){} }, 500);
+    if (recoveryPageHandler) {
+      document.removeEventListener('visibilitychange', recoveryPageHandler);
+      window.removeEventListener('pagehide', recoveryPageHandler);
+    }
+    recoveryReference = dotnetRef;
+    recoveryTimer = setInterval(function(){
+      try { recoveryReference.invokeMethodAsync('AutoSaveRecovery').catch(function(){}); } catch(e){}
+    }, 300);
+    // Quando la scheda viene nascosta o sta per essere lasciata, chiediamo
+    // un ulteriore salvataggio. Il dato già presente in localStorage resta
+    // comunque disponibile anche se il browser interrompe la chiamata.
+    recoveryPageHandler = function(){
+      try { if (recoveryReference) recoveryReference.invokeMethodAsync('AutoSaveRecovery').catch(function(){}); } catch(e){}
+    };
+    document.addEventListener('visibilitychange', recoveryPageHandler);
+    window.addEventListener('pagehide', recoveryPageHandler);
   };
-  window.fermaAutoRecovery = function(){ if(recoveryTimer){ clearInterval(recoveryTimer); recoveryTimer=null; } };
+  window.fermaAutoRecovery = function(){
+    if(recoveryTimer){ clearInterval(recoveryTimer); recoveryTimer=null; }
+    if(recoveryPageHandler){
+      document.removeEventListener('visibilitychange', recoveryPageHandler);
+      window.removeEventListener('pagehide', recoveryPageHandler);
+      recoveryPageHandler=null;
+    }
+    recoveryReference=null;
+  };
 })();
 </script>
 
