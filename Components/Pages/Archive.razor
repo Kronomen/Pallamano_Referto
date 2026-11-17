@@ -789,7 +789,7 @@
         try { await JS.InvokeVoidAsync("sessionStorage.setItem", SelectedTabStorageKey, value); }
         catch { /* La navigazione resta utilizzabile anche senza sessionStorage. */ }
     }
-    private void BackToMatch() => Nav.NavigateTo("/gara");
+    private void BackToMatch() => Nav.NavigateTo("gara");
 
     private async Task AddChampionship()
     {
