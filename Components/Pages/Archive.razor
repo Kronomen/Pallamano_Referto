@@ -74,13 +74,13 @@
         </section>
 
         <nav class="archive-tabs">
+            <button class="@(Tab == "gestione" ? "active" : "")" @onclick='() => SetTabAsync("gestione")'>GESTIONE ARCHIVIO</button>
             <button class="@(Tab == "campionati" ? "active" : "")" @onclick='() => SetTabAsync("campionati")'>CAMPIONATI</button>
             <button class="@(Tab == "squadre" ? "active" : "")" @onclick='() => SetTabAsync("squadre")'>SQUADRE</button>
             <button class="@(Tab == "stagioni" ? "active" : "")" @onclick='() => SetTabAsync("stagioni")'>STAGIONI</button>
             <button class="@(Tab == "persone" ? "active" : "")" @onclick='() => SetTabAsync("persone")'>ATLETI E DIRIGENTI</button>
             <button class="@(Tab == "importa" ? "active" : "")" @onclick='() => SetTabAsync("importa")'>IMPORTA ATLETI/DIRIGENTI DA PDF (REFERTI)</button>
-            <button class="@(Tab == "gestione" ? "active" : "")" @onclick='() => SetTabAsync("gestione")'>GESTIONE ARCHIVIO</button>
-            @if (Cloud.IsAuthenticated) { <button type="button" class="archive-logout-small" @onclick="DisconnectCloud">@(Cloud.IsAdmin ? "ESCI DA AMMINISTRATORE" : "ESCI DA OPERATORE")</button> }
+            @if (Cloud.IsAuthenticated && Tab == "gestione") { <button type="button" class="archive-logout-small" @onclick="DisconnectCloud">@(Cloud.IsAdmin ? "ESCI DA AMMINISTRATORE" : "ESCI DA OPERATORE")</button> }
         </nav>
         </div>
 
@@ -548,7 +548,7 @@
 
     private const string SelectedTabStorageKey = "refertoArchiveSelectedTab";
     private static readonly string[] ValidTabs = ["campionati", "squadre", "stagioni", "persone", "importa", "gestione"];
-    private string Tab = "campionati";
+    private string Tab = "gestione";
     private string ChampionshipName = ""; private string ChampionshipCategory = ""; private string ChampionshipGender = "";
     private string TeamName = "";
     private string TeamEditTeamId = ""; private string TeamEditName = ""; private string TeamEditChampionshipId = "";
@@ -621,16 +621,8 @@
         // Le chiamate cloud vengono avviate dopo il primo render: un Worker lento
         // o temporaneamente irraggiungibile non deve lasciare la schermata bloccata.
         await Archivio.InitializeAsync();
-        try
-        {
-            var savedTab = await JS.InvokeAsync<string?>("sessionStorage.getItem", SelectedTabStorageKey);
-            if (!string.IsNullOrWhiteSpace(savedTab) && ValidTabs.Contains(savedTab, StringComparer.Ordinal))
-                Tab = savedTab;
-        }
-        catch
-        {
-            // Se sessionStorage non è disponibile, resta valida la sezione predefinita.
-        }
+        // All'apertura dell'applicazione si parte sempre dalla scheda Gestione archivio.
+        // La scelta delle altre schede resta valida durante la navigazione corrente.
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
