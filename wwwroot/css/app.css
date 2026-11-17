@@ -8005,3 +8005,24 @@ html:-webkit-full-screen, body:-webkit-full-screen{width:100%;height:100%;overfl
     .archive-header-actions .archive-header-close{padding:0 8px;font-size:9px;min-height:34px}
     .archive-tabs .archive-logout-small{margin-left:0}
 }
+
+
+/* Archivio: durante lo scorrimento resta fissa solo la barra delle schede,
+   non anche il titolo e i contatori, così si recupera spazio verticale. */
+.archive-sticky-shell{position:static;top:auto;z-index:auto}
+.archive-tabs{position:sticky;top:64px;z-index:100;background:#eef2f7;padding-top:2px}
+
+/* Elenco atleti e dirigenti: elimina la grande fascia vuota tra nominativo e azioni. */
+.archive-list.people-grid .archive-list-row{display:grid;grid-template-columns:34px minmax(220px,max-content) auto auto auto;justify-content:start;column-gap:10px}
+.archive-list.people-grid .archive-list-main{flex:initial;width:auto;min-width:220px;max-width:min(560px,45vw)}
+.archive-list.people-grid .archive-list-main strong,
+.archive-list.people-grid .archive-list-main small{white-space:normal}
+.archive-list.people-grid .archive-list-row .archive-status{margin:0}
+.archive-list.people-grid .archive-list-row .archive-small{justify-self:start}
+@media(max-width:850px){
+ .archive-tabs{top:56px}
+ .archive-list.people-grid .archive-list-row{grid-template-columns:34px minmax(0,1fr) auto;column-gap:8px}
+ .archive-list.people-grid .archive-list-main{grid-column:2;min-width:0;max-width:none}
+ .archive-list.people-grid .archive-list-row .archive-status{grid-column:3;grid-row:1}
+ .archive-list.people-grid .archive-list-row .archive-small{grid-column:auto;grid-row:2}
+}
