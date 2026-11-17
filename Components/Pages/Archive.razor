@@ -283,7 +283,7 @@
                     @if (!string.IsNullOrWhiteSpace(PersonSearchTeamId))
                     {
                         <div class="people-search-group people-search-assigned">
-                            <h4>PERSONE GIÀ DELLA SQUADRA <span>@PeopleFoundByTeam.Count</span></h4>
+                            <h4>ATLETI E DIRIGENTI TESSERATI – @SelectedSearchTeamName <span>@PeopleFoundByTeam.Count</span></h4>
                             @if (PeopleFoundByTeam.Count == 0)
                             {
                                 <div class="archive-empty">Nessun atleta o dirigente associato a questa società.</div>
@@ -299,7 +299,11 @@
                                                 <button type="button" class="archive-person-name" @onclick="() => OpenPersonAssociations(person.Id)">@person.FullName</button>
                                                 <small>@(person.PersonType == "PLAYER" ? "Atleta" : "Dirigente") · @GetTeamEntryDetails(person.Id, PersonSearchTeamId)</small>
                                             </div>
-                                            <span class="archive-status @(person.IsActive ? "on" : "off")">@(person.IsActive ? "ATTIVO" : "ARCHIVIATO")</span>
+                                            <div class="person-actions search-person-actions">
+                                                <span class="archive-status @(person.IsActive ? "on" : "off")">@(person.IsActive ? "ATTIVO" : "ARCHIVIATO")</span>
+                                                <button class="archive-small archive-team-variation" @onclick="() => OpenPersonNameEdit(person.Id)" disabled="@(!CanWriteArchive)">VARIAZIONE</button>
+                                                <button class="archive-small archive-delete-team" @onclick="() => DeletePerson(person.Id)" disabled="@(!CanWriteArchive)">CANCELLA</button>
+                                            </div>
                                         </div>
                                     }
                                 </div>
@@ -344,14 +348,14 @@
                             <div class="archive-form-grid">
                                 <label>Società di appartenenza
                                     <select @bind="SelectedPersonTeamId" disabled="@(!CanWriteArchive)">
-                                        <option value="">Seleziona squadra</option>
+                                        <option value="">— SENZA SQUADRA (IN STANDBY) —</option>
                                         @foreach (var team in Archivio.Data.Teams.Where(x => x.IsActive).OrderBy(x => x.Name))
                                         {
                                             <option value="@team.Id">@team.Name</option>
                                         }
                                     </select>
                                 </label>
-                                <button class="archive-primary" @onclick="SavePersonTeam" disabled="@(!CanWriteArchive || string.IsNullOrWhiteSpace(SelectedPersonTeamId))">SALVA SOCIETÀ</button>
+                                <button class="archive-primary" @onclick="SavePersonTeam" disabled="@(!CanWriteArchive)">SALVA APPARTENENZA</button>
                             </div>
                             @if (SelectedPersonEntries.Count > 0)
                             {
@@ -617,6 +621,7 @@
     private string EntryPersonId = ""; private string EntryTeamId = ""; private string EntryChampionshipId = ""; private string EntrySeasonId = ""; private string EntryNumber = "";
     private string PersonSearchSurname = "";
     private string PersonSearchTeamId = "";
+    private string SelectedSearchTeamName => Archivio.Data.Teams.FirstOrDefault(t => t.Id == PersonSearchTeamId)?.Name ?? "";
     private List<ArchivePerson> PeopleFoundBySurname => string.IsNullOrWhiteSpace(PersonSearchSurname)
         ? new()
         : Archivio.Data.People.Where(p => p.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Any(part => part.Contains(PersonSearchSurname.Trim(), StringComparison.OrdinalIgnoreCase)))
@@ -1165,8 +1170,10 @@
     private void OpenPersonAssociations(string id)
     {
         SelectedPersonId = id;
+        // Se non esiste un tesseramento attivo, la persona è in standby:
+        // il selettore deve mostrare l'opzione vuota e non una vecchia squadra storica.
         SelectedPersonTeamId = Archivio.Data.TeamEntries
-            .Where(x => x.PersonId == id)
+            .Where(x => x.PersonId == id && x.IsActive && x.EntryType != "TEAM")
             .OrderByDescending(x => Archivio.Data.Seasons.FirstOrDefault(season => season.Id == x.SeasonId)?.StartDate ?? DateOnly.MinValue)
             .Select(x => x.TeamId)
             .FirstOrDefault() ?? "";
@@ -1179,15 +1186,33 @@
     private async Task SavePersonTeam()
     {
         if (!RequireWriteAccess()) return;
-        if (SelectedPerson is null || string.IsNullOrWhiteSpace(SelectedPersonTeamId)) return;
-        if (!Archivio.Data.Teams.Any(x => x.Id == SelectedPersonTeamId && x.IsActive)) return;
+        if (SelectedPerson is null) return;
+
         var entries = Archivio.Data.TeamEntries.Where(x => x.PersonId == SelectedPerson.Id).ToList();
+
+        // Valore vuoto = persona in standby: conserva lo storico delle iscrizioni,
+        // ma disattiva tutte le appartenenze attive così non risulta tesserata.
+        if (string.IsNullOrWhiteSpace(SelectedPersonTeamId))
+        {
+            if (entries.Any(x => x.IsActive && x.EntryType != "TEAM"))
+            {
+                if (!await JS.InvokeAsync<bool>("confirm", $"Vuoi mettere {SelectedPerson.FullName} in standby, senza squadra? Le iscrizioni precedenti resteranno nello storico ma non risulterà più tesserata attiva. I referti già salvati non verranno modificati.")) return;
+                foreach (var entry in entries.Where(x => x.EntryType != "TEAM"))
+                    entry.IsActive = false;
+            }
+            await Archivio.SaveAsync();
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        if (!Archivio.Data.Teams.Any(x => x.Id == SelectedPersonTeamId && x.IsActive)) return;
         if (entries.Any(x => x.TeamId != SelectedPersonTeamId))
         {
             var oldTeams = string.Join(", ", entries.Where(x => x.TeamId != SelectedPersonTeamId)
                 .Select(x => Archivio.Data.Teams.FirstOrDefault(t => t.Id == x.TeamId)?.Name ?? "Squadra non trovata").Distinct());
             if (!await JS.InvokeAsync<bool>("confirm", $"Vuoi trasferire {SelectedPerson.FullName} da {oldTeams} alla nuova società? Le vecchie appartenenze non saranno conservate. I referti già salvati resteranno invariati.")) return;
             foreach (var entry in entries) entry.TeamId = SelectedPersonTeamId;
+            foreach (var entry in entries.Where(x => x.EntryType != "TEAM")) entry.IsActive = true;
         }
         await Archivio.SaveAsync();
         await InvokeAsync(StateHasChanged);
