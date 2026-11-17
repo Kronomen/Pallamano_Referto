@@ -310,7 +310,7 @@
                             }
                         </div>
                         <div class="people-search-group people-search-unassigned">
-                            <h4>PERSONE SENZA SQUADRA <span>@PeopleWithoutTeam.Count</span></h4>
+                            <h4>TESSERATI STANDBY <span>@PeopleWithoutTeam.Count</span></h4>
                             @if (PeopleWithoutTeam.Count == 0)
                             {
                                 <div class="archive-empty">Non ci sono persone senza squadra nell'archivio.</div>
@@ -326,7 +326,11 @@
                                                 <button type="button" class="archive-person-name" @onclick="() => OpenPersonAssociations(person.Id)">@person.FullName</button>
                                                 <small>@(person.PersonType == "PLAYER" ? "Atleta" : "Dirigente") · Nessuna squadra associata</small>
                                             </div>
-                                            <span class="archive-status @(person.IsActive ? "on" : "off")">@(person.IsActive ? "ATTIVO" : "ARCHIVIATO")</span>
+                                            <div class="person-actions search-person-actions">
+                                                <span class="archive-status @(person.IsActive ? "on" : "off")">@(person.IsActive ? "ATTIVO" : "ARCHIVIATO")</span>
+                                                <button class="archive-small archive-team-variation" @onclick="() => OpenPersonNameEdit(person.Id)" disabled="@(!CanWriteArchive)">VARIAZIONE</button>
+                                                <button class="archive-small archive-delete-team" @onclick="() => DeletePerson(person.Id)" disabled="@(!CanWriteArchive)">CANCELLA</button>
+                                            </div>
                                         </div>
                                     }
                                 </div>
