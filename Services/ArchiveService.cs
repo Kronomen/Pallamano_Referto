@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Globalization;
 using Microsoft.JSInterop;
 using RefertoPallamano_Blazor.Models;
 
@@ -55,6 +56,8 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
             // è già salvata nel backup prima di essere sostituita.
             await ReplaceWithRemoteArchiveAsync(remote);
             await cloud.EnableAutoSyncAsync();
+            // Pubblica la normalizzazione dei nominativi anche nell'archivio centrale.
+            await cloud.TrySyncAsync(Data);
 
             return "Archivio centrale caricato sul dispositivo. Backup locale conservato e sincronizzazione automatica attiva.";
         }
@@ -105,6 +108,7 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
         var previousSchemaVersion = Data.SchemaVersion;
         UpgradeSchema();
         if (Data.SchemaVersion != previousSchemaVersion) shouldPersist = true;
+        if (NormalizeNames(Data)) shouldPersist = true;
         if (Data.Seasons.Count == 0)
         {
             Data.Seasons.Add(new ArchiveSeason { Name = "2026/2027", StartDate = new DateOnly(2026, 7, 1), EndDate = new DateOnly(2027, 6, 30), IsActive = true });
@@ -144,6 +148,9 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
         await _saveLock.WaitAsync();
         try
         {
+            // Regola unica applicata a ogni salvataggio: inserimenti manuali,
+            // importazioni e modifiche passano tutti da qui.
+            NormalizeNames(Data);
             var json = JsonSerializer.Serialize(Data, JsonOptions);
             await InvokeArchiveStorageVoidAsync("archiveStorage.saveArchive", StorageKey, BackupKey, json);
             // Il salvataggio locale resta prioritario. Dopo il tentativo cloud
@@ -212,6 +219,7 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
 
             Data = remote;
             UpgradeSchema();
+            NormalizeNames(Data);
             IsLoaded = true;
 
             var json = JsonSerializer.Serialize(Data, JsonOptions);
@@ -244,6 +252,7 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
             var backup = JsonSerializer.Serialize(Data, JsonOptions);
             await js.InvokeVoidAsync("archiveStorage.set", BackupKey, backup);
             Data = merged;
+            NormalizeNames(Data);
             IsLoaded = true;
             var json = JsonSerializer.Serialize(Data, JsonOptions);
             await js.InvokeVoidAsync("archiveStorage.saveArchive", StorageKey, BackupKey, json);
@@ -283,6 +292,7 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
             throw new InvalidOperationException("L'archivio selezionato è vuoto. L'archivio attuale non è stato modificato.");
 
         await CreateBackupAsync();
+        NormalizeNames(imported);
         Data = imported;
         IsLoaded = true;
         await SaveAsync(syncCloud);
@@ -508,6 +518,43 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
         var item = new ArchiveChampionship { Name = name.Trim() };
         Data.Championships.Add(item);
         return item;
+    }
+
+    // Uniforma i nomi senza cambiare gli ID o le associazioni dell'archivio.
+    // 1 parola: tutta maiuscola; 2 parole: cognome maiuscolo + nome normale;
+    // oltre 2 parole: prime due maiuscole, successive in formato Nome.
+    public static string FormatPersonName(string? value)
+    {
+        var words = (value ?? "").Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+        if (words.Length == 0) return "";
+        if (words.Length == 1) return words[0].ToUpperInvariant();
+
+        var textInfo = CultureInfo.GetCultureInfo("it-IT").TextInfo;
+        for (var i = 0; i < words.Length; i++)
+        {
+            words[i] = i < 2
+                ? words[i].ToUpperInvariant()
+                : textInfo.ToTitleCase(words[i].ToLowerInvariant());
+        }
+        return string.Join(" ", words);
+    }
+
+    public static bool NormalizeNames(ArchiveDatabase archive)
+    {
+        var changed = false;
+        foreach (var team in archive.Teams)
+        {
+            var normalized = (team.Name ?? "").Trim().ToUpperInvariant();
+            if (team.Name != normalized) { team.Name = normalized; changed = true; }
+            var shortName = (team.ShortName ?? "").Trim().ToUpperInvariant();
+            if (team.ShortName != shortName) { team.ShortName = shortName; changed = true; }
+        }
+        foreach (var person in archive.People)
+        {
+            var normalized = FormatPersonName(person.FullName);
+            if (person.FullName != normalized) { person.FullName = normalized; changed = true; }
+        }
+        return changed;
     }
 
     public static bool Same(string? a, string? b) => string.Equals((a ?? "").Trim(), (b ?? "").Trim(), StringComparison.OrdinalIgnoreCase);
