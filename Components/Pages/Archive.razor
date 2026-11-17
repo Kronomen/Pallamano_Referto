@@ -73,6 +73,7 @@
             <div class="archive-stats"><div><b>@Archivio.Data.Championships.Count</b><span>Campionati</span></div><div><b>@Archivio.Data.Teams.Count</b><span>Squadre</span></div><div><b>@Archivio.Data.People.Count</b><span>Persone</span></div></div>
         </section>
 
+        </div>
         <nav class="archive-tabs">
             <button class="@(Tab == "gestione" ? "active" : "")" @onclick='() => SetTabAsync("gestione")'>GESTIONE ARCHIVIO</button>
             <button class="@(Tab == "campionati" ? "active" : "")" @onclick='() => SetTabAsync("campionati")'>CAMPIONATI</button>
@@ -82,7 +83,6 @@
             <button class="@(Tab == "importa" ? "active" : "")" @onclick='() => SetTabAsync("importa")'>IMPORTA ATLETI/DIRIGENTI DA PDF (REFERTI)</button>
             @if (Cloud.IsAuthenticated && Tab == "gestione") { <button type="button" class="archive-logout-small" @onclick="DisconnectCloud">@(Cloud.IsAdmin ? "ESCI DA AMMINISTRATORE" : "ESCI DA OPERATORE")</button> }
         </nav>
-        </div>
 
         @if (Tab == "campionati")
         {
@@ -278,7 +278,7 @@
                         }
                     }
                 </section>
-                <div class="archive-list">
+                <div class="archive-list people-grid">
                     @foreach (var p in Archivio.Data.People.OrderBy(x => x.FullName))
                     {
                         <div class="archive-list-row"><div class="archive-list-icon">@(p.PersonType == "PLAYER" ? "👤" : "📋")</div><div class="archive-list-main"><button type="button" class="archive-person-name" @onclick="() => OpenPersonAssociations(p.Id)">@p.FullName</button><small>@(p.PersonType == "PLAYER" ? "Atleta" : "Dirigente") · @Archivio.Data.TeamEntries.Count(x => x.PersonId == p.Id && x.IsActive) iscrizioni attive</small></div><span class="archive-status @(p.IsActive ? "on" : "off")">@(p.IsActive ? "ATTIVO" : "ARCHIVIATO")</span><button class="archive-small archive-team-variation" @onclick="() => OpenPersonNameEdit(p.Id)" disabled="@(!CanWriteArchive)">VARIAZIONE</button><button class="archive-small archive-delete-team" @onclick="() => DeletePerson(p.Id)" disabled="@(!CanWriteArchive)">CANCELLA</button></div>
