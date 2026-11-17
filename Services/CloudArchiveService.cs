@@ -171,6 +171,14 @@ public sealed class CloudArchiveService(HttpClient http, IJSRuntime js, Navigati
 
     public async Task<bool> TryRestoreSessionAsync()
     {
+        // Durante la navigazione interna tra Archivio e Referto il servizio è
+        // singleton: se la sessione è già stata autenticata in questa istanza,
+        // non ripetere /api/me e non rischiare di degradare il ruolo per un
+        // controllo di rete momentaneamente fallito. Il server continua comunque
+        // a verificare il token su ogni operazione protetta.
+        if (!string.IsNullOrWhiteSpace(_token) && (IsAdmin || !string.IsNullOrWhiteSpace(OperatorName)))
+            return true;
+
         if (IsTestMode)
         {
             IsAdmin = true;
