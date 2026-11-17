@@ -853,7 +853,15 @@ else
     private string ArchiveSelectedAwayTeamId = "";
     private string ArchiveRosterMessage = "";
 
-    private void OpenArchivePage() => Nav.NavigateTo("archivio", forceLoad: true);
+    private async Task OpenArchivePage()
+    {
+        // Prima di lasciare la configurazione, salva anche i campi modificati
+        // direttamente tramite @bind. La navigazione resta interna a Blazor:
+        // GameService e CloudArchiveService sono singleton e mantengono così
+        // configurazione, roster e ruolo senza ricreare una gara vuota.
+        await SaveRecoveryIfReady();
+        Nav.NavigateTo("archivio");
+    }
 
     private async Task OpenManualConfiguration()
     {
