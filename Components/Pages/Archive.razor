@@ -1,4 +1,5 @@
 @page "/archivio"
+@page "/"
 @implements IAsyncDisposable
 @using System.Text.Json
 @using RefertoPallamano_Blazor.Services
@@ -796,7 +797,7 @@
         try { await JS.InvokeVoidAsync("sessionStorage.setItem", SelectedTabStorageKey, value); }
         catch { /* La navigazione resta utilizzabile anche senza sessionStorage. */ }
     }
-    private void BackToMatch() => Nav.NavigateTo("./");
+    private void BackToMatch() => Nav.NavigateTo("/gara");
 
     private async Task AddChampionship()
     {
