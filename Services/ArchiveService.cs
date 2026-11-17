@@ -532,9 +532,11 @@ public sealed class ArchiveService(IJSRuntime js, CloudArchiveService cloud)
         var textInfo = CultureInfo.GetCultureInfo("it-IT").TextInfo;
         for (var i = 0; i < words.Length; i++)
         {
-            words[i] = i < 2
-                ? words[i].ToUpperInvariant()
-                : textInfo.ToTitleCase(words[i].ToLowerInvariant());
+            // Con due parole: cognome maiuscolo e nome con iniziale maiuscola.
+            // Da tre parole in poi: prime due maiuscole, le successive in formato Nome.
+            words[i] = words.Length == 2
+                ? (i == 0 ? words[i].ToUpperInvariant() : textInfo.ToTitleCase(words[i].ToLowerInvariant()))
+                : (i < 2 ? words[i].ToUpperInvariant() : textInfo.ToTitleCase(words[i].ToLowerInvariant()));
         }
         return string.Join(" ", words);
     }
