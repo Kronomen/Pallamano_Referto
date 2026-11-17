@@ -12,7 +12,7 @@
 <div class="archive-app">
     <header class="archive-header">
         <div class="archive-brand"><img src="images/FIGH.png" alt="FIGH" /><div><strong>REFERTO PALLAMANO</strong><span>GESTIONE ARCHIVIO</span></div></div>
-        <div class="archive-header-actions">@if (Cloud.IsAuthenticated) { <button type="button" @onclick="DisconnectCloud" style="border:2px solid #dc2626;border-radius:8px;background:#dc2626;color:#173b70;padding:10px 14px;font-weight:900;cursor:pointer;">@(Cloud.IsAdmin ? "ESCI DA AMMINISTRATORE" : "ESCI DA OPERATORE")</button> } <button class="archive-back" @onclick="BackToMatch">← TORNA ALLA GARA</button></div>
+        <div class="archive-header-actions"><button type="button" class="archive-back" @onclick="BackToMatch">← REFERTO GARA</button><button type="button" class="archive-header-close" @onclick="CloseApplication" disabled="@CloudBusy">CHIUDI APPLICAZIONE</button></div>
     </header>
 
     @if (IsNameEditOpen)
@@ -79,7 +79,7 @@
             <button class="@(Tab == "persone" ? "active" : "")" @onclick='() => SetTabAsync("persone")'>ATLETI E DIRIGENTI</button>
             <button class="@(Tab == "importa" ? "active" : "")" @onclick='() => SetTabAsync("importa")'>IMPORTA ATLETI/DIRIGENTI DA PDF (REFERTI)</button>
             <button class="@(Tab == "gestione" ? "active" : "")" @onclick='() => SetTabAsync("gestione")'>GESTIONE ARCHIVIO</button>
-            <button type="button" class="archive-close-tab" @onclick="CloseApplication" disabled="@CloudBusy">CHIUDI APPLICAZIONE</button>
+            @if (Cloud.IsAuthenticated) { <button type="button" class="archive-logout-small" @onclick="DisconnectCloud">@(Cloud.IsAdmin ? "ESCI DA AMMINISTRATORE" : "ESCI DA OPERATORE")</button> }
         </nav>
         </div>
 
