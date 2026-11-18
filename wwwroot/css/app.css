@@ -8271,3 +8271,35 @@ html:-webkit-full-screen, body:-webkit-full-screen{width:100%;height:100%;overfl
     .archive-app{padding:10px !important}
     .archive-content-scroll{padding-top:10px}
 }
+
+
+/* Dettaglio tesserato: popup fuori dall'area scrollabile, sempre davanti alle barre dell'archivio.
+   Su tablet il pannello usa quasi tutta l'altezza e scorre al suo interno. */
+.archive-person-detail-backdrop{
+    position:fixed!important;
+    inset:0!important;
+    z-index:2147483100!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left))!important;
+    overflow-y:auto!important;
+    -webkit-overflow-scrolling:touch;
+    box-sizing:border-box;
+}
+.archive-person-detail-modal{
+    position:relative;
+    z-index:1;
+    width:min(900px,100%)!important;
+    max-height:calc(100dvh - 24px)!important;
+    overflow-y:auto!important;
+    overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch;
+    margin:auto;
+}
+@media(max-width:900px){
+    .archive-person-detail-backdrop{align-items:flex-start!important;padding-top:max(12px,env(safe-area-inset-top))!important}
+    .archive-person-detail-modal{width:100%!important;max-height:calc(100dvh - 24px)!important;padding:16px!important}
+    .archive-person-detail-modal .archive-form-grid{grid-template-columns:minmax(0,1fr)!important}
+    .archive-person-detail-modal .archive-card-title{align-items:flex-start;gap:10px}
+}
