@@ -728,7 +728,11 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender || _cloudInitializationStarted || !Archivio.IsLoaded) return;
+        // Il ripristino del token persistente deve partire sempre al primo render:
+        // non va subordinato allo stato di caricamento dell'archivio locale.
+        // In caso contrario, se l'archivio non è pronto in quel preciso momento,
+        // il ripristino non verrà più tentato durante questa apertura.
+        if (!firstRender || _cloudInitializationStarted) return;
         _cloudInitializationStarted = true;
         CloudBusy = true;
         CloudMessage = "Archivio locale caricato. Verifica della sincronizzazione condivisa…";
@@ -747,7 +751,7 @@
 
             // Il caricamento degli operatori è indipendente dal recupero dell'archivio gare:
         // un problema di sincronizzazione dell'archivio non deve nascondere l'elenco admin.
-        if (Cloud.IsAuthenticated && Cloud.HasCheckedRemote)
+        if (Archivio.IsLoaded && Cloud.IsAuthenticated && Cloud.HasCheckedRemote)
         {
             try
             {
