@@ -141,6 +141,54 @@
 </button>
 
 <script>
+(function () {
+  const button = document.getElementById('fullscreen-toggle');
+  const icon = document.getElementById('fullscreen-toggle-icon');
+
+  function updateFullscreenButton() {
+    const active = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    if (button) {
+      button.classList.toggle('is-fullscreen', active);
+      button.setAttribute('aria-label', active ? 'Esci da schermo intero' : 'Attiva schermo intero');
+      button.title = active ? 'Esci da schermo intero' : 'Schermo intero';
+    }
+    if (icon) icon.textContent = active ? '⛶' : '⛶';
+  }
+
+  window.pallamanoFullscreenToggle = async function () {
+    const active = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    try {
+      if (active) {
+        if (document.exitFullscreen) await document.exitFullscreen();
+        else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+        return;
+      }
+
+      const root = document.documentElement;
+      if (root.requestFullscreen) {
+        await root.requestFullscreen({ navigationUI: 'hide' });
+      } else if (root.webkitRequestFullscreen) {
+        root.webkitRequestFullscreen();
+      } else {
+        const isAppleMobile = /iPad|iPhone|iPod/.test(navigator.userAgent)
+          || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        alert(isAppleMobile
+          ? 'Su iPad/iPhone Safari non consente a una normale pagina web di attivare lo schermo intero con un pulsante. Per nascondere le barre del browser, apri il menu Condividi di Safari e scegli “Aggiungi alla schermata Home”; poi avvia Referto Pallamano dalla nuova icona.'
+          : 'Il browser in uso non supporta la modalità a schermo intero. Prova ad aprire Referto Pallamano con Chrome o Edge aggiornato.');
+      }
+    } catch (error) {
+      console.warn('Attivazione schermo intero non riuscita:', error);
+      alert('Il browser non ha consentito lo schermo intero. Riprova premendo nuovamente il pulsante.');
+    }
+  };
+
+  document.addEventListener('fullscreenchange', updateFullscreenButton);
+  document.addEventListener('webkitfullscreenchange', updateFullscreenButton);
+  updateFullscreenButton();
+})();
+</script>
+
+<script>
 window.refertoDownload = (filename, text) => {
   const blob = new Blob([text], {type:'application/json;charset=utf-8'});
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click();
