@@ -324,10 +324,10 @@ else
             <header class="manual-config-header">
                 <div>
                     <span class="manual-config-eyebrow">REFerto Pallamano · F.I.G.H.</span>
-                    <h2 id="manual-config-title">Configurazione manuale delle squadre</h2>
+                    <h2 id="manual-config-title">Configurazione Squadre</h2>
                     <p>Inserisci le rose e i dirigenti delle due squadre.</p>
                 </div>
-                <button type="button" class="manual-config-close" aria-label="Chiudi configurazione manuale delle squadre" @onclick="CloseManualConfiguration">×</button>
+                <button type="button" class="manual-config-close" aria-label="Chiudi configurazione Squadre" @onclick="CloseManualConfiguration">×</button>
             </header>
             <div class="manual-config-content">
                 <section class="archive-match-picker">
@@ -1354,6 +1354,23 @@ else
 
     private async Task SaveManualConfiguration()
     {
+        // Trasferisce nello stato della gara i nomi scelti dall'archivio,
+        // anche quando non viene aperta la pagina delle convocazioni.
+        var homeTeam = Archivio.Data.Teams.FirstOrDefault(x => x.Id == ArchiveSelectedHomeTeamId);
+        var awayTeam = Archivio.Data.Teams.FirstOrDefault(x => x.Id == ArchiveSelectedAwayTeamId);
+
+        if (homeTeam is not null)
+            Game.State.Casa.Name = homeTeam.Name;
+        if (awayTeam is not null)
+            Game.State.Ospiti.Name = awayTeam.Name;
+
+        var championship = Archivio.Data.Championships.FirstOrDefault(x => x.Id == ArchiveSelectedChampionshipId);
+        var season = Archivio.Data.Seasons.FirstOrDefault(x => x.Id == ArchiveSelectedSeasonId);
+        if (championship is not null)
+            Game.State.Championship = championship.Name;
+        if (season is not null)
+            Game.State.Season = season.Name;
+
         ShowManualConfiguration = false;
         await SaveRecoveryIfReady();
         StateHasChanged();
