@@ -493,20 +493,24 @@
                     {
                         <div class="operator-access-panel">
                             <h3>Accesso amministratore</h3>
-                            <label>Password amministratore
-                                <input type="password" @bind="CloudPassword" autocomplete="current-password" placeholder="Password amministratore" />
-                            </label>
-                            <button class="archive-primary operator-access-action" @onclick="ConnectCloud" disabled="@CloudBusy">ACCEDI COME AMMINISTRATORE</button>
+                            <form @onsubmit="ConnectCloud" @onsubmit:preventDefault>
+                                <label>Password amministratore
+                                    <input type="password" @bind="CloudPassword" autocomplete="current-password" placeholder="Password amministratore" />
+                                </label>
+                                <button type="submit" class="archive-primary operator-access-action" disabled="@CloudBusy">ACCEDI COME AMMINISTRATORE</button>
+                            </form>
                             <hr />
                             <h3>Attivazione operatore</h3>
                             <p>Inserisci il codice personale ricevuto dall'amministratore. Il dispositivo resterà autorizzato anche dopo la chiusura del browser.</p>
-                            <label>Codice personale
-                                <input @bind="OperatorCode" autocomplete="one-time-code" placeholder="Inserisci il tuo codice personale" />
-                            </label>
-                            <label>Nome dispositivo
-                                <input @bind="DeviceName" placeholder="Es. Tablet segnapunti" />
-                            </label>
-                            <button class="archive-primary operator-access-action" @onclick="ActivateOperator" disabled="@CloudBusy">ATTIVA QUESTO DISPOSITIVO</button>
+                            <form @onsubmit="ActivateOperator" @onsubmit:preventDefault>
+                                <label>Codice personale
+                                    <input @bind="OperatorCode" autocomplete="one-time-code" placeholder="Inserisci il tuo codice personale" />
+                                </label>
+                                <label>Nome dispositivo
+                                    <input @bind="DeviceName" placeholder="Es. Tablet segnapunti" />
+                                </label>
+                                <button type="submit" class="archive-primary operator-access-action" disabled="@CloudBusy">ATTIVA QUESTO DISPOSITIVO</button>
+                            </form>
                         </div>
                     }
                     @if (Cloud.IsAuthenticated)
