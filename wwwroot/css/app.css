@@ -8170,3 +8170,43 @@ html:-webkit-full-screen, body:-webkit-full-screen{width:100%;height:100%;overfl
         font-size:9px;
     }
 }
+
+
+/* Blocco superiore archivio: intestazione, stato, riepilogo e schede sempre visibili */
+.archive-app{
+    position:relative;
+    overflow-y:auto;
+    overflow-x:hidden;
+    overscroll-behavior-y:contain;
+}
+.archive-header{
+    position:sticky;
+    top:0;
+    z-index:300;
+}
+.archive-app > .archive-message[role="status"]{
+    position:sticky;
+    top:64px;
+    z-index:290;
+    background:#eef2f7;
+}
+.archive-sticky-shell{
+    position:sticky;
+    top:104px;
+    z-index:280;
+    background:#eef2f7;
+    padding-top:1px;
+    box-shadow:0 5px 9px -9px #0b1220;
+}
+.archive-sticky-shell .archive-tabs{
+    position:static;
+    top:auto;
+    z-index:auto;
+    background:#eef2f7;
+    margin-bottom:0;
+}
+@media(max-width:520px){
+    .archive-header{top:0}
+    .archive-app > .archive-message[role="status"]{top:64px}
+    .archive-sticky-shell{top:104px}
+}
