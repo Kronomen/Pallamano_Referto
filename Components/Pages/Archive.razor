@@ -4,6 +4,7 @@
 @using System.Text.Json
 @using RefertoPallamano_Blazor.Services
 @inject ArchiveService Archivio
+@inject GameService Game
 @inject CloudArchiveService Cloud
 @inject IJSRuntime JS
 @inject NavigationManager Nav
@@ -860,7 +861,49 @@
         try { await JS.InvokeVoidAsync("sessionStorage.setItem", SelectedTabStorageKey, value); }
         catch { /* La navigazione resta utilizzabile anche senza sessionStorage. */ }
     }
-    private void BackToMatch() => Nav.NavigateTo("gara");
+    private async Task BackToMatch()
+    {
+        // Se il servizio non contiene già una gara attiva, controlla anche
+        // l'eventuale bozza locale: può esserci una partita da riprendere
+        // anche quando l'utente ha aperto direttamente la Gestione archivio.
+        var activeMatch = Game.State.MatchStarted && !Game.State.MatchFinished;
+        var recoveryReadable = true;
+
+        if (!activeMatch)
+        {
+            var recovery = await JS.InvokeAsync<string?>("recuperaPartitaLocale");
+            if (!string.IsNullOrWhiteSpace(recovery))
+            {
+                try
+                {
+                    Game.ImportJson(recovery);
+                    activeMatch = Game.State.MatchStarted && !Game.State.MatchFinished;
+                }
+                catch
+                {
+                    // Una bozza illeggibile non viene cancellata: evitiamo
+                    // qualsiasi perdita di dati e apriamo comunque una gara nuova.
+                    recoveryReadable = false;
+                }
+            }
+        }
+
+        if (activeMatch)
+        {
+            // Conserva la partita effettivamente in corso, compresa la fase rigori.
+            await JS.InvokeVoidAsync("salvaPartitaLocale", Game.ExportJson());
+        }
+        else
+        {
+            // Una gara conclusa o una semplice configurazione precedente non
+            // devono riapparire: si prepara il modulo per una nuova gara.
+            Game.Reset();
+            if (recoveryReadable)
+                await JS.InvokeVoidAsync("cancellaRecuperoPartitaLocale");
+        }
+
+        Nav.NavigateTo("gara");
+    }
 
     private async Task AddChampionship()
     {
