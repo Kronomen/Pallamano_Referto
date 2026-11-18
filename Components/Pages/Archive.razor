@@ -489,7 +489,7 @@
                 <div class="archive-note">
                     <strong>Sincronizzazione cloud privata</strong>
                     <p>Collega questo dispositivo una sola volta. Dopo l'accesso l'archivio comune viene recuperato e unito automaticamente; ogni nuova modifica viene sincronizzata con gli altri dispositivi autorizzati. Senza rete, le modifiche restano in locale e vengono ritentate al ripristino della connessione.</p>
-                    @if (!Cloud.IsAuthenticated)
+                    @if (!Cloud.IsAuthenticated && _cloudSessionRestoreCompleted)
                     {
                         <div class="operator-access-panel">
                             <h3>Accesso amministratore</h3>
@@ -709,6 +709,7 @@
     private CancellationTokenSource? _syncMonitorCts;
 
     private bool _cloudInitializationStarted;
+    private bool _cloudSessionRestoreCompleted;
 
     protected override async Task OnInitializedAsync()
     {
@@ -765,6 +766,7 @@
         {
             _syncMonitorCts ??= new CancellationTokenSource();
             _ = MonitorPendingSyncAsync(_syncMonitorCts.Token);
+            _cloudSessionRestoreCompleted = true;
             CloudBusy = false;
             await InvokeAsync(StateHasChanged);
         }
