@@ -8303,3 +8303,39 @@ html:-webkit-full-screen, body:-webkit-full-screen{width:100%;height:100%;overfl
     .archive-person-detail-modal .archive-form-grid{grid-template-columns:minmax(0,1fr)!important}
     .archive-person-detail-modal .archive-card-title{align-items:flex-start;gap:10px}
 }
+
+
+/* REGOLA GENERALE DEL PROGETTO: ogni finestra modale deve stare sopra
+   intestazioni, barre, schede e contenuti, sia nel Referto Gara sia nell'Archivio.
+   Il livello è uniforme per tutte le famiglie di popup; il dettaglio anagrafica
+   resta appena sopra per gestire correttamente il proprio overlay. */
+.overlay,
+.decision-overlay,
+.config-overlay,
+.manual-config-overlay,
+.archive-person-modal-backdrop{
+    z-index:2147483000!important;
+}
+.archive-person-detail-backdrop{
+    z-index:2147483100!important;
+}
+/* Le finestre lunghe restano contenute nello schermo e scorrono al loro interno. */
+.overlay>.dialog-card,
+.decision-overlay>.decision-card,
+.config-overlay>.config-card,
+.manual-config-overlay>.manual-config-dialog,
+.archive-person-modal-backdrop>.archive-person-modal{
+    max-height:calc(100dvh - 24px);
+    overflow-y:auto;
+    overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch;
+}
+@supports(height:100svh){
+    .overlay>.dialog-card,
+    .decision-overlay>.decision-card,
+    .config-overlay>.config-card,
+    .manual-config-overlay>.manual-config-dialog,
+    .archive-person-modal-backdrop>.archive-person-modal{
+        max-height:calc(100svh - 24px);
+    }
+}
