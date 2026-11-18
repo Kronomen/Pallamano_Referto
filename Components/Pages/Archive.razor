@@ -517,7 +517,7 @@
                                                 <span class="archive-status @(op.Active ? "on" : "off")">@(op.Active ? "ATTIVO" : "DISATTIVATO")</span>
                                                 <button class="archive-small operator-toggle @(op.Active ? "operator-deactivate" : "operator-reactivate")" @onclick="() => ToggleOperator(op)">@((op.Active) ? "DISATTIVA" : "RIATTIVA")</button>
                                                 <button class="archive-small operator-rotate" @onclick="() => RotateOperatorCode(op)" disabled="@CloudBusy">RIGENERA CODICE</button>
-                                                <button class="archive-small operator-delete" @onclick="() => DeleteOperator(op)" disabled="@CloudBusy">CANCELLA</button>
+                                                <button class="archive-small operator-delete" @onclick="() => DeleteOperator(op)" disabled="@CloudBusy">ELIMINA</button>
                                             </div>
                                         }
                                     </div>
