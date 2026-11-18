@@ -8351,3 +8351,12 @@ html:-webkit-full-screen, body:-webkit-full-screen{width:100%;height:100%;overfl
         grid-template-columns:repeat(2,minmax(0,1fr))!important;
     }
 }
+
+
+/* Tablet: anche l'elenco delle squadre resta su due colonne,
+   inclusi i tablet grandi in orientamento orizzontale. */
+@media (min-width:651px) and (max-width:1400px){
+    .archive-list.teams-grid{
+        grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    }
+}
