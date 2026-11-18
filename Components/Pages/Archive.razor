@@ -11,6 +11,51 @@
 
 <PageTitle>Archivio - Referto Pallamano</PageTitle>
 
+
+@if (SelectedPerson is not null)
+{
+    <div class="archive-person-modal-backdrop archive-person-detail-backdrop">
+        <section class="archive-person-modal archive-person-detail-modal" role="dialog" aria-modal="true" aria-labelledby="person-associations-title">
+            <div class="archive-card-title">
+                <div><h2 id="person-associations-title">@SelectedPerson.FullName</h2><p>Seleziona la società di appartenenza attuale. Ogni persona può essere assegnata a una sola squadra.</p></div>
+                <button class="archive-small" @onclick="ClosePersonAssociations">CHIUDI</button>
+            </div>
+            <div class="archive-form-grid">
+                <label>Società di appartenenza
+                    <select @bind="SelectedPersonTeamId" disabled="@(!CanWriteArchive)">
+                        <option value="">— SENZA SQUADRA (IN STANDBY) —</option>
+                        @foreach (var team in Archivio.Data.Teams.Where(x => x.IsActive).OrderBy(x => x.Name))
+                        {
+                            <option value="@team.Id">@team.Name</option>
+                        }
+                    </select>
+                </label>
+                <button class="archive-primary" @onclick="SavePersonTeam" disabled="@(!CanWriteArchive)">SALVA APPARTENENZA</button>
+            </div>
+            @if (SelectedPersonEntries.Count > 0)
+            {
+                <p class="archive-note">Elenco completo delle iscrizioni. Se un atleta risulta attivo in più società nella stessa stagione, la funzione di pulizia mantiene automaticamente la prima società registrata e disattiva le successive. Per correggere la società, utilizza il selettore qui sopra.</p>
+                <div class="archive-list">
+                    @foreach (var entry in SelectedPersonEntries)
+                    {
+                        var teamName = Archivio.Data.Teams.FirstOrDefault(x => x.Id == entry.TeamId)?.Name ?? "Squadra non trovata";
+                        var championshipName = Archivio.Data.Championships.FirstOrDefault(x => x.Id == entry.ChampionshipId)?.Name ?? "Campionato non trovato";
+                        var seasonName = Archivio.Data.Seasons.FirstOrDefault(x => x.Id == entry.SeasonId)?.Name ?? "Stagione non trovata";
+                        <div class="archive-list-row">
+                            <div class="archive-list-main"><strong>@teamName</strong><small>@championshipName · @seasonName · @(entry.EntryType == "PLAYER" ? "Atleta" : "Dirigente") · @(entry.EntryType == "PLAYER" ? "N. " + entry.ShirtNumber : "Lettera " + entry.OfficialLetter)</small></div>
+                            <span class="archive-status @(entry.IsActive ? "on" : "off")">@(entry.IsActive ? "ATTIVA" : "DISATTIVATA")</span>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="archive-empty">Questa persona non ha ancora un'iscrizione a un campionato e a una stagione. Dopo aver scelto la società, potrai inserirla dal modulo di associazione.</div>
+            }
+        </section>
+    </div>
+}
+
 <div class="archive-app">
     <header class="archive-header">
         <div class="archive-brand"><img src="images/FIGH.png" alt="FIGH" /><div><strong>REFERTO PALLAMANO</strong><span>GESTIONE ARCHIVIO</span></div></div>
@@ -366,46 +411,7 @@
                         <div class="archive-list-row person-card"><div class="archive-list-icon">@(p.PersonType == "PLAYER" ? "👤" : "📋")</div><div class="archive-list-main"><button type="button" class="archive-person-name" @onclick="() => OpenPersonAssociations(p.Id)">@p.FullName</button><small>@(p.PersonType == "PLAYER" ? "Atleta" : "Dirigente") · @Archivio.Data.TeamEntries.Count(x => x.PersonId == p.Id && x.IsActive) iscrizioni attive</small></div><div class="person-actions"><span class="archive-status @(p.IsActive ? "on" : "off")">@(p.IsActive ? "ATTIVO" : "ARCHIVIATO")</span><button class="archive-small archive-team-variation" @onclick="() => OpenPersonNameEdit(p.Id)" disabled="@(!CanWriteArchive)">VARIAZIONE</button><button class="archive-small archive-delete-team" @onclick="() => DeletePerson(p.Id)" disabled="@(!CanWriteArchive)">ELIMINA</button></div></div>
                     }
                 </div>
-                @if (SelectedPerson is not null)
-                {
-                    <div class="archive-person-modal-backdrop">
-                        <section class="archive-person-modal" role="dialog" aria-modal="true" aria-labelledby="person-associations-title">
-                            <div class="archive-card-title"><div><h2 id="person-associations-title">@SelectedPerson.FullName</h2><p>Seleziona la società di appartenenza attuale. Ogni persona può essere assegnata a una sola squadra.</p></div><button class="archive-small" @onclick="ClosePersonAssociations">CHIUDI</button></div>
-                            <div class="archive-form-grid">
-                                <label>Società di appartenenza
-                                    <select @bind="SelectedPersonTeamId" disabled="@(!CanWriteArchive)">
-                                        <option value="">— SENZA SQUADRA (IN STANDBY) —</option>
-                                        @foreach (var team in Archivio.Data.Teams.Where(x => x.IsActive).OrderBy(x => x.Name))
-                                        {
-                                            <option value="@team.Id">@team.Name</option>
-                                        }
-                                    </select>
-                                </label>
-                                <button class="archive-primary" @onclick="SavePersonTeam" disabled="@(!CanWriteArchive)">SALVA APPARTENENZA</button>
-                            </div>
-                            @if (SelectedPersonEntries.Count > 0)
-                            {
-                                <p class="archive-note">Elenco completo delle iscrizioni. Se un atleta risulta attivo in più società nella stessa stagione, la funzione di pulizia mantiene automaticamente la prima società registrata e disattiva le successive. Per correggere la società, utilizza il selettore qui sopra.</p>
-                                <div class="archive-list">
-                                    @foreach (var entry in SelectedPersonEntries)
-                                    {
-                                        var teamName = Archivio.Data.Teams.FirstOrDefault(x => x.Id == entry.TeamId)?.Name ?? "Squadra non trovata";
-                                        var championshipName = Archivio.Data.Championships.FirstOrDefault(x => x.Id == entry.ChampionshipId)?.Name ?? "Campionato non trovato";
-                                        var seasonName = Archivio.Data.Seasons.FirstOrDefault(x => x.Id == entry.SeasonId)?.Name ?? "Stagione non trovata";
-                                        <div class="archive-list-row">
-                                            <div class="archive-list-main"><strong>@teamName</strong><small>@championshipName · @seasonName · @(entry.EntryType == "PLAYER" ? "Atleta" : "Dirigente") · @(entry.EntryType == "PLAYER" ? "N. " + entry.ShirtNumber : "Lettera " + entry.OfficialLetter)</small></div>
-                                            <span class="archive-status @(entry.IsActive ? "on" : "off")">@(entry.IsActive ? "ATTIVA" : "DISATTIVATA")</span>
-                                        </div>
-                                    }
-                                </div>
-                            }
-                            else
-                            {
-                                <div class="archive-empty">Questa persona non ha ancora un'iscrizione a un campionato e a una stagione. Dopo aver scelto la società, potrai inserirla dal modulo di associazione.</div>
-                            }
-                        </section>
-                    </div>
-                }
+
             </section>
         }
         else if (Tab == "importa")
