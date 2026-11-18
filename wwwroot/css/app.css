@@ -8360,3 +8360,21 @@ html:-webkit-full-screen, body:-webkit-full-screen{width:100%;height:100%;overfl
         grid-template-columns:repeat(2,minmax(0,1fr))!important;
     }
 }
+
+
+/* Full screen su tablet: evita che lo scroll della pagina attivi il gesto
+   di overscroll/pull-to-refresh del browser. Lo scorrimento interno resta attivo. */
+html:fullscreen,
+html:-webkit-full-screen,
+html:fullscreen body,
+html:-webkit-full-screen body,
+html:fullscreen #app,
+html:-webkit-full-screen #app {
+    overscroll-behavior-y: none !important;
+}
+
+html:fullscreen [style*="overflow"],
+html:-webkit-full-screen [style*="overflow"] {
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+}
