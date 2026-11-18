@@ -17,6 +17,25 @@
         <div class="archive-header-actions"><button type="button" class="archive-header-close" @onclick="CloseApplication" disabled="@CloudBusy">CHIUDI APPLICAZIONE</button></div>
     </header>
 
+    @if (ShowActiveMatchChoice)
+    {
+        <div class="archive-person-modal-backdrop">
+            <section class="archive-person-modal archive-match-choice-modal" role="dialog" aria-modal="true" aria-labelledby="active-match-title">
+                <div class="archive-card-title">
+                    <div>
+                        <h2 id="active-match-title">GARA IN CORSO</h2>
+                        <p>È stata rilevata una partita non ancora terminata. Come desideri procedere?</p>
+                    </div>
+                </div>
+                <div style="display:grid;gap:12px;margin-top:22px">
+                    <button type="button" class="archive-primary" style="height:48px;font-size:13px" @onclick="ResumeExistingMatch">RIPRENDI LA GARA</button>
+                    <button type="button" class="archive-small danger" style="height:48px;font-size:13px" @onclick="StartNewMatch">INIZIA UNA NUOVA GARA</button>
+                </div>
+                <p style="margin:14px 0 0;color:#64748b;font-size:11px">Scegliendo una nuova gara, la partita precedente non sarà più ripresa da questo dispositivo.</p>
+            </section>
+        </div>
+    }
+
     @if (IsNameEditOpen)
     {
         <div class="archive-person-modal-backdrop">
@@ -861,13 +880,14 @@
         try { await JS.InvokeVoidAsync("sessionStorage.setItem", SelectedTabStorageKey, value); }
         catch { /* La navigazione resta utilizzabile anche senza sessionStorage. */ }
     }
+    private bool ShowActiveMatchChoice;
+    private bool _recoveryReadableForMatchChoice = true;
+
     private async Task BackToMatch()
     {
-        // Se il servizio non contiene già una gara attiva, controlla anche
-        // l'eventuale bozza locale: può esserci una partita da riprendere
-        // anche quando l'utente ha aperto direttamente la Gestione archivio.
+        // Verifica prima la gara in memoria e, se necessario, la bozza locale.
         var activeMatch = Game.State.MatchStarted && !Game.State.MatchFinished;
-        var recoveryReadable = true;
+        _recoveryReadableForMatchChoice = true;
 
         if (!activeMatch)
         {
@@ -881,27 +901,37 @@
                 }
                 catch
                 {
-                    // Una bozza illeggibile non viene cancellata: evitiamo
-                    // qualsiasi perdita di dati e apriamo comunque una gara nuova.
-                    recoveryReadable = false;
+                    // Non cancellare una bozza illeggibile: potrebbe servire
+                    // per un recupero manuale.
+                    _recoveryReadableForMatchChoice = false;
                 }
             }
         }
 
         if (activeMatch)
         {
-            // Conserva la partita effettivamente in corso, compresa la fase rigori.
-            await JS.InvokeVoidAsync("salvaPartitaLocale", Game.ExportJson());
-        }
-        else
-        {
-            // Una gara conclusa o una semplice configurazione precedente non
-            // devono riapparire: si prepara il modulo per una nuova gara.
-            Game.Reset();
-            if (recoveryReadable)
-                await JS.InvokeVoidAsync("cancellaRecuperoPartitaLocale");
+            // L'operatore sceglie se riprendere o iniziare una nuova gara.
+            ShowActiveMatchChoice = true;
+            return;
         }
 
+        await StartNewMatch();
+    }
+
+    private async Task ResumeExistingMatch()
+    {
+        if (!ShowActiveMatchChoice) return;
+        ShowActiveMatchChoice = false;
+        await JS.InvokeVoidAsync("salvaPartitaLocale", Game.ExportJson());
+        Nav.NavigateTo("gara");
+    }
+
+    private async Task StartNewMatch()
+    {
+        ShowActiveMatchChoice = false;
+        Game.Reset();
+        if (_recoveryReadableForMatchChoice)
+            await JS.InvokeVoidAsync("cancellaRecuperoPartitaLocale");
         Nav.NavigateTo("gara");
     }
 
