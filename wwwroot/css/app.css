@@ -8129,3 +8129,44 @@ html:-webkit-full-screen, body:-webkit-full-screen{width:100%;height:100%;overfl
 .archive-list.people-search-grid .search-person-card .search-person-actions{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex:0 0 auto;flex-wrap:wrap}
 .archive-list.people-search-grid .search-person-card .search-person-actions .archive-small{padding:7px 9px;font-size:9px;white-space:nowrap}
 @media(max-width:900px){.archive-list.people-search-grid .search-person-card .search-person-actions{flex-direction:column;align-items:flex-end}}
+
+
+/* Barra schede archivio ottimizzata per tablet touch */
+.archive-tabs{
+    display:flex;
+    flex-wrap:nowrap;
+    overflow-x:auto;
+    overflow-y:hidden;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior-x:contain;
+    touch-action:pan-x;
+    scrollbar-width:thin;
+    scroll-snap-type:x proximity;
+}
+.archive-tabs button{
+    flex:0 0 auto;
+    min-height:44px;
+    scroll-snap-align:start;
+    -webkit-tap-highlight-color:transparent;
+}
+@media (max-width:850px){
+    .archive-tabs{
+        gap:2px;
+        padding-left:2px;
+        padding-right:2px;
+        margin-left:-2px;
+        margin-right:-2px;
+    }
+    .archive-tabs button{
+        min-height:46px;
+        padding:12px 11px;
+        font-size:10px;
+    }
+}
+@media (max-width:520px){
+    .archive-tabs button{
+        min-height:44px;
+        padding:11px 10px;
+        font-size:9px;
+    }
+}
