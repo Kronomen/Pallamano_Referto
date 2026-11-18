@@ -73,7 +73,6 @@
             <div class="archive-stats"><div><b>@Archivio.Data.Championships.Count</b><span>Campionati</span></div><div><b>@Archivio.Data.Teams.Count</b><span>Squadre</span></div><div><b>@Archivio.Data.People.Count</b><span>Persone</span></div></div>
         </section>
 
-        </div>
         <nav class="archive-tabs">
             <button type="button" @onclick="BackToMatch">REFERTO GARA</button>
             <button class="@(Tab == "gestione" ? "active" : "")" @onclick='() => SetTabAsync("gestione")'>GESTIONE ARCHIVIO</button>
@@ -84,6 +83,7 @@
             <button class="@(Tab == "importa" ? "active" : "")" @onclick='() => SetTabAsync("importa")'>IMPORTA ATLETI/DIRIGENTI DA PDF (REFERTI)</button>
             @if (Cloud.IsAuthenticated && Tab == "gestione") { <button type="button" class="archive-logout-small" @onclick="DisconnectCloud">@(Cloud.IsAdmin ? "ESCI DA AMMINISTRATORE" : "ESCI DA OPERATORE")</button> }
         </nav>
+        </div>
 
         @if (Tab == "campionati")
         {
