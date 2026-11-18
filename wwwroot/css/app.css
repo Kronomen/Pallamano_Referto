@@ -8339,3 +8339,15 @@ html:-webkit-full-screen, body:-webkit-full-screen{width:100%;height:100%;overfl
         max-height:calc(100svh - 24px);
     }
 }
+
+
+/* Tablet: negli elenchi Atleti/Dirigenti mantieni due colonne anche
+   sui tablet grandi in orizzontale, evitando nomi e pulsanti troppo stretti. */
+@media (min-width:651px) and (max-width:1400px){
+    .archive-list.people-grid{
+        grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    }
+    .archive-list.people-search-grid{
+        grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    }
+}
