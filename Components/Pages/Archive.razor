@@ -13,7 +13,7 @@
 <div class="archive-app">
     <header class="archive-header">
         <div class="archive-brand"><img src="images/FIGH.png" alt="FIGH" /><div><strong>REFERTO PALLAMANO</strong><span>GESTIONE ARCHIVIO</span></div></div>
-        <div class="archive-header-actions"><button type="button" class="archive-back" @onclick="BackToMatch">← REFERTO GARA</button><button type="button" class="archive-header-close" @onclick="CloseApplication" disabled="@CloudBusy">CHIUDI APPLICAZIONE</button></div>
+        <div class="archive-header-actions"><button type="button" class="archive-header-close" @onclick="CloseApplication" disabled="@CloudBusy">CHIUDI APPLICAZIONE</button></div>
     </header>
 
     @if (IsNameEditOpen)
@@ -75,6 +75,7 @@
 
         </div>
         <nav class="archive-tabs">
+            <button type="button" @onclick="BackToMatch">REFERTO GARA</button>
             <button class="@(Tab == "gestione" ? "active" : "")" @onclick='() => SetTabAsync("gestione")'>GESTIONE ARCHIVIO</button>
             <button class="@(Tab == "campionati" ? "active" : "")" @onclick='() => SetTabAsync("campionati")'>CAMPIONATI</button>
             <button class="@(Tab == "squadre" ? "active" : "")" @onclick='() => SetTabAsync("squadre")'>SQUADRE</button>
