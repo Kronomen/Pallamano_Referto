@@ -31,7 +31,7 @@
         <div class="home-bottom-shade" aria-hidden="true"></div>
         <div class="home-content">
             <div class="home-actions">
-                <button id="home-open-button" type="button" class="home-open-button" disabled aria-disabled="true" onclick="window.apriGestioneGara()">CARICAMENTO APPLICAZIONE…</button>
+                <button id="home-open-button" type="button" class="home-open-button" onclick="window.apriGestioneGara()">🏐  APRI GESTIONE GARA</button>
                 <a id="home-archive-button" class="home-archive-button" href="archivio" onclick="var home=document.getElementById('home-screen'); if(home){home.style.display='none'; home.setAttribute('aria-hidden','true');}">GESTIONE ARCHIVIO</a>
             </div>
             <div class="home-version">Kronoman V. 2.01 08/26</div>
@@ -112,28 +112,18 @@
 
 <script>
 (function(){
-  var appReady = false;
-  window.refertoAppReady = function(){
-    appReady = true;
-    var button = document.getElementById('home-open-button');
-    if(button){
-      button.disabled = false;
-      button.setAttribute('aria-disabled','false');
-      button.textContent = '🏐  APRI GESTIONE GARA';
-    }
-  };
   window.apriGestioneGara = function(){
-    if(!appReady) return;
-    var home = document.getElementById('home-screen');
-    if(home){ home.style.display='none'; home.setAttribute('aria-hidden','true'); }
+    // La pagina operativa del progetto è la rotta /gara.
+    // Naviga usando la base corrente: / in locale, /Pallamano_Referto/ su GitHub Pages.
+    window.location.assign(new URL('gara', document.baseURI).href);
   };
   function hideHome(){
     var home=document.getElementById('home-screen');
     if(home){ home.style.display='none'; home.setAttribute('aria-hidden','true'); }
   }
   document.addEventListener('DOMContentLoaded',function(){
-    // Se si apre direttamente una rotta interna (es. /archivio), non mostrare
-    // la schermata iniziale sopra la pagina richiesta.
+    // Se si apre direttamente una rotta interna (es. /archivio o /gara),
+    // non mostrare la schermata iniziale sopra la pagina richiesta.
     var base=document.querySelector('base');
     var basePath=base ? new URL(base.href, window.location.href).pathname : '/';
     var currentPath=window.location.pathname;
