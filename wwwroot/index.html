@@ -2,6 +2,19 @@
 <html lang="it">
 <head>
     <base href="/Pallamano_Referto/" />
+    <script>
+      // GitHub Pages pubblica il sito sotto /Pallamano_Referto/, mentre
+      // Visual Studio avvia l'applicazione locale dalla radice del sito.
+      // Impostiamo la base corretta prima di caricare Blazor e i suoi asset.
+      (function () {
+        var host = window.location.hostname;
+        var isLocal = host === 'localhost' || host === '127.0.0.1' || host === '::1';
+        if (isLocal) {
+          var base = document.querySelector('base');
+          if (base) base.setAttribute('href', '/');
+        }
+      })();
+    </script>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#0b1220" />
