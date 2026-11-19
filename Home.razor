@@ -546,7 +546,7 @@
         <div class="dialog-card" style="max-width:620px;width:calc(100% - 28px);max-height:90vh;overflow:auto;">
             <div class="dialog-kicker">INVIO REFERTO FIGH</div>
             <h2>Condividi il referto PDF</h2>
-            <p>Inserisci fino a 10 numeri WhatsApp e fino a 10 indirizzi email. Il PDF viene generato una sola volta. Per WhatsApp si aprirà direttamente la chat del numero inserito; dovrai allegare il PDF scaricato e premere INVIA. Per email si apre il programma di posta con gli indirizzi già inseriti; dovrai allegare il PDF scaricato.</p>
+            <p>Inserisci fino a 10 numeri WhatsApp e fino a 10 indirizzi email. Dopo aver generato il PDF, sui browser compatibili si apre la condivisione del sistema con il file già allegato: scegli WhatsApp o la posta e seleziona il destinatario, quindi controlla e premi INVIA. Se la condivisione diretta non è supportata, il programma usa il percorso alternativo con i destinatari inseriti e il PDF scaricato da allegare manualmente.</p>
 
             <section style="border:1px solid #cbd5e1;border-radius:10px;padding:12px;margin-top:12px;">
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
@@ -562,7 +562,7 @@
                         <button type="button" @onclick="() => RemoveWhatsAppPhone(index)" disabled="@(WhatsAppPhones.Count <= 1)" aria-label="Rimuovi numero" style="padding:7px 10px;">×</button>
                     </div>
                 }
-                <p style="font-size:12px;margin:8px 0 0;opacity:.8;">L'app apre la chat di un numero per volta. Allega il PDF scaricato e premi INVIA in WhatsApp; poi torna qui per aprire la chat successiva.</p>
+                <p style="font-size:12px;margin:8px 0 0;opacity:.8;">Se il browser non supporta la condivisione diretta, il numero viene usato per aprire la chat WhatsApp. Nella condivisione di sistema, invece, scegli il contatto direttamente in WhatsApp.</p>
             </section>
 
             <section style="border:1px solid #cbd5e1;border-radius:10px;padding:12px;margin-top:12px;">
@@ -579,7 +579,7 @@
                         <button type="button" @onclick="() => RemoveEmailRecipient(index)" disabled="@(EmailRecipients.Count <= 1)" aria-label="Rimuovi email" style="padding:7px 10px;">×</button>
                     </div>
                 }
-                <p style="font-size:12px;margin:8px 0 0;opacity:.8;">Il programma di posta si apre con tutti gli indirizzi compilati. Per limiti del browser, allega manualmente il PDF scaricato prima di inviare.</p>
+                <p style="font-size:12px;margin:8px 0 0;opacity:.8;">Se il browser non supporta la condivisione diretta, gli indirizzi vengono inseriti nel messaggio email e dovrai allegare il PDF scaricato. Nella condivisione di sistema scegli i destinatari nell'app di posta.</p>
             </section>
 
             <div class="dialog-grid" style="margin-top:16px;">
