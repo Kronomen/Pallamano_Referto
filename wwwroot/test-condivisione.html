@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prova condivisione PDF - Pallamano</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;padding:24px;background:#eef3f9;color:#10233f;font:16px Arial,sans-serif;display:grid;place-items:center}
+  main{width:min(620px,100%);background:#fff;border:1px solid #d4deea;border-radius:18px;padding:28px;box-shadow:0 12px 36px #10233f18}
+  h1{font-size:24px;margin:0 0 10px}
+  p{line-height:1.5;color:#40536c}
+  .status{padding:12px;border-radius:10px;background:#edf4fb;margin:18px 0;line-height:1.5;overflow-wrap:anywhere}
+  button{width:100%;padding:15px;margin-top:10px;border:0;border-radius:10px;font-weight:700;font-size:16px;cursor:pointer}
+  #share{background:#14795f;color:#fff}
+  #download{background:#e7eef7;color:#10233f}
+  #back{background:#fff;border:1px solid #b8c7d9;color:#10233f}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  small{display:block;margin-top:16px;color:#61738a;line-height:1.45}
+</style>
+</head>
+<body>
+<main>
+  <h1>Prova condivisione PDF</h1>
+  <p>Questa pagina crea un piccolo PDF dimostrativo, senza usare dati di gara, password o archivio. Serve soltanto a verificare se Chrome e Windows riescono a passare un PDF già allegato a WhatsApp o alla posta.</p>
+  <div id="status" class="status">Verifica delle funzionalità del browser…</div>
+  <button id="share" type="button">CONDIVIDI PDF GIÀ ALLEGATO</button>
+  <button id="download" type="button">SCARICA PDF DI PROVA</button>
+  <button id="back" type="button">TORNA ALL'APPLICAZIONE</button>
+  <small>Quando si apre la finestra di condivisione, scegli WhatsApp oppure la posta. Controlla che il PDF di prova compaia come allegato. Non premere INVIA a destinatari reali.</small>
+</main>
+<script>
+(function(){
+  const status = document.getElementById('status');
+  const shareButton = document.getElementById('share');
+  const downloadButton = document.getElementById('download');
+  const backButton = document.getElementById('back');
+
+  function makePdf(){
+    const stream = 'BT /F1 18 Tf 72 720 Td (Pallamano - Prova condivisione PDF) Tj 0 -30 Td /F1 12 Tf (Documento dimostrativo senza dati di gara.) Tj ET';
+    const objects = [
+      '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
+      '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
+      '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>\nendobj\n',
+      '4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n',
+      '5 0 obj\n<< /Length ' + stream.length + ' >>\nstream\n' + stream + '\nendstream\nendobj\n'
+    ];
+    let pdf = '%PDF-1.4\n';
+    const offsets = [0];
+    for(const obj of objects){ offsets.push(pdf.length); pdf += obj; }
+    const xref = pdf.length;
+    pdf += 'xref\n0 6\n0000000000 65535 f \n';
+    for(let i=1;i<offsets.length;i++) pdf += String(offsets[i]).padStart(10,'0') + ' 00000 n \n';
+    pdf += 'trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n' + xref + '\n%%EOF';
+    return new File([new TextEncoder().encode(pdf)], 'Pallamano_Prova_Condivisione.pdf', {type:'application/pdf'});
+  }
+
+  const secure = window.isSecureContext;
+  const shareApi = typeof navigator.share === 'function';
+  let fileShare = false;
+  try { fileShare = shareApi && typeof navigator.canShare === 'function' && navigator.canShare({files:[makePdf()]}); } catch(e) {}
+  status.textContent = 'Contesto sicuro HTTPS: ' + (secure ? 'SÌ' : 'NO') +
+    ' · navigator.share: ' + (shareApi ? 'DISPONIBILE' : 'NON DISPONIBILE') +
+    ' · Condivisione file PDF: ' + (fileShare ? 'SUPPORTATA' : 'NON SUPPORTATA');
+  shareButton.disabled = !(secure && fileShare);
+
+  shareButton.addEventListener('click', async function(){
+    if(!secure || !fileShare) return;
+    const file = makePdf();
+    try {
+      await navigator.share({files:[file], title:'Prova referto FIGH', text:'Documento PDF dimostrativo Pallamano.'});
+      status.textContent = 'Finestra di condivisione completata. Verifica nell’app scelta che il PDF fosse presente come allegato.';
+    } catch(e) {
+      if(e && e.name === 'AbortError') status.textContent = 'Condivisione annullata. Nessun invio effettuato.';
+      else status.textContent = 'Errore durante la condivisione: ' + (e && e.message ? e.message : String(e));
+    }
+  });
+
+  downloadButton.addEventListener('click', function(){
+    const file = makePdf();
+    const url = URL.createObjectURL(file);
+    const a = document.createElement('a');
+    a.href = url; a.download = file.name; a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),30000);
+  });
+
+  backButton.addEventListener('click', function(){ window.location.href = new URL('./', document.baseURI).href; });
+})();
+</script>
+</body>
+</html>
