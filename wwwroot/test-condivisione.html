@@ -84,9 +84,8 @@ emailButton.addEventListener('click',()=>{
  const subject=encodeURIComponent('Prova invio referto FIGH');
  const body=encodeURIComponent('Buongiorno,\n\nin allegato il referto dimostrativo.\n\nRicorda di allegare il file Pallamano_Prova_Email.pdf scaricato dal browser prima di inviare.');
  const gmail='https://mail.google.com/mail/?view=cm&fs=1&to='+encodeURIComponent(to)+'&su='+subject+'&body='+body;
- status.textContent='PDF scaricato. Si sta aprendo Gmail in una nuova scheda: allega Pallamano_Prova_Email.pdf e verifica il messaggio prima dell’invio.';
- const tab=window.open(gmail,'_blank','noopener,noreferrer');
- if(!tab){status.textContent='Il PDF è stato scaricato, ma Chrome ha bloccato la nuova scheda. Consenti i popup per questo sito e riprova; puoi comunque aprire Gmail manualmente.';}
+ status.textContent='PDF scaricato. Si sta aprendo Gmail nella scheda corrente: allega Pallamano_Prova_Email.pdf e verifica il messaggio prima dell’invio.';
+ window.location.assign(gmail);
 });
 downloadButton.addEventListener('click',()=>download(makePdf()));
 document.getElementById('back').addEventListener('click',()=>{window.location.href=new URL('./',document.baseURI).href;});
