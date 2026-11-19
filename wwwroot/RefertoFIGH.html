@@ -2568,8 +2568,9 @@ window.addEventListener('load', () => {
   bar.style.cssText = 'position:fixed;left:10px;right:10px;bottom:10px;max-height:78vh;overflow:auto;z-index:100001;background:#10233f;color:white;padding:12px;border-radius:12px;box-shadow:0 4px 20px #0005;font:14px Arial,sans-serif;display:flex;flex-direction:column;gap:8px;';
   bar.innerHTML = '<strong>INVIO REFERTO FIGH · PDF</strong>' +
     '<span id="sharePdfCounts" style="font-size:12px;line-height:1.4"></span>' +
-    '<span id="sharePdfHint" style="font-size:12px;line-height:1.4">Primo passaggio: genera e scarica il PDF una sola volta. Poi potrai aprire le chat WhatsApp e preparare l’email per i destinatari inseriti.</span>' +
+    '<span id="sharePdfHint" style="font-size:12px;line-height:1.4">Genera il PDF. Se il browser supporta la condivisione dei file, potrai aprire la finestra di condivisione con il referto già allegato e scegliere WhatsApp o la posta.</span>' +
     '<button id="sharePdfNow" style="padding:12px;border:0;border-radius:8px;background:#25d366;color:#062b16;font-weight:700;font-size:16px">1. GENERA PDF</button>' +
+    '<button id="sharePdfNative" style="display:none;padding:12px;border:0;border-radius:8px;background:#25d366;color:#062b16;font-weight:700;font-size:16px">2. CONDIVIDI PDF GIÀ ALLEGATO</button>' +
     '<button id="shareWhatsAppNext" style="display:none;padding:12px;border:0;border-radius:8px;background:#25d366;color:#062b16;font-weight:700;font-size:15px">APRI CHAT WHATSAPP</button>' +
     '<button id="prepareEmail" style="display:none;padding:12px;border:0;border-radius:8px;background:#dbeafe;color:#10233f;font-weight:700;font-size:15px">APRI EMAIL CON I DESTINATARI</button>' +
     '<button id="downloadPdfFallback" style="display:none;padding:10px;border:1px solid #ffffff66;border-radius:8px;background:transparent;color:white">SCARICA PDF</button>' +
@@ -2577,6 +2578,7 @@ window.addEventListener('load', () => {
   document.body.appendChild(bar);
 
   const generateButton = document.getElementById('sharePdfNow');
+  const nativeShareButton = document.getElementById('sharePdfNative');
   const whatsappButton = document.getElementById('shareWhatsAppNext');
   const emailButton = document.getElementById('prepareEmail');
   const downloadButton = document.getElementById('downloadPdfFallback');
@@ -2641,17 +2643,60 @@ window.addEventListener('load', () => {
       preparedBlob = pdf.output('blob');
       preparedFile = new File([preparedBlob], preparedName, { type: 'application/pdf' });
       generateButton.style.display = 'none';
-      downloadButton.style.display = 'block';
-      // Serve una copia locale del PDF da allegare manualmente alle chat WhatsApp e alle email.
-      downloadPreparedPdf();
-      if (emails.length) emailButton.style.display = 'block';
-      updateWhatsAppButton();
-      hint.textContent = 'PDF generato e download avviato. WhatsApp: apri una chat alla volta, il numero inserito viene usato per indirizzare la chat; allega il PDF scaricato e conferma l’invio. Email: il programma di posta si apre con gli indirizzi già compilati; allega lo stesso PDF prima di inviare.';
+
+      // Preferisce la condivisione nativa del file: il PDF viene passato come allegato
+      // al pannello di condivisione del sistema, senza invio automatico.
+      const nativeFileShareAvailable = !!(
+        navigator.share &&
+        navigator.canShare &&
+        navigator.canShare({ files: [preparedFile] })
+      );
+
+      if (nativeFileShareAvailable) {
+        nativeShareButton.style.display = 'block';
+        hint.textContent = 'PDF pronto. Premi CONDIVIDI PDF GIÀ ALLEGATO: nella finestra che si apre scegli WhatsApp, posta o un’altra app e seleziona il destinatario. Controlla il messaggio e premi INVIA nell’app scelta.';
+      } else {
+        // Ripiego per browser che non supportano la condivisione nativa degli allegati.
+        downloadButton.style.display = 'block';
+        downloadPreparedPdf();
+        if (emails.length) emailButton.style.display = 'block';
+        updateWhatsAppButton();
+        hint.textContent = 'Questo browser non supporta la condivisione diretta del PDF. Il file è stato scaricato: apri la chat WhatsApp o l’email e allegalo manualmente prima di inviare.';
+      }
     } catch (err) {
       console.error('Errore generazione PDF', err);
       alert(err && err.message ? err.message : 'Impossibile generare il PDF.');
       generateButton.disabled = false;
       generateButton.textContent = 'RIPROVA GENERAZIONE PDF';
+    }
+  };
+
+  nativeShareButton.onclick = async () => {
+    if (!preparedFile || !navigator.share || !navigator.canShare ||
+        !navigator.canShare({ files: [preparedFile] })) {
+      hint.textContent = 'La condivisione degli allegati non è disponibile in questo browser. Usa SCARICA PDF e allega il file manualmente.';
+      downloadButton.style.display = 'block';
+      downloadPreparedPdf();
+      return;
+    }
+
+    const title = 'Referto FIGH - ' + (partita.teamA || 'Casa') + ' - ' + (partita.teamB || 'Ospiti');
+    const textMessage = 'Buongiorno, invio il referto FIGH della gara ' +
+      (partita.teamA || 'Casa') + ' - ' + (partita.teamB || 'Ospiti') +
+      ' (' + (partita.finalScoreA ?? partita.scoreA ?? 0) + '-' +
+      (partita.finalScoreB ?? partita.scoreB ?? 0) + ').';
+
+    try {
+      await navigator.share({ files: [preparedFile], title, text: textMessage });
+      hint.textContent = 'Finestra di condivisione completata. Verifica nell’app scelta che il messaggio sia stato effettivamente inviato: Pallamano_Referto non invia il messaggio al posto dell’operatore.';
+    } catch (err) {
+      if (err && err.name === 'AbortError') {
+        hint.textContent = 'Condivisione annullata. Il PDF è ancora pronto: puoi riprovare oppure scaricarlo.';
+        return;
+      }
+      console.error('Errore condivisione PDF', err);
+      hint.textContent = 'Non è stato possibile aprire la condivisione con allegato. Puoi scaricare il PDF e allegarlo manualmente.';
+      downloadButton.style.display = 'block';
     }
   };
 
