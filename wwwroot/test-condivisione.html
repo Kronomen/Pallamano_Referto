@@ -25,15 +25,15 @@ small{display:block;margin-top:16px;color:#61738a;line-height:1.45}
 <body>
 <main>
 <h1>Prova invio email con PDF</h1>
-<p>Questa pagina crea un documento dimostrativo, senza dati di gara. Inserisci il tuo indirizzo email e verifica prima la condivisione con allegato. Se non è supportata, puoi aprire una normale email e allegare il PDF scaricato.</p>
+<p>Questa pagina crea un documento dimostrativo, senza dati di gara. Inserisci il tuo indirizzo email e verifica prima la condivisione con allegato. Se non è supportata, puoi aprire direttamente Gmail e allegare il PDF scaricato.</p>
 <label for="recipient">Indirizzo email di prova (facoltativo)</label>
 <input id="recipient" type="email" placeholder="nome@esempio.it" autocomplete="email">
 <div id="status" class="status">Controllo delle funzionalità del browser…</div>
 <button id="share" type="button">CONDIVIDI PDF GIÀ ALLEGATO</button>
-<button id="email" type="button">APRI EMAIL E SCARICA PDF DA ALLEGARE</button>
+<button id="email" type="button">APRI GMAIL E SCARICA PDF DA ALLEGARE</button>
 <button id="download" type="button">SCARICA SOLO PDF DI PROVA</button>
 <button id="back" type="button">TORNA ALL'APPLICAZIONE</button>
-<small>La condivisione nativa passa il PDF come allegato, se Windows e Chrome lo supportano. Il pulsante email alternativo apre il programma di posta predefinito e scarica il PDF: dovrai allegarlo manualmente. Non viene inviato nulla automaticamente.</small>
+<small>La condivisione nativa passa il PDF come allegato, se Windows e Chrome lo supportano. Il pulsante Gmail apre la composizione di un messaggio nel sito Gmail e scarica il PDF: dovrai allegarlo manualmente. Non viene inviato nulla automaticamente.</small>
 </main>
 <script>
 (function(){
@@ -83,9 +83,10 @@ emailButton.addEventListener('click',()=>{
  download(file);
  const subject=encodeURIComponent('Prova invio referto FIGH');
  const body=encodeURIComponent('Buongiorno,\n\nin allegato il referto dimostrativo.\n\nRicorda di allegare il file Pallamano_Prova_Email.pdf scaricato dal browser prima di inviare.');
- const mailto='mailto:'+encodeURIComponent(to)+'?subject='+subject+'&body='+body;
- status.textContent='PDF scaricato. Si sta aprendo il programma di posta: allega Pallamano_Prova_Email.pdf e verifica il messaggio prima dell’invio.';
- window.location.href=mailto;
+ const gmail='https://mail.google.com/mail/?view=cm&fs=1&to='+encodeURIComponent(to)+'&su='+subject+'&body='+body;
+ status.textContent='PDF scaricato. Si sta aprendo Gmail in una nuova scheda: allega Pallamano_Prova_Email.pdf e verifica il messaggio prima dell’invio.';
+ const tab=window.open(gmail,'_blank','noopener,noreferrer');
+ if(!tab){status.textContent='Il PDF è stato scaricato, ma Chrome ha bloccato la nuova scheda. Consenti i popup per questo sito e riprova; puoi comunque aprire Gmail manualmente.';}
 });
 downloadButton.addEventListener('click',()=>download(makePdf()));
 document.getElementById('back').addEventListener('click',()=>{window.location.href=new URL('./',document.baseURI).href;});
